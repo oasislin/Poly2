@@ -14,26 +14,178 @@ T05 scope: completely contained 6h forecast window selection (subseteq local day
 Caching / retry belong to T06.
 """
 
+import concurrent.futures
 import hashlib
 import logging
+import re
+import threading
 import time
 import urllib.error
 import urllib.request
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 import requests
 
-# Resilience enhancement: Enforce minimum 120s HTTP timeout on Herbie/requests to survive cross-pacific S3 latency spikes
+import os
+import yaml
+
+# Resilience & Live Progress Tracking:
+# 1. Configurable proxy (default: direct S3 connection, bypassing local proxy to eliminate CLOSE_WAIT).
+# 2. Enforce minimum 120s HTTP timeout on Herbie/requests.
+# 3. Hook chunk streaming on genuine Range requests to track accurate per-member progress.
+# 4. Enforce resp.close() in finally block to ensure 100% immediate socket cleanup.
 _orig_session_send = requests.Session.send
+
+_active_member_progress = {}
+_active_progress_lock = threading.Lock()
+
+
+def _load_network_config() -> dict:
+    """Load network settings from configs/default.yaml with env var fallback."""
+    cfg = {"use_proxy": False, "proxy_url": None, "min_timeout_seconds": 120}
+    cfg_file = Path(__file__).resolve().parents[2] / "configs" / "default.yaml"
+    if cfg_file.exists():
+        try:
+            with open(cfg_file, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+                net_data = data.get("network", {})
+                cfg["use_proxy"] = net_data.get("use_proxy", False)
+                cfg["proxy_url"] = net_data.get("proxy_url", None)
+                cfg["min_timeout_seconds"] = net_data.get("min_timeout_seconds", 120)
+        except Exception:
+            pass
+
+    # Environment variable override
+    env_use_proxy = os.environ.get("GEFS_USE_PROXY")
+    if env_use_proxy is not None:
+        cfg["use_proxy"] = env_use_proxy.strip().lower() in ("1", "true", "yes")
+
+    return cfg
+
+
+def _normalize_timeout(timeout, min_timeout: float = 120.0):
+    """Enforce minimum timeout across scalar and tuple timeout configurations."""
+    if timeout is None:
+        return min_timeout
+    if isinstance(timeout, (int, float)):
+        return max(float(timeout), min_timeout)
+    if isinstance(timeout, (list, tuple)):
+        return tuple(
+            max(float(t), min_timeout) if isinstance(t, (int, float)) else min_timeout
+            for t in timeout
+        )
+    return timeout
+
+
+def _extract_request_metadata(request) -> tuple[Optional[str], Optional[str], Optional[int]]:
+    """Extract ensemble member name, variable label, and exact slice length ONLY from valid Range requests."""
+    url_str = getattr(request, "url", "")
+    if ".idx" in url_str:
+        return None, None, None
+
+    mem_match = re.search(r"/(c\d{2}|p\d{2})/", url_str) or re.search(r"_(c\d{2}|p\d{2})\.", url_str)
+    if not mem_match:
+        return None, None, None
+    mem_name = mem_match.group(1)
+
+    var_label = "tmax" if "tmax" in url_str else ("tmin" if "tmin" in url_str else "")
+
+    range_hdr = request.headers.get("Range", "") if hasattr(request, "headers") else ""
+    if range_hdr.startswith("bytes="):
+        r_parts = range_hdr[6:].split("-")
+        if len(r_parts) == 2 and r_parts[0].isdigit() and r_parts[1].isdigit():
+            slice_bytes = int(r_parts[1]) - int(r_parts[0]) + 1
+            return mem_name, var_label, slice_bytes
+
+    return None, None, None
+
+
+def _wrap_socket_reader(resp, mem_name: str, var_label: str, slice_bytes: int):
+    """Wrap resp.raw.read to intercept live TCP chunks for the current individual file slice."""
+    slice_id = f"{mem_name}_{var_label}_{time.time()}"
+    with _active_progress_lock:
+        _active_member_progress[mem_name] = {
+            "var": var_label,
+            "slice_id": slice_id,
+            "downloaded": 0,
+            "total": slice_bytes,
+            "speed_kb": 0.0,
+            "pct": 0.0,
+            "updated_at": time.time(),
+        }
+
+    orig_read = resp.raw.read
+    var_dl = [0]
+
+    def wrapped_read(amt=None, *r_args, **r_kwargs):
+        try:
+            chunk = orig_read(amt, *r_args, **r_kwargs)
+            if chunk:
+                var_dl[0] += len(chunk)
+                with _active_progress_lock:
+                    if mem_name in _active_member_progress:
+                        _active_member_progress[mem_name]["var"] = var_label
+                        _active_member_progress[mem_name]["slice_id"] = slice_id
+                        _active_member_progress[mem_name]["downloaded"] = var_dl[0]
+                        _active_member_progress[mem_name]["total"] = slice_bytes
+                        _active_member_progress[mem_name]["pct"] = (var_dl[0] / max(slice_bytes, 1)) * 100.0
+                        _active_member_progress[mem_name]["updated_at"] = time.time()
+            else:
+                # EOF reached: clean up socket immediately
+                with _active_progress_lock:
+                    if mem_name in _active_member_progress:
+                        _active_member_progress[mem_name]["downloaded"] = slice_bytes
+                        _active_member_progress[mem_name]["pct"] = 100.0
+                        _active_member_progress[mem_name]["updated_at"] = time.time()
+                try:
+                    resp.close()
+                except Exception:
+                    pass
+            return chunk
+        except Exception:
+            try:
+                resp.close()
+            except Exception:
+                pass
+            raise
+
+    resp.raw.read = wrapped_read
 
 
 def _resilient_session_send(self, request, **kwargs):
-    if kwargs.get("timeout") is None or (
-        isinstance(kwargs.get("timeout"), (int, float)) and kwargs.get("timeout") < 120
-    ):
-        kwargs["timeout"] = 120
-    return _orig_session_send(self, request, **kwargs)
+    net_cfg = _load_network_config()
+
+    # Configure proxy behavior dynamically
+    if not net_cfg["use_proxy"]:
+        self.trust_env = False
+        self.proxies = {}
+    elif net_cfg.get("proxy_url"):
+        self.trust_env = True
+        self.proxies = {
+            "http": net_cfg["proxy_url"],
+            "https": net_cfg["proxy_url"],
+        }
+
+    kwargs["timeout"] = _normalize_timeout(
+        kwargs.get("timeout"),
+        min_timeout=float(net_cfg["min_timeout_seconds"]),
+    )
+
+    mem_name, var_label, slice_bytes = _extract_request_metadata(request)
+    if mem_name and slice_bytes:
+        kwargs["stream"] = True
+
+    resp = _orig_session_send(self, request, **kwargs)
+
+    try:
+        if mem_name and slice_bytes and hasattr(resp, "raw") and hasattr(resp.raw, "read"):
+            _wrap_socket_reader(resp, mem_name, var_label, slice_bytes)
+    except (AttributeError, TypeError, ValueError):
+        pass
+
+    return resp
 
 
 requests.Session.send = _resilient_session_send
@@ -200,6 +352,15 @@ class GEFSFetcher:
                 h.idx_source = "aws"
             if "index_as_dataframe" in h.__dict__:
                 del h.__dict__["index_as_dataframe"]
+
+            # Pre-check: if a local file exists but is truncated (<1MB), remove it before download
+            try:
+                local = h.get_localFilePath(search)
+                if local.exists() and local.stat().st_size < 1_000_000:
+                    local.unlink(missing_ok=True)
+            except Exception:
+                pass
+
             path = h.download(search=search) if search is not None else h.download()
             if expected_md5 is not None:
                 paths = path if isinstance(path, (list, tuple)) else [path]
@@ -218,7 +379,7 @@ class GEFSFetcher:
                 try:
                     local = h.get_localFilePath(search)
                     if local.exists():
-                        local.unlink()
+                        local.unlink(missing_ok=True)
                 except Exception:
                     pass
                 raise
@@ -227,15 +388,25 @@ class GEFSFetcher:
 
     def _xarray_with_retry(self, h, search=None):
         def _attempt():
-            if getattr(h, "idx", None) is None and getattr(h, "grib", None):
-                h.idx = f"{h.grib}.idx"
-                h.IDX_STYLE = "wgrib2"
-                h.idx_source = "aws"
-            if "index_as_dataframe" in h.__dict__:
-                del h.__dict__["index_as_dataframe"]
-            if search is not None:
-                return h.xarray(search=search)
-            return h.xarray()
+            try:
+                if getattr(h, "idx", None) is None and getattr(h, "grib", None):
+                    h.idx = f"{h.grib}.idx"
+                    h.IDX_STYLE = "wgrib2"
+                    h.idx_source = "aws"
+                if "index_as_dataframe" in h.__dict__:
+                    del h.__dict__["index_as_dataframe"]
+                if search is not None:
+                    return h.xarray(search=search, remove_grib=False)
+                return h.xarray(remove_grib=False)
+            except Exception:
+                # If decoding failed (e.g. truncated/corrupt GRIB), remove corrupt local file
+                try:
+                    local = h.get_localFilePath(search)
+                    if local.exists():
+                        local.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                raise
 
         return self._execute_with_retry(_attempt)
 
@@ -274,12 +445,12 @@ class GEFSFetcher:
         for day in days:
             for cycle in cycles:
                 init_time = datetime(day.year, day.month, day.day, cycle)
-                member_dss = []
-                for member in members:
+
+                def _fetch_single_member(mem):
                     var_dss = [
                         self._fetch_variable(
                             init_time,
-                            member,
+                            mem,
                             variable,
                             forecast_hours,
                             region_bounds,
@@ -287,10 +458,21 @@ class GEFSFetcher:
                         )
                         for variable in REFORECAST_VARIABLES
                     ]
-                    member_ds = xr.merge(
-                        var_dss, compat="override", combine_attrs="override"
-                    ).expand_dims(member=[member])
-                    member_dss.append(member_ds)
+                    return xr.merge(
+                        var_dss,
+                        compat="override",
+                        combine_attrs="override",
+                        join="outer",
+                    ).expand_dims(member=[mem])
+
+                if len(members) > 1:
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=min(len(members), 5)
+                    ) as executor:
+                        member_dss = list(executor.map(_fetch_single_member, members))
+                else:
+                    member_dss = [_fetch_single_member(members[0])]
+
                 blocks.append(
                     xr.concat(
                         member_dss,
@@ -338,6 +520,7 @@ class GEFSFetcher:
             h = Herbie(
                 init_time,
                 model="gefs_reforecast",
+                product="GEFSv12/reforecast",
                 member=member,
                 fxx=0,
                 variable_level=variable,
@@ -561,3 +744,18 @@ class GEFSFetcher:
         return select_contained_6h_windows(
             init_time_utc, target_date, tz_or_station, max_lead_hours=max_lead_hours
         )
+
+    @classmethod
+    def get_active_progress(cls) -> dict:
+        """Return a thread-safe snapshot of active member download metrics."""
+        with _active_progress_lock:
+            return {
+                mem: dict(data)
+                for mem, data in _active_member_progress.items()
+            }
+
+    @classmethod
+    def reset_active_progress(cls):
+        """Clear active member download metrics."""
+        with _active_progress_lock:
+            _active_member_progress.clear()

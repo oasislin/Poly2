@@ -69,6 +69,16 @@
 
 ---
 
+### `network` 网络与代理配置 (已对齐 v5.9.2)
+
+| 字段名 | 类型 | 默认值 | 说明与约束 |
+| :--- | :--- | :--- | :--- |
+| `use_proxy` | `bool` | `false` | 是否通过本地代理访问外部数据源。默认 `false`（纯直连 AWS S3 性能最佳且避免 `CLOSE_WAIT` 堆积）。 |
+| `proxy_url` | `str | None` | `null` | 显式代理地址（如 `http://127.0.0.1:7890`）。当 `use_proxy: false` 时自动忽略。 |
+| `min_timeout_seconds` | `int` | `120` | 单个 GRIB 切片请求的最小超时时间（秒），防止慢速网络下频繁误断。 |
+
+---
+
 ### `alert` 监控告警配置
 
 | 字段名 | 类型 | 默认值 | 说明与约束 |
@@ -83,6 +93,11 @@
 
 ```yaml
 env: default
+
+network:
+  use_proxy: false            # false: 纯直连 AWS S3; true: 走代理
+  proxy_url: null             # 显式代理地址 (若为 null 则自动使用环境代理)
+  min_timeout_seconds: 120    # 最小切片超时时间 (秒)
 
 data:
   stations:

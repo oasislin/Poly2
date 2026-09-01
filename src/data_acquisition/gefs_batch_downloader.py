@@ -10,6 +10,7 @@ pending -> downloading -> downloaded -> cropped -> raw_ready -> (user_check=move
 import csv
 import logging
 import shutil
+import threading
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -292,6 +293,60 @@ class GEFSBatchDownloader:
                         init_day += timedelta(days=1)
                         continue
 
+                    # Start 30s heartbeat reporter thread
+                    stop_heartbeat = threading.Event()
+
+                    def _heartbeat_worker():
+                        t_hb_start = time.perf_counter()
+                        last_hb_time = t_hb_start
+                        last_stats = {}  # {m: (slice_id, downloaded_bytes)}
+
+                        while not stop_heartbeat.wait(timeout=30.0):
+                            prog = GEFSFetcher.get_active_progress()
+                            now = time.perf_counter()
+                            hb_elapsed = int(now - t_hb_start)
+                            dt = max(now - last_hb_time, 0.001)
+                            last_hb_time = now
+                            cur_day_pct = ((completed_in_year + 1) / total_days) * 100.0
+                            if prog:
+                                mem_strs = []
+                                for m in ["c00", "p01", "p02", "p03", "p04"]:
+                                    if m in prog:
+                                        p_data = prog[m]
+                                        dl_bytes = p_data.get("downloaded", 0)
+                                        tot_bytes = p_data.get("total", 1)
+                                        slice_id = p_data.get("slice_id", "")
+                                        var_lbl = p_data.get("var", "")
+
+                                        prev_id, prev_dl = last_stats.get(m, ("", 0))
+                                        if slice_id != prev_id:
+                                            delta_bytes = dl_bytes
+                                        else:
+                                            delta_bytes = max(dl_bytes - prev_dl, 0)
+                                        spd = (delta_bytes / 1024.0) / dt
+                                        last_stats[m] = (slice_id, dl_bytes)
+
+                                        dl_mb = dl_bytes / (1024 * 1024)
+                                        tot_mb = tot_bytes / (1024 * 1024)
+                                        pct = p_data.get("pct", 0.0)
+                                        lbl = f"{m}[{var_lbl}]" if var_lbl else m
+                                        mem_strs.append(
+                                            f"{lbl}:{pct:4.1f}%({dl_mb:.1f}/{tot_mb:.1f}MB,{spd:3.0f}KB/s)"
+                                        )
+                                detail = " | " + " ".join(mem_strs)
+                            else:
+                                detail = " | 正在连接源站并解析索引 (Connecting & Parsing Index)..."
+
+                            msg = (
+                                f"⏱️ [PROGRESS] {station.upper()} {target_date} "
+                                f"({completed_in_year + 1}/{total_days} {cur_day_pct:4.1f}%) "
+                                f"[已耗时 {hb_elapsed}s]{detail}"
+                            )
+                            logger.info(msg)
+
+                    hb_thread = threading.Thread(target=_heartbeat_worker, daemon=True)
+                    hb_thread.start()
+
                     max_day_retries = 3
                     ds = None
                     for day_attempt in range(max_day_retries):
@@ -318,6 +373,9 @@ class GEFSBatchDownloader:
                                     f"❌ [{station.upper()} {target_date}] 暂时无法下载，已记录至待补扫清单，主进程继续推进后续日期..."
                                 )
                                 failed_days.append((init_day, target_date, windows, out_path, md5_path))
+
+                    stop_heartbeat.set()
+                    GEFSFetcher.reset_active_progress()
 
                     if ds is not None:
                         ds.to_netcdf(out_path, engine="scipy")

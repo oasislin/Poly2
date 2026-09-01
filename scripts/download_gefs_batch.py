@@ -9,7 +9,9 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # Add project root to sys.path
@@ -70,6 +72,24 @@ def parse_args():
         help="State file polling interval in seconds (default: 2.0)",
     )
     parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Path to write log output in addition to console (e.g. logs/download_2000s.log)",
+    )
+    parser.add_argument(
+        "--use-proxy",
+        action="store_true",
+        default=None,
+        help="Force using system/local proxy for downloads",
+    )
+    parser.add_argument(
+        "--no-proxy",
+        action="store_true",
+        default=None,
+        help="Force direct AWS S3 connection bypassing any proxy (recommended)",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable debug-level logging",
@@ -80,10 +100,33 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # Dynamic proxy flag override via CLI
+    if args.no_proxy:
+        os.environ["GEFS_USE_PROXY"] = "false"
+    elif args.use_proxy:
+        os.environ["GEFS_USE_PROXY"] = "true"
+
+    handlers = [logging.StreamHandler(sys.stdout)]
+    if args.log_file:
+        log_path = Path(args.log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        # Write metadata header for dashboard auto-discovery
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(
+                f"# METADATA: pid={os.getpid()} start_year={args.start_year} end_year={args.end_year} "
+                f"stations={args.stations} started_at={datetime.now().isoformat()}\n"
+            )
+        handlers.append(logging.FileHandler(log_path, mode="a", encoding="utf-8"))
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=handlers,
+        force=True,
     )
+    for h in handlers:
+        if h not in logging.root.handlers:
+            logging.root.addHandler(h)
 
     station_list = [s.strip() for s in args.stations.split(",") if s.strip()]
 
