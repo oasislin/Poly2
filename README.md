@@ -2,7 +2,7 @@
 
 本项目旨在构建一个高精度的物理概率模型，用于预测 Polymarket 温度市场的日最高和最低气温概率分布。系统以高斯 EMOS（Ensemble Model Output Statistics）模型为核心，采用“离线气象数据特征提取 $\to$ 40 组模型矩阵训练 $\to$ 实时动态截断与物理约束 $\to$ Polymarket 离散盘口概率转换 $\to$ 三重验收门禁回测与监控告警 $\to$ 状态机流水线编排”的全链路量化架构。
 
-当前项目执行规范严格遵循 **《项目执行文件 v5.9.2(细化版)》**，业务需求来源为 **《项目方案：Polymarket 温度市场量化投注系统 (v2.3)》**。
+当前项目执行规范严格遵循 **《项目执行文件 v5.9.2(细化版)》**，业务需求来源为 **《项目方案：Polymarket 温度市场量化投注系统 (v2.4 Final)》**。
 
 ---
 
@@ -259,6 +259,7 @@ RUN_NETWORK_TESTS=1 pytest tests/unit/data_acquisition/test_gefs_fetcher.py::tes
   - `0003`: 两级降级容灾架构
   - `0004`: 5 成员集合协议严格对齐
   - `0005`: GRIB 变量合并容差约束
+  - `0006`: 离散区间全概率映射与严禁累积尾部单向交易原则
 - **任务实施规格**：[`specs/implementation-tasks-phase1.md`](specs/implementation-tasks-phase1.md)
 - **核心执行规范**：[`项目执行文件 v5.9.2(细化版)`](项目执行文件%20v5.9.2(细化版).md)
-- **业务方案蓝图**：[`Polymarket 温度市场量化投注系统 (v2.3)`](Polymarket%20温度市场量化投注系统%20(v2.3).md)
+- **业务方案蓝图**：[`项目方案：Polymarket 温度市场量化投注系统 (v2.4 Final)`](项目方案：Polymarket%20温度市场量化投注系统%20(v2.4%20Final).md)

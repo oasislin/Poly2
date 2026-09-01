@@ -165,6 +165,9 @@ class TestBoundaryAndDegradationSafety:
             dist = corrector.correct(base_emos, target_type="max")
             
             assert dist.is_truncated is False
+            assert dist.fallback_warning is not None
+            assert "Observation missing" in dist.fallback_warning
+            assert dist.to_dict()["fallback_warning"] is not None
             for x in [20.0, 25.0, 30.0]:
                 assert np.isclose(dist.cdf(x), base_emos.cdf(x), atol=1e-7)
 

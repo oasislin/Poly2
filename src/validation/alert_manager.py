@@ -168,7 +168,7 @@ class AlertManager:
         self,
         station_id: str,
         last_update_time: Union[datetime, str],
-        max_delay_hours: float = 6.0,
+        max_delay_hours: float = 3.0,
     ) -> Optional[Alert]:
         """Trigger error if data arrival lag exceeds max_delay_hours."""
         if isinstance(last_update_time, str):

@@ -89,38 +89,46 @@ class GEFSBatchDownloader:
         # Fill missing years in the requested range
         for yr in range(start_year, end_year + 1):
             if yr not in states:
-                # Auto-detect if processed NetCDF files already exist for all stations
-                all_processed = all(
-                    bool(list((self.processed_dir / str(yr) / s).glob("*.nc")))
-                    for s in self.stations
+                states[yr] = YearState(
+                    year=yr,
+                    download="pending",
+                    crop="pending",
+                    user_check="",
+                    note="",
                 )
-                if all_processed:
-                    states[yr] = YearState(
-                        year=yr,
-                        download="done",
-                        crop="done",
-                        user_check="moved",
-                        note="Existing processed data detected",
-                    )
-                else:
-                    states[yr] = YearState(
-                        year=yr,
-                        download="pending",
-                        crop="pending",
-                        user_check="",
-                        note="",
-                    )
 
         self.save_state(states)
         return states
 
     def save_state(self, states: Dict[int, YearState]) -> None:
-        """Persist states dictionary to CSV."""
-        with open(self.state_file, "w", newline="", encoding="utf-8") as f:
+        """Persist states dictionary to CSV with atomic merge across processes."""
+        merged_states = {}
+        if self.state_file.exists():
+            try:
+                with open(self.state_file, "r", newline="", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if not row or not row.get("year"):
+                            continue
+                        yr = int(row["year"])
+                        merged_states[yr] = YearState(
+                            year=yr,
+                            download=row.get("download", "pending"),
+                            crop=row.get("crop", "pending"),
+                            user_check=row.get("user_check", ""),
+                            note=row.get("note", ""),
+                        )
+            except Exception:
+                pass
+
+        merged_states.update(states)
+
+        temp_file = self.state_file.with_suffix(".tmp")
+        with open(temp_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
             writer.writeheader()
-            for yr in sorted(states.keys()):
-                st = states[yr]
+            for yr in sorted(merged_states.keys()):
+                st = merged_states[yr]
                 writer.writerow(
                     {
                         "year": st.year,
@@ -130,6 +138,7 @@ class GEFSBatchDownloader:
                         "note": st.note,
                     }
                 )
+        temp_file.replace(self.state_file)
 
     def process_year(
         self,
@@ -248,6 +257,7 @@ class GEFSBatchDownloader:
             month_elapsed = 0.0
             current_month = init_start.month
             year_start_time = time.perf_counter()
+            failed_days = []
 
             while init_day <= init_end:
                 target_date = init_day + timedelta(days=1)
@@ -282,15 +292,36 @@ class GEFSBatchDownloader:
                         init_day += timedelta(days=1)
                         continue
 
-                    ds = self.fetcher.download_reforecast(
-                        region_bounds=bounds,
-                        date_range=(init_day, init_day),
-                        members=list(VALID_MEMBERS),
-                        cycles=[0],
-                        forecast_hours=windows,
-                    )
-                    ds.to_netcdf(out_path, engine="scipy")
-                    md5_path.write_text(GEFSFetcher.calculate_md5(out_path))
+                    max_day_retries = 3
+                    ds = None
+                    for day_attempt in range(max_day_retries):
+                        try:
+                            ds = self.fetcher.download_reforecast(
+                                region_bounds=bounds,
+                                date_range=(init_day, init_day),
+                                members=list(VALID_MEMBERS),
+                                cycles=[0],
+                                forecast_hours=windows,
+                            )
+                            break
+                        except Exception as e:
+                            health_fn = getattr(self.fetcher, "check_link_health", GEFSFetcher.check_link_health)
+                            health = health_fn()
+                            logger.warning(
+                                f"⚠️ [{station.upper()} {target_date}] 单日下载异常 ({e})，"
+                                f"准备进行第 {day_attempt + 1}/{max_day_retries} 轮容灾重试... 链路诊断: {health['message']}"
+                            )
+                            if day_attempt < max_day_retries - 1:
+                                time.sleep(5.0 * (day_attempt + 1))
+                            else:
+                                logger.error(
+                                    f"❌ [{station.upper()} {target_date}] 暂时无法下载，已记录至待补扫清单，主进程继续推进后续日期..."
+                                )
+                                failed_days.append((init_day, target_date, windows, out_path, md5_path))
+
+                    if ds is not None:
+                        ds.to_netcdf(out_path, engine="scipy")
+                        md5_path.write_text(GEFSFetcher.calculate_md5(out_path))
 
                 t_day_elapsed = time.perf_counter() - t_day_start
                 completed_in_year += 1
@@ -342,6 +373,32 @@ class GEFSBatchDownloader:
                     month_elapsed = 0.0
 
                 init_day += timedelta(days=1)
+
+            # Sweep-up Pass for failed days if any
+            if failed_days:
+                print(f"\n🔄 [{station.upper()} {year}] 开始对 {len(failed_days)} 个遗留异常日期进行集中二次补扫...")
+                time.sleep(3.0)
+                still_failed = []
+                for init_day_f, target_date_f, windows_f, out_path_f, md5_path_f in failed_days:
+                    try:
+                        ds_f = self.fetcher.download_reforecast(
+                            region_bounds=bounds,
+                            date_range=(init_day_f, init_day_f),
+                            members=list(VALID_MEMBERS),
+                            cycles=[0],
+                            forecast_hours=windows_f,
+                        )
+                        ds_f.to_netcdf(out_path_f, engine="scipy")
+                        md5_path_f.write_text(GEFSFetcher.calculate_md5(out_path_f))
+                        print(f"  ✨ [{station.upper()} {target_date_f}] 二次补扫成功落盘！")
+                    except Exception as e:
+                        logger.error(f"  ❌ [{station.upper()} {target_date_f}] 补扫依然失败: {e}")
+                        still_failed.append(target_date_f)
+
+                if still_failed:
+                    raise GEFSDownloadError(
+                        f"Year {year} {station} has {len(still_failed)} missing days after sweep pass: {still_failed}"
+                    )
 
             total_year_elapsed = time.perf_counter() - year_start_time
             print(

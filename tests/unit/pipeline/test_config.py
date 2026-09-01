@@ -14,6 +14,7 @@ from src.pipeline.config import (
     PredictionConfig,
     ValidationConfig,
     AlertConfig,
+    TriggerConfig,
 )
 
 
@@ -32,6 +33,10 @@ class TestConfigSchemas:
         assert config.prediction.physical_constraints_enabled is True
         assert config.validation.triple_gate_enabled is True
         assert config.alert.crps_degradation_threshold == 0.20
+        assert config.alert.staleness_threshold_hours == 3.0
+        assert config.trigger.mode == "on_demand"
+        assert config.trigger.metar_polling_interval_sec == 60
+        assert config.trigger.min_temp_change_threshold == 0.1
 
     def test_data_config_invalid_members(self):
         # Only 5-member protocol [0, 1, 2, 3, 4] is allowed in Phase 1 (ADR 0004)

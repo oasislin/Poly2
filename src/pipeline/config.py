@@ -86,8 +86,19 @@ class ValidationConfig(BaseModel):
 class AlertConfig(BaseModel):
     """Configuration for monitoring, alerting thresholds and notification channels."""
     crps_degradation_threshold: float = 0.20
+    staleness_threshold_hours: float = 3.0
     enabled_channels: List[str] = Field(default_factory=lambda: ["console"])
     webhook_url: Optional[str] = None
+
+
+class TriggerConfig(BaseModel):
+    """Configuration skeleton for Phase 2 dynamic trigger and debounce policies."""
+    mode: str = "on_demand"  # "on_demand" (Phase 1) or "event_driven" (Phase 2)
+    metar_polling_interval_sec: int = 60
+    min_temp_change_threshold: float = 0.1
+    time_throttle_sec: int = 60
+    min_reprice_edge: float = 0.03
+    stale_degraded_reprice_edge: float = 0.05
 
 
 class PipelineConfig(BaseModel):
@@ -98,6 +109,7 @@ class PipelineConfig(BaseModel):
     prediction: PredictionConfig = Field(default_factory=PredictionConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     alert: AlertConfig = Field(default_factory=AlertConfig)
+    trigger: TriggerConfig = Field(default_factory=TriggerConfig)
 
     def to_dict(self, mask_secrets: bool = True) -> Dict[str, Any]:
         """Convert configuration to dictionary, with optional secret masking."""

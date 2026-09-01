@@ -58,18 +58,20 @@ Historical same-period mean and variance (smoothed over a 31-day window across 2
 - **Storage**: JSON and CSV formats, organized by station and month
 - **Code Location**: `WunderGround Data Extraction/` directory with modular Python scripts
 
-### Probability Calculation (概率计算)
-For continuous distribution F(x):
+### Probability Calculation & Discrete Bin Mapping (概率计算与离散盘口映射)
+For continuous distribution F(x), market pricing and trading signals MUST operate strictly on discrete mutually exclusive bins (`BinConverter` / [ADR 0006](docs/adr/0006-discrete-bin-probability-vs-cumulative-tail.md)):
 - Single bin "=T": P(T) ≈ F(T+0.5) - F(T-0.5)
 - Range bin "T1-T2": P = F(T2+0.5) - F(T1-0.5)
 - Boundary bin "≤T": P = F(T)
 - Boundary bin "≥T": P = 1 - F(T-ε)
+- **Iron Rule (ADR 0006)**: Cumulative tail probability $P(X \ge L)$ or $P(X \le L)$ from dynamic truncation represents the aggregate probability across multiple consecutive bins. It is strictly prohibited to treat cumulative tail probability as the edge of a specific discrete sub-interval bin. All trading and Kelly optimization must use normalized discrete bin probabilities $P(\text{Bin}_k)$.
 
 ### Dynamic Correction (动态修正)
 Conditional probability truncation:
 - If current temperature already exceeds threshold: probability = 100%
 - Otherwise: P(final ≥ L | current = T_now) = (1 - F(L)) / (1 - F(T_now))
 - Triggered with each new temperature observation
+- Note: Output feeds into `BinConverter` for discrete bin probability evaluation, not direct order execution.
 
 ### Physical Constraints (物理约束)
 - **Maximum warming/cooling rates**: Calculated from historical Wunderground data per station, season, time period

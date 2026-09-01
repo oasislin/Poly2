@@ -22,6 +22,22 @@ import urllib.request
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import requests
+
+# Resilience enhancement: Enforce minimum 120s HTTP timeout on Herbie/requests to survive cross-pacific S3 latency spikes
+_orig_session_send = requests.Session.send
+
+
+def _resilient_session_send(self, request, **kwargs):
+    if kwargs.get("timeout") is None or (
+        isinstance(kwargs.get("timeout"), (int, float)) and kwargs.get("timeout") < 120
+    ):
+        kwargs["timeout"] = 120
+    return _orig_session_send(self, request, **kwargs)
+
+
+requests.Session.send = _resilient_session_send
+
 logger = logging.getLogger(__name__)
 
 def check_data_link_health(
@@ -119,8 +135,8 @@ class GEFSFetcher:
     def __init__(
         self,
         cache_dir="/tmp/gefs_cache",
-        max_retries=3,
-        backoff_base=0.5,
+        max_retries=5,
+        backoff_base=2.0,
         verbose=False,
     ):
         self.cache_dir = cache_dir

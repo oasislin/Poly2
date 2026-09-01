@@ -54,9 +54,16 @@ class TruncatedDistribution:
         if current_temperature is not None and not np.isnan(current_temperature):
             self.current_temperature: Optional[float] = float(current_temperature)
             self.is_truncated: bool = True
+            self.fallback_warning: Optional[str] = None
         else:
             self.current_temperature = None
             self.is_truncated = False
+            self.fallback_warning = (
+                "Observation missing (T_now is None/NaN). Transparently fallen back to static prior Gaussian distribution."
+            )
+            logger.warning(
+                "DynamicCorrector fallback: Observation missing (T_now is None/NaN). Reverting to static prior Gaussian distribution."
+            )
 
         # Extract or resolve distribution parameters
         if mu is not None and sigma is not None:
@@ -165,6 +172,7 @@ class TruncatedDistribution:
             "is_truncated": self.is_truncated,
             "current_temperature": self.current_temperature,
             "observation_time": self.observation_time.isoformat() if self.observation_time else None,
+            "fallback_warning": self.fallback_warning,
         }
 
 

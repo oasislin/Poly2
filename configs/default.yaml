@@ -52,6 +52,16 @@ validation:
 
 alert:
   crps_degradation_threshold: 0.20
+  staleness_threshold_hours: 3.0
   enabled_channels:
     - console
   webhook_url: null
+
+trigger:
+  mode: on_demand
+  metar_polling_interval_sec: 60
+  min_temp_change_threshold: 0.1
+  time_throttle_sec: 60
+  min_reprice_edge: 0.03
+  stale_degraded_reprice_edge: 0.05
+

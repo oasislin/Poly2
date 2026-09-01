@@ -143,6 +143,39 @@ class TestMaxTempConstraintEnforcement:
         diffs = np.diff(cdfs)
         assert np.all(diffs >= -1e-12)
 
+    def test_deltat_zero_after_peak_collapse(self, base_emos, enforcer):
+        """
+        [v2.4 Final / Step 1.5] Verify delta_t = 0 boundary semantics:
+        When observation time is past the nominal peak (e.g. 15:30 LT past 15:00 peak)
+        or delta_t = 0.0, the reachability interval collapses to [T_now, T_now].
+        For TMAX: all thresholds L > T_now are strictly forced to P(X >= L) = 0.0 (CDF = 1.0).
+        Note: 15:00 后 TMAX 可达区间视为闭区间单点，属设计决策而非缺陷。
+        """
+        # Base: mu = 28.0, sigma = 3.0. Current T_now = 31.5°C at 15:30 LT
+        constrained_dist = enforcer.enforce(
+            distribution=base_emos,
+            station_id="ZSPD",
+            season="Summer",
+            target_type="max",
+            current_temp=31.5,
+            observation_time=time(15, 30),  # Past 15:00 peak => delta_t = 0.0
+        )
+
+        assert constrained_dist.is_constrained is True
+        assert np.isclose(constrained_dist.t_max_possible, 31.5, atol=1e-5)
+        assert np.isclose(constrained_dist.t_min_possible, 31.5, atol=1e-5)
+
+        # 1. Any threshold above current temperature is physically impossible => P(X >= L) = 0.0, CDF = 1.0
+        assert np.isclose(constrained_dist.cdf(31.6), 1.0, atol=1e-6)
+        assert np.isclose(constrained_dist.cdf(32.0), 1.0, atol=1e-6)
+        assert np.isclose(constrained_dist.probability_greater_than_or_equal(31.6), 0.0, atol=1e-6)
+        assert np.isclose(constrained_dist.probability_greater_than_or_equal(35.0), 0.0, atol=1e-6)
+
+        # 2. Thresholds at or below T_now preserve input distribution CDF
+        assert np.isclose(constrained_dist.cdf(31.5), base_emos.cdf(31.5), atol=1e-6)
+        assert np.isclose(constrained_dist.cdf(28.0), base_emos.cdf(28.0), atol=1e-6)
+
+
 
 class TestMinTempConstraintEnforcement:
     """Test physical constraint overrides for Minimum Temperature."""
