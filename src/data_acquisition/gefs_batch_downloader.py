@@ -484,7 +484,49 @@ class GEFSBatchDownloader:
                     f"no staged cropped data for {station} {year} under {src_dir}"
                 )
             for src in files:
-                ds = xr.open_dataset(src, engine="scipy")
+                ds = None
+                max_heal_retries = 3
+                for heal_attempt in range(1, max_heal_retries + 1):
+                    try:
+                        ds = xr.open_dataset(src, engine="scipy")
+                        break
+                    except Exception as exc:
+                        logger.warning(
+                            f"⚠️ 校验发现损坏文件 {src.name} (原因: {exc})，准备进行第 {heal_attempt}/{max_heal_retries} 次自愈重拉..."
+                        )
+                        src.unlink(missing_ok=True)
+                        src.with_suffix(".nc.md5").unlink(missing_ok=True)
+                        if heal_attempt < max_heal_retries:
+                            try:
+                                date_str = src.stem
+                                init_d = datetime.strptime(date_str, "%Y%m%d").date()
+                                t_date = init_d + timedelta(days=1)
+                                windows = self.fetcher.select_contained_windows(
+                                    datetime(init_d.year, init_d.month, init_d.day, 0, 0),
+                                    t_date,
+                                    station,
+                                )
+                                bounds = DEFAULT_REGIONS[station]
+                                ds_fresh = self.fetcher.download_reforecast(
+                                    region_bounds=bounds,
+                                    date_range=(init_d, init_d),
+                                    members=list(VALID_MEMBERS),
+                                    cycles=[0],
+                                    forecast_hours=windows,
+                                )
+                                if ds_fresh is not None:
+                                    ds_fresh.to_netcdf(src, engine="scipy")
+                                    src.with_suffix(".nc.md5").write_text(
+                                        GEFSFetcher.calculate_md5(src)
+                                    )
+                            except Exception as re_err:
+                                logger.warning(f"自愈重拉单日失败 ({re_err})，将在下一次重试中继续...")
+                        else:
+                            raise RuntimeError(
+                                f"【熔断保护】文件 {src.name} 经 {max_heal_retries} 次尝试修复后依然无法读取，"
+                                f"可能存在磁盘坏道或源站数据异常，已安全中断以防死循环！错误: {exc}"
+                            )
+
                 dst = dst_dir / src.name
                 ds.to_netcdf(dst, engine="scipy")
                 # verify round-trip before counting this file as cropped
