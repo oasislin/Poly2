@@ -103,16 +103,27 @@ def _extract_request_metadata(request) -> tuple[Optional[str], Optional[str], Op
 
 
 def _wrap_socket_reader(resp, mem_name: str, var_label: str, slice_bytes: int):
-    """Wrap resp.raw.read to intercept live TCP chunks for the current individual file slice."""
-    slice_id = f"{mem_name}_{var_label}_{time.time()}"
+    """Wrap resp.raw.read to intercept live TCP chunks, accumulating sub-group slices for the same physical variable file."""
     with _active_progress_lock:
+        prev = _active_member_progress.get(mem_name, {})
+        # If continuing the same variable file for this member, accumulate sub-group bytes
+        if prev.get("var") == var_label and prev.get("slice_id"):
+            base_cum = prev.get("cum_downloaded", 0)
+            expected_total = prev.get("total", 0) + slice_bytes
+            slice_id = prev["slice_id"]
+        else:
+            base_cum = 0
+            expected_total = slice_bytes
+            slice_id = f"{mem_name}_{var_label}_{time.time()}"
+
         _active_member_progress[mem_name] = {
             "var": var_label,
             "slice_id": slice_id,
-            "downloaded": 0,
-            "total": slice_bytes,
+            "downloaded": base_cum,
+            "cum_downloaded": base_cum,
+            "total": expected_total,
             "speed_kb": 0.0,
-            "pct": 0.0,
+            "pct": (base_cum / max(expected_total, 1)) * 100.0,
             "updated_at": time.time(),
         }
 
@@ -126,19 +137,16 @@ def _wrap_socket_reader(resp, mem_name: str, var_label: str, slice_bytes: int):
                 var_dl[0] += len(chunk)
                 with _active_progress_lock:
                     if mem_name in _active_member_progress:
+                        cur_cum = base_cum + var_dl[0]
                         _active_member_progress[mem_name]["var"] = var_label
                         _active_member_progress[mem_name]["slice_id"] = slice_id
-                        _active_member_progress[mem_name]["downloaded"] = var_dl[0]
-                        _active_member_progress[mem_name]["total"] = slice_bytes
-                        _active_member_progress[mem_name]["pct"] = (var_dl[0] / max(slice_bytes, 1)) * 100.0
+                        _active_member_progress[mem_name]["downloaded"] = cur_cum
+                        _active_member_progress[mem_name]["cum_downloaded"] = cur_cum
+                        _active_member_progress[mem_name]["total"] = expected_total
+                        _active_member_progress[mem_name]["pct"] = (cur_cum / max(expected_total, 1)) * 100.0
                         _active_member_progress[mem_name]["updated_at"] = time.time()
             else:
                 # EOF reached: clean up socket immediately
-                with _active_progress_lock:
-                    if mem_name in _active_member_progress:
-                        _active_member_progress[mem_name]["downloaded"] = slice_bytes
-                        _active_member_progress[mem_name]["pct"] = 100.0
-                        _active_member_progress[mem_name]["updated_at"] = time.time()
                 try:
                     resp.close()
                 except Exception:
