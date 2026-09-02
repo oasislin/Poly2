@@ -1,0 +1,24 @@
+{
+  "status": "NOT_FOR_PRODUCTION",
+  "frozen": true,
+  "station_id": "ZSPD",
+  "calibration_window": {
+    "start": "2026-08-20",
+    "end": "2026-09-02",
+    "total_days": 14,
+    "valid_days": 12,
+    "incomplete_ratio": 0.1429
+  },
+  "raw_provisional_sample_stats_not_for_inference": {
+    "sample_count": 12,
+    "mu_res": 0.0,
+    "sigma_res": 0.0
+  },
+  "empirical_rounding_operator": {
+    "is_pure_integer_fahrenheit": false,
+    "sample_count": 689,
+    "quantization_variance": 0.0,
+    "lookup_table": {},
+    "deprecated": "phantom_model"
+  }
+}
