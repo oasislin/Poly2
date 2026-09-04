@@ -7,6 +7,7 @@ import concurrent.futures
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,12 @@ from src.data_acquisition.observation_adapter import (
     ObservationRecord,
 )
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +35,7 @@ class NwsWrhAdapter(BaseObservationAdapter):
     """
 
     BASE_URL = "https://api.synopticdata.com/v2/stations/timeseries"
-    DEFAULT_TOKEN = os.getenv("SYNOPTIC_TOKEN", "7c76618b66c74aee913bdbae4b448bdd")
+    DEFAULT_TOKEN = os.getenv("SYNOPTIC_TOKEN", "")
 
     def __init__(
         self,
@@ -39,7 +46,7 @@ class NwsWrhAdapter(BaseObservationAdapter):
         timeout_seconds: int = 30,
         tracker: Optional[Any] = None,
     ):
-        self.token = token if token else self.DEFAULT_TOKEN
+        self.token = token or self.DEFAULT_TOKEN or "test_token_placeholder"
         self.storage_dir = Path(storage_dir) if storage_dir else Path("data/raw/nws_wrh")
         self.max_retries = max_retries
         self.backoff_base = backoff_base
@@ -172,10 +179,23 @@ class NwsWrhAdapter(BaseObservationAdapter):
         wd = m_wind_dir[idx] if idx < len(m_wind_dir) else None
         pr = m_press[idx] if idx < len(m_press) else None
 
+        # Prioritize high-resolution 0.1°C T-group from raw METAR remarks
+        # to eliminate Synoptic coarse integer-Celsius rounding artifacts (e.g. 27°C -> 80.60°F)
+        temp_f_val = float(e_match["temp_f"]) if e_match.get("temp_f") is not None else None
+        temp_c_val = float(temp_c) if temp_c is not None else None
+
+        if metar_str:
+            t_match = re.search(r"\bT([01])(\d{3})", metar_str)
+            if t_match:
+                sign = -1.0 if t_match.group(1) == "1" else 1.0
+                t_c = sign * int(t_match.group(2)) / 10.0
+                temp_c_val = t_c
+                temp_f_val = round(t_c * 1.8 + 32.0, 2)
+
         return ObservationRecord(
             timestamp=dt,
-            temp_c=float(temp_c) if temp_c is not None else None,
-            temp_f=float(e_match["temp_f"]) if e_match.get("temp_f") is not None else None,
+            temp_c=temp_c_val,
+            temp_f=temp_f_val,
             dewpoint_c=float(dew_c) if dew_c is not None else None,
             dewpoint_f=float(e_match["dewpoint_f"]) if e_match.get("dewpoint_f") is not None else None,
             humidity_pct=float(hum) if hum is not None else None,

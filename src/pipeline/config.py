@@ -14,13 +14,14 @@ import yaml
 from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 
-VALID_STATIONS = {"ZSPD", "KDEN"}
+VALID_STATIONS = {"ZSPD", "KDEN", "KBKF", "KLGA", "KORD", "KMIA", "KDAL"}
 ALLOWED_5_MEMBERS = [0, 1, 2, 3, 4]
 
 
 class DataConfig(BaseModel):
     """Configuration for data acquisition, processing and storage paths."""
     stations: List[str] = Field(default_factory=lambda: ["ZSPD", "KDEN"])
+    suspended_stations: List[str] = Field(default_factory=list)
     members: List[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
     raw_dir: str = "data/raw"
     processed_dir: str = "data/processed"

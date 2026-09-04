@@ -203,6 +203,23 @@ class TestNwsWrhAdapterParsingAndProbing:
         assert mock_tracker.record_attempt.called
         assert mock_tracker.record_attempt.call_args[1]["success"] is True
 
+    def test_high_resolution_t_group_parsing_eliminates_integer_artifact(self):
+        """Verify that raw METAR T-group remarks (e.g. T0261) override coarse integer-Celsius."""
+        m_obs = {
+            "air_temp_set_1": [27.0],  # Coarse integer Celsius -> 80.60°F artifact
+            "metar_set_1": ["KORD 121851Z 21022G33KT 10SM 26/13 A2987 RMK AO2 T02610133"],  # +26.1°C -> 78.98°F
+        }
+        e_match = {"temp_f": 80.6}
+        rec = NwsWrhAdapter._create_observation_record(
+            idx=0,
+            dt_str="2026-04-12T13:51:00",
+            m_obs=m_obs,
+            e_match=e_match,
+        )
+        assert rec.temp_c == 26.1
+        assert rec.temp_f == 78.98
+        assert rec.temp_f != 80.60  # Artifact successfully eliminated!
+
 
 @pytest.mark.skipif(
     os.getenv("RUN_NETWORK_TESTS") != "1",

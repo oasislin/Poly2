@@ -4,8 +4,12 @@ env: default
 
 data:
   stations:
+    - KLGA
+    - KORD
+    - KBKF
     - ZSPD
-    - KDEN
+  suspended_stations:
+    - KDEN # Blocked by M0'-Audit-001 (Mismatch with Polymarket settlement)
   members:
     - 0
     - 1
