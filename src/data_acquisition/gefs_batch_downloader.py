@@ -385,9 +385,22 @@ class GEFSBatchDownloader:
                 completed_in_year += 1
                 month_count += 1
                 month_elapsed += t_day_elapsed
+                cur_day_pct = (completed_in_year / total_days) * 100.0
 
-                # 延迟预警与主动链路健康检查 (阈值 > 15s)
-                if not skipped and t_day_elapsed > 15.0:
+                if skipped:
+                    logger.info(
+                        f"⏭️ [{completed_in_year}/{total_days} {cur_day_pct:4.1f}%] "
+                        f"{station.upper()} {target_date} (Init {init_day:%Y-%m-%d}) 已存在且校验通过，快速跳过"
+                    )
+                else:
+                    logger.info(
+                        f"✅ [{completed_in_year}/{total_days} {cur_day_pct:4.1f}%] "
+                        f"{station.upper()} {target_date} (Init {init_day:%Y-%m-%d}) 10切片下载裁剪完成 "
+                        f"(耗时 {t_day_elapsed:.1f}s)"
+                    )
+
+                # 延迟预警与主动链路健康检查 (阈值 > 25s)
+                if not skipped and t_day_elapsed > 25.0:
                     health_fn = getattr(self.fetcher, "check_link_health", GEFSFetcher.check_link_health)
                     health = health_fn()
                     diag_box = (
