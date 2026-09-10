@@ -9,25 +9,28 @@ pending -> downloading -> downloaded -> cropped -> raw_ready -> (user_check=move
 
 import csv
 import logging
+from pathlib import Path
 import shutil
 import threading
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import xarray as xr
 
 from src.data_acquisition.gefs_fetcher import (
     DEFAULT_REGIONS,
     GEFSFetcher,
+    GEFSDownloadError,
     VALID_MEMBERS,
 )
 
 logger = logging.getLogger(__name__)
 
 CSV_COLUMNS = ["year", "download", "crop", "user_check", "note"]
+DEFAULT_TARGET_OFFSETS = (0, 1, 2)
+GEFS_FXX_UNION = [12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78]
 
 
 @dataclass
@@ -42,6 +45,222 @@ class YearState:
         return self.download == "done" and self.crop == "done" and self.user_check == "moved"
 
 
+def compute_init_windows(
+    fetcher: GEFSFetcher,
+    init_day: date,
+    station: str,
+    target_offsets: Sequence[int] = DEFAULT_TARGET_OFFSETS,
+    fxx_filter: Optional[Sequence[int]] = None,
+) -> List[int]:
+    """Compute union of contained 6h forecast windows across target day offsets."""
+    init_time = datetime(init_day.year, init_day.month, init_day.day, 0, 0)
+    all_windows = set()
+    for offset in target_offsets:
+        target_date = init_day + timedelta(days=offset)
+        wins = fetcher.select_contained_windows(init_time, target_date, station)
+        if wins:
+            all_windows.update(wins)
+    if fxx_filter is not None:
+        all_windows = all_windows.intersection(set(fxx_filter))
+    return sorted(all_windows)
+
+
+def check_and_prepare_shard(out_dir: Path, init_day: date) -> Tuple[Path, Path, bool]:
+    """Check if shard already exists and md5 passes without deleting files."""
+    out_path = out_dir / f"{init_day:%Y%m%d}.nc"
+    md5_path = out_dir / f"{init_day:%Y%m%d}.nc.md5"
+    if out_path.exists() and md5_path.exists():
+        if GEFSFetcher.verify_file_md5(out_path, md5_path.read_text().strip()):
+            return out_path, md5_path, True
+    return out_path, md5_path, False
+
+
+def _download_day_with_retry(
+    fetcher: GEFSFetcher,
+    bounds: Dict[str, Any],
+    init_day: date,
+    windows: List[int],
+    station: str,
+    max_retries: int = 3,
+) -> Optional[xr.Dataset]:
+    """Attempt download of single day reforecast with backoff retries."""
+    for attempt in range(max_retries):
+        try:
+            return fetcher.download_reforecast(
+                region_bounds=bounds,
+                date_range=(init_day, init_day),
+                members=list(VALID_MEMBERS),
+                cycles=[0],
+                forecast_hours=windows,
+            )
+        except Exception as exc:
+            health_fn = getattr(fetcher, "check_link_health", GEFSFetcher.check_link_health)
+            health = health_fn()
+            logger.warning(
+                f"⚠️ [{station.upper()} {init_day}] 单日下载异常 ({exc})，"
+                f"第 {attempt + 1}/{max_retries} 轮重试... 诊断: {health['message']}"
+            )
+            if attempt < max_retries - 1:
+                time.sleep(5.0 * (attempt + 1))
+    return None
+
+
+def _sweep_pass_failed_days(
+    fetcher: GEFSFetcher,
+    bounds: Dict[str, Any],
+    station: str,
+    failed_days: List[Tuple[date, List[int], Path, Path]],
+) -> None:
+    """Concentrated secondary sweep for days that failed initial download loop."""
+    if not failed_days:
+        return
+    logger.info(f"🔄 [{station.upper()}] 开始对 {len(failed_days)} 个遗留异常日期集中补扫...")
+    still_failed = []
+    for init_d, wins, out_p, md5_p in failed_days:
+        try:
+            ds = fetcher.download_reforecast(
+                region_bounds=bounds,
+                date_range=(init_d, init_d),
+                members=list(VALID_MEMBERS),
+                cycles=[0],
+                forecast_hours=wins,
+            )
+            ds.to_netcdf(out_p, engine="scipy")
+            md5_p.write_text(GEFSFetcher.calculate_md5(out_p))
+            logger.info(f"  ✨ [{station.upper()} {init_d}] 二次补扫成功落盘！")
+        except Exception as exc:
+            logger.error(f"  ❌ [{station.upper()} {init_d}] 补扫依然失败: {exc}")
+            still_failed.append(init_d)
+    if still_failed:
+        raise GEFSDownloadError(f"{station} has {len(still_failed)} missing days: {still_failed}")
+
+
+def _report_monthly_progress(
+    init_day: date,
+    current_month: int,
+    completed: int,
+    total: int,
+    month_count: int,
+    month_elapsed: float,
+    fetcher: GEFSFetcher,
+) -> Tuple[int, float, int]:
+    """Print monthly download progress and link diagnostics."""
+    pct = (completed / total) * 100
+    avg_speed = month_elapsed / max(month_count, 1)
+    rem_minutes = ((total - completed) * avg_speed) / 60.0
+    health_fn = getattr(fetcher, "check_link_health", None)
+    status_text, rtt_str = "正常", "未探测"
+    if health_fn:
+        health = health_fn()
+        status_text = "正常" if health["healthy"] else "异常"
+        rtt_str = f"RTT {health['rtt_ms']}ms" if health["rtt_ms"] is not None else "未知"
+    print(
+        f"[{init_day.year}-{current_month:02d} 完成] {month_count:2d} 天 ({pct:5.1f}%) | "
+        f"平均: {avg_speed:4.1f}s/天 | 链路: {status_text} ({rtt_str}) | "
+        f"预估剩余: {rem_minutes:4.1f} 分钟"
+    )
+    return init_day.month, 0.0, 0
+
+
+def _download_station_dates(
+    fetcher: GEFSFetcher,
+    station: str,
+    dates: Sequence[date],
+    out_dir: Path,
+    target_offsets: Sequence[int],
+    fxx_filter: Optional[Sequence[int]],
+) -> None:
+    """Download reforecast data for a sequence of init dates for one station."""
+    bounds = DEFAULT_REGIONS.get(station.lower(), DEFAULT_REGIONS.get("shanghai", {}))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    total_days = len(dates)
+    completed, month_count, month_elapsed = 0, 0, 0.0
+    current_month = dates[0].month if dates else 1
+    failed_days = []
+
+    for init_day in dates:
+        out_path, md5_path, skipped = check_and_prepare_shard(out_dir, init_day)
+        t_start = time.perf_counter()
+        if not skipped:
+            windows = compute_init_windows(fetcher, init_day, station, target_offsets, fxx_filter)
+            if not windows:
+                continue
+            ds = _download_day_with_retry(fetcher, bounds, init_day, windows, station)
+            if ds is not None:
+                ds.to_netcdf(out_path, engine="scipy")
+                md5_path.write_text(GEFSFetcher.calculate_md5(out_path))
+            else:
+                failed_days.append((init_day, windows, out_path, md5_path))
+
+        t_elapsed = time.perf_counter() - t_start
+        completed += 1
+        month_count += 1
+        month_elapsed += t_elapsed
+        next_day = init_day + timedelta(days=1)
+        if (next_day.month != current_month or completed == total_days) and month_count > 0:
+            current_month, month_elapsed, month_count = _report_monthly_progress(
+                init_day, current_month, completed, total_days, month_count, month_elapsed, fetcher
+            )
+
+    _sweep_pass_failed_days(fetcher, bounds, station, failed_days)
+
+
+def _heal_damaged_shard(
+    fetcher: GEFSFetcher,
+    src: Path,
+    station: str,
+    target_offsets: Sequence[int],
+    max_heal_retries: int = 3,
+) -> xr.Dataset:
+    """Attempt opening dataset; self-heal with fresh re-download if corrupt."""
+    for attempt in range(1, max_heal_retries + 1):
+        try:
+            return xr.open_dataset(src, engine="scipy")
+        except Exception as exc:
+            logger.warning(f"⚠️ 校验损坏文件 {src.name} ({exc})，第 {attempt}/{max_heal_retries} 次自愈重拉...")
+            if attempt == max_heal_retries:
+                raise RuntimeError(f"【熔断保护】文件 {src.name} 经修复后依然无法读取: {exc}")
+            init_d = datetime.strptime(src.stem, "%Y%m%d").date()
+            windows = compute_init_windows(fetcher, init_d, station, target_offsets)
+            bounds = DEFAULT_REGIONS.get(station.lower(), DEFAULT_REGIONS.get("shanghai", {}))
+            ds_fresh = fetcher.download_reforecast(
+                region_bounds=bounds,
+                date_range=(init_d, init_d),
+                members=list(VALID_MEMBERS),
+                cycles=[0],
+                forecast_hours=windows,
+            )
+            if ds_fresh is not None:
+                ds_fresh.to_netcdf(src, engine="scipy")
+                src.with_suffix(".nc.md5").write_text(GEFSFetcher.calculate_md5(src))
+
+
+def _crop_single_station(
+    fetcher: GEFSFetcher,
+    src_dir: Path,
+    dst_dir: Path,
+    station: str,
+    year: int,
+    target_offsets: Sequence[int],
+) -> None:
+    """Persist and verify single station cropped files."""
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    files = sorted(src_dir.glob("*.nc")) if src_dir.exists() else []
+    if not files:
+        if list(dst_dir.glob("*.nc")):
+            return
+        raise FileNotFoundError(f"no staged cropped data for {station} {year} under {src_dir}")
+
+    for src in files:
+        ds = _heal_damaged_shard(fetcher, src, station, target_offsets)
+        dst = dst_dir / src.name
+        ds.to_netcdf(dst, engine="scipy")
+        _ = xr.open_dataset(dst, engine="scipy")
+    logger.info(f"Cropped {station} {year}: {len(files)} files -> {dst_dir}")
+    # Clean up temporary NetCDF staging directory (Note: raw GRIB files on SSD are never deleted)
+    shutil.rmtree(src_dir)
+
+
 class GEFSBatchDownloader:
     """Orchestrates yearly GEFS downloads with a CSV state machine."""
 
@@ -52,6 +271,8 @@ class GEFSBatchDownloader:
         processed_dir: str = "data/processed/gefs",
         stations: Optional[List[str]] = None,
         fetcher: Optional[GEFSFetcher] = None,
+        target_offsets: Sequence[int] = DEFAULT_TARGET_OFFSETS,
+        fxx_filter: Optional[Sequence[int]] = None,
         auto_continue: bool = False,
         check_interval: float = 2.0,
         verbose: bool = False,
@@ -61,6 +282,8 @@ class GEFSBatchDownloader:
         self.processed_dir = Path(processed_dir)
         self.stations = stations or ["shanghai", "denver"]
         self.fetcher = fetcher or GEFSFetcher(cache_dir=str(self.raw_cache_dir), verbose=verbose)
+        self.target_offsets = tuple(target_offsets)
+        self.fxx_filter = list(fxx_filter) if fxx_filter is not None else None
         self.auto_continue = auto_continue
         self.check_interval = check_interval
         self.verbose = verbose
@@ -87,75 +310,40 @@ class GEFSBatchDownloader:
                         note=row.get("note", ""),
                     )
 
-        # Fill missing years in the requested range
         for yr in range(start_year, end_year + 1):
             if yr not in states:
-                states[yr] = YearState(
-                    year=yr,
-                    download="pending",
-                    crop="pending",
-                    user_check="",
-                    note="",
-                )
+                states[yr] = YearState(yr, "pending", "pending", "", "")
 
         self.save_state(states)
         return states
 
     def save_state(self, states: Dict[int, YearState]) -> None:
         """Persist states dictionary to CSV with atomic merge across processes."""
-        merged_states = {}
+        merged = {}
         if self.state_file.exists():
             try:
                 with open(self.state_file, "r", newline="", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if not row or not row.get("year"):
-                            continue
-                        yr = int(row["year"])
-                        merged_states[yr] = YearState(
-                            year=yr,
-                            download=row.get("download", "pending"),
-                            crop=row.get("crop", "pending"),
-                            user_check=row.get("user_check", ""),
-                            note=row.get("note", ""),
-                        )
+                    for row in csv.DictReader(f):
+                        if row and row.get("year"):
+                            yr = int(row["year"])
+                            merged[yr] = YearState(
+                                yr, row.get("download", "pending"), row.get("crop", "pending"),
+                                row.get("user_check", ""), row.get("note", "")
+                            )
             except Exception:
                 pass
 
-        merged_states.update(states)
-
+        merged.update(states)
         temp_file = self.state_file.with_suffix(".tmp")
         with open(temp_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
             writer.writeheader()
-            for yr in sorted(merged_states.keys()):
-                st = merged_states[yr]
-                writer.writerow(
-                    {
-                        "year": st.year,
-                        "download": st.download,
-                        "crop": st.crop,
-                        "user_check": st.user_check,
-                        "note": st.note,
-                    }
-                )
+            for yr in sorted(merged.keys()):
+                st = merged[yr]
+                writer.writerow({"year": st.year, "download": st.download, "crop": st.crop, "user_check": st.user_check, "note": st.note})
         temp_file.replace(self.state_file)
 
-    def process_year(
-        self,
-        year: int,
-        states: Dict[int, YearState],
-        download_func: Optional[Callable] = None,
-        crop_func: Optional[Callable] = None,
-    ) -> bool:
-        """Execute state machine transitions for a single year chunk."""
-        st = states[year]
-
-        if st.is_fully_done():
-            logger.info(f"Year {year} is already completed. Skipping.")
-            return True
-
-        # Step 1: Download
+    def _step_download(self, year: int, st: YearState, states: Dict[int, YearState], download_func: Optional[Callable]) -> None:
         if st.download != "done":
             st.download = "in_progress"
             self.save_state(states)
@@ -173,7 +361,7 @@ class GEFSBatchDownloader:
                 self.save_state(states)
                 raise
 
-        # Step 2: Crop
+    def _step_crop(self, year: int, st: YearState, states: Dict[int, YearState], crop_func: Optional[Callable]) -> None:
         if st.crop != "done":
             st.crop = "in_progress"
             self.save_state(states)
@@ -191,17 +379,9 @@ class GEFSBatchDownloader:
                 self.save_state(states)
                 raise
 
-        # Step 3: Human-in-the-loop signal and pause
+    def _step_user_check(self, year: int, st: YearState, states: Dict[int, YearState]) -> None:
         if st.user_check != "moved":
-            signal_msg = (
-                f"\n{'='*70}\n"
-                f"[SIGNAL] Year {year} cropping completed!\n"
-                f"Raw global files in '{self.raw_cache_dir}' can now be safely moved/archived.\n"
-                f"Please mark user_check='moved' in '{self.state_file}' to proceed.\n"
-                f"{'='*70}\n"
-            )
-            print(signal_msg)
-
+            print(f"\n{'='*70}\n[SIGNAL] Year {year} cropping completed!\nPlease mark user_check='moved' to proceed.\n{'='*70}\n")
             if self.auto_continue:
                 logger.info(f"--auto-continue enabled: setting user_check='moved' for {year}")
                 st.user_check = "moved"
@@ -209,6 +389,21 @@ class GEFSBatchDownloader:
             else:
                 self._wait_for_user_moved(year, states)
 
+    def process_year(
+        self,
+        year: int,
+        states: Dict[int, YearState],
+        download_func: Optional[Callable] = None,
+        crop_func: Optional[Callable] = None,
+    ) -> bool:
+        """Execute state machine transitions for a single year chunk."""
+        st = states[year]
+        if st.is_fully_done():
+            logger.info(f"Year {year} is already completed. Skipping.")
+            return True
+        self._step_download(year, st, states, download_func)
+        self._step_crop(year, st, states, crop_func)
+        self._step_user_check(year, st, states)
         return True
 
     def _wait_for_user_moved(self, year: int, states: Dict[int, YearState]) -> None:
@@ -216,339 +411,72 @@ class GEFSBatchDownloader:
         logger.info(f"Waiting for user to set user_check='moved' for year {year}...")
         while True:
             time.sleep(self.check_interval)
-            updated_states = self.load_or_init_state(year, year)
-            if updated_states[year].user_check.strip().lower() == "moved":
+            updated = self.load_or_init_state(year, year)
+            if updated[year].user_check.strip().lower() == "moved":
                 states[year].user_check = "moved"
                 self.save_state(states)
-                logger.info(f"User check confirmed for year {year}. Resuming batch pipeline.")
+                logger.info(f"User check confirmed for year {year}. Resuming.")
                 break
 
     def _default_download_year(self, year: int) -> None:
-        """Download a full local year of reforecast per station, applying 6h
-        window selection, and stage the cropped data under raw_cache_dir.
-
-        For each target local day D the init is the PREVIOUS day 00Z
-        (reforecast is 00Z-only and D's 6h windows live in D-1 00Z's lead
-        hours). This +1 offset widens the init range to [year-1 Dec 31,
-        year Dec 30] so the whole local year is covered (one extra init on each
-        boundary).
-
-        Resume granularity (do NOT re-implement byte-level resume here):
-        - across runs: the CSV state machine skips years already `download=done`;
-        - within a year: a per-init shard is skipped if its `.nc` + `.nc.md5`
-          sidecar exist and the recorded MD5 still verifies (corrupt shards are
-          re-downloaded); otherwise GEFSFetcher memoizes per-(init, member,
-          variable) and Herbie's own `save_dir` cache skips files it already has.
-        """
+        """Download full year reforecast for all stations across target offsets."""
         init_start = max(date(year - 1, 12, 31), date(2000, 1, 1))
         init_end = date(year, 12, 30)
+        dates = [init_start + timedelta(days=i) for i in range((init_end - init_start).days + 1)]
         staging_dir = self.raw_cache_dir / "cropped" / str(year)
-        total_days = (init_end - init_start).days + 1
 
         for station in self.stations:
-            bounds = DEFAULT_REGIONS.get(station.lower(), DEFAULT_REGIONS["shanghai"])
-            out_dir = staging_dir / station
-            out_dir.mkdir(parents=True, exist_ok=True)
-
-            logger.info(f"==> 开始下载 {station.upper()} {year} 年数据 (共 {total_days} 个时次)...")
-
-            init_day = init_start
-            completed_in_year = 0
-            month_count = 0
-            month_elapsed = 0.0
-            current_month = init_start.month
-            year_start_time = time.perf_counter()
-            failed_days = []
-
-            while init_day <= init_end:
-                target_date = init_day + timedelta(days=1)
-                out_path = out_dir / f"{init_day:%Y%m%d}.nc"
-                md5_path = out_dir / f"{init_day:%Y%m%d}.nc.md5"
-
-                t_day_start = time.perf_counter()
-                skipped = False
-
-                # Resume: a shard already on disk that passes its recorded MD5
-                # is skipped (no re-download / re-decode / re-write).
-                if out_path.exists() and md5_path.exists():
-                    if GEFSFetcher.verify_file_md5(
-                        out_path, md5_path.read_text().strip()
-                    ):
-                        skipped = True
-                    else:
-                        # corrupted / half-written -> delete and re-download
-                        out_path.unlink(missing_ok=True)
-                        md5_path.unlink(missing_ok=True)
-
-                if not skipped:
-                    windows = self.fetcher.select_contained_windows(
-                        datetime(init_day.year, init_day.month, init_day.day, 0, 0),
-                        target_date,
-                        station,
-                    )
-                    if not windows:
-                        logger.warning(
-                            f"{station} {target_date}: no contained 6h windows, skipping init {init_day}"
-                        )
-                        init_day += timedelta(days=1)
-                        continue
-
-                    # Start 30s heartbeat reporter thread
-                    stop_heartbeat = threading.Event()
-
-                    def _heartbeat_worker():
-                        t_hb_start = time.perf_counter()
-                        last_hb_time = t_hb_start
-                        last_stats = {}  # {m: (slice_id, downloaded_bytes)}
-
-                        while not stop_heartbeat.wait(timeout=30.0):
-                            prog = GEFSFetcher.get_active_progress()
-                            now = time.perf_counter()
-                            hb_elapsed = int(now - t_hb_start)
-                            dt = max(now - last_hb_time, 0.001)
-                            last_hb_time = now
-                            cur_day_pct = ((completed_in_year + 1) / total_days) * 100.0
-                            if prog:
-                                mem_strs = []
-                                for m in ["c00", "p01", "p02", "p03", "p04"]:
-                                    if m in prog:
-                                        p_data = prog[m]
-                                        dl_bytes = p_data.get("downloaded", 0)
-                                        tot_bytes = p_data.get("total", 1)
-                                        slice_id = p_data.get("slice_id", "")
-                                        var_lbl = p_data.get("var", "")
-
-                                        prev_id, prev_dl = last_stats.get(m, ("", 0))
-                                        if slice_id != prev_id:
-                                            delta_bytes = dl_bytes
-                                        else:
-                                            delta_bytes = max(dl_bytes - prev_dl, 0)
-                                        spd = (delta_bytes / 1024.0) / dt
-                                        last_stats[m] = (slice_id, dl_bytes)
-
-                                        dl_mb = dl_bytes / (1024 * 1024)
-                                        tot_mb = tot_bytes / (1024 * 1024)
-                                        pct = p_data.get("pct", 0.0)
-                                        lbl = f"{m}[{var_lbl}]" if var_lbl else m
-                                        mem_strs.append(
-                                            f"{lbl}:{pct:4.1f}%({dl_mb:.1f}/{tot_mb:.1f}MB,{spd:3.0f}KB/s)"
-                                        )
-                                detail = " | " + " ".join(mem_strs)
-                            else:
-                                detail = " | 正在连接源站并解析索引 (Connecting & Parsing Index)..."
-
-                            msg = (
-                                f"⏱️ [PROGRESS] {station.upper()} {target_date} "
-                                f"({completed_in_year + 1}/{total_days} {cur_day_pct:4.1f}%) "
-                                f"[已耗时 {hb_elapsed}s]{detail}"
-                            )
-                            logger.info(msg)
-
-                    hb_thread = threading.Thread(target=_heartbeat_worker, daemon=True)
-                    hb_thread.start()
-
-                    max_day_retries = 3
-                    ds = None
-                    for day_attempt in range(max_day_retries):
-                        try:
-                            ds = self.fetcher.download_reforecast(
-                                region_bounds=bounds,
-                                date_range=(init_day, init_day),
-                                members=list(VALID_MEMBERS),
-                                cycles=[0],
-                                forecast_hours=windows,
-                            )
-                            break
-                        except Exception as e:
-                            health_fn = getattr(self.fetcher, "check_link_health", GEFSFetcher.check_link_health)
-                            health = health_fn()
-                            logger.warning(
-                                f"⚠️ [{station.upper()} {target_date}] 单日下载异常 ({e})，"
-                                f"准备进行第 {day_attempt + 1}/{max_day_retries} 轮容灾重试... 链路诊断: {health['message']}"
-                            )
-                            if day_attempt < max_day_retries - 1:
-                                time.sleep(5.0 * (day_attempt + 1))
-                            else:
-                                logger.error(
-                                    f"❌ [{station.upper()} {target_date}] 暂时无法下载，已记录至待补扫清单，主进程继续推进后续日期..."
-                                )
-                                failed_days.append((init_day, target_date, windows, out_path, md5_path))
-
-                    stop_heartbeat.set()
-                    GEFSFetcher.reset_active_progress()
-
-                    if ds is not None:
-                        ds.to_netcdf(out_path, engine="scipy")
-                        md5_path.write_text(GEFSFetcher.calculate_md5(out_path))
-
-                t_day_elapsed = time.perf_counter() - t_day_start
-                completed_in_year += 1
-                month_count += 1
-                month_elapsed += t_day_elapsed
-                cur_day_pct = (completed_in_year / total_days) * 100.0
-
-                if skipped:
-                    logger.info(
-                        f"⏭️ [{completed_in_year}/{total_days} {cur_day_pct:4.1f}%] "
-                        f"{station.upper()} {target_date} (Init {init_day:%Y-%m-%d}) 已存在且校验通过，快速跳过"
-                    )
-                else:
-                    logger.info(
-                        f"✅ [{completed_in_year}/{total_days} {cur_day_pct:4.1f}%] "
-                        f"{station.upper()} {target_date} (Init {init_day:%Y-%m-%d}) 10切片下载裁剪完成 "
-                        f"(耗时 {t_day_elapsed:.1f}s)"
-                    )
-
-                # 延迟预警与主动链路健康检查 (阈值 > 25s)
-                if not skipped and t_day_elapsed > 25.0:
-                    health_fn = getattr(self.fetcher, "check_link_health", GEFSFetcher.check_link_health)
-                    health = health_fn()
-                    diag_box = (
-                        f"\n{'-'*75}\n"
-                        f"⚠️  [延迟预警] {station.upper()} {target_date} 下载耗时达 {t_day_elapsed:.1f}s\n"
-                        f"🔍 [链路诊断] NOAA AWS S3: {health['message']}\n"
-                        f"{'-'*75}\n"
-                    )
-                    print(diag_box)
-
-                # 判断是否为该月最后一天或全年代际结束
-                next_day = init_day + timedelta(days=1)
-                is_month_end = (next_day > init_end) or (next_day.month != current_month)
-
-                if is_month_end and month_count > 0:
-                    pct = (completed_in_year / total_days) * 100
-                    avg_speed = month_elapsed / max(month_count, 1)
-                    rem_days = total_days - completed_in_year
-                    rem_minutes = (rem_days * avg_speed) / 60.0
-                    health_fn = getattr(self.fetcher, "check_link_health", None)
-                    if health_fn:
-                        health = health_fn()
-                        status_text = "正常" if health["healthy"] else "异常"
-                        rtt_str = f"RTT {health['rtt_ms']}ms" if health["rtt_ms"] is not None else "未知"
-                    else:
-                        status_text = "正常"
-                        rtt_str = "未探测"
-
-                    summary_line = (
-                        f"[{init_day.year}-{current_month:02d} 完成] "
-                        f"{month_count:2d} 天 ({pct:5.1f}%) | "
-                        f"平均: {avg_speed:4.1f}s/天 | "
-                        f"链路: {status_text} ({rtt_str}) | "
-                        f"预估剩余: {rem_minutes:4.1f} 分钟"
-                    )
-                    print(summary_line)
-
-                    # 重置月度统计
-                    current_month = next_day.month
-                    month_count = 0
-                    month_elapsed = 0.0
-
-                init_day += timedelta(days=1)
-
-            # Sweep-up Pass for failed days if any
-            if failed_days:
-                print(f"\n🔄 [{station.upper()} {year}] 开始对 {len(failed_days)} 个遗留异常日期进行集中二次补扫...")
-                time.sleep(3.0)
-                still_failed = []
-                for init_day_f, target_date_f, windows_f, out_path_f, md5_path_f in failed_days:
-                    try:
-                        ds_f = self.fetcher.download_reforecast(
-                            region_bounds=bounds,
-                            date_range=(init_day_f, init_day_f),
-                            members=list(VALID_MEMBERS),
-                            cycles=[0],
-                            forecast_hours=windows_f,
-                        )
-                        ds_f.to_netcdf(out_path_f, engine="scipy")
-                        md5_path_f.write_text(GEFSFetcher.calculate_md5(out_path_f))
-                        print(f"  ✨ [{station.upper()} {target_date_f}] 二次补扫成功落盘！")
-                    except Exception as e:
-                        logger.error(f"  ❌ [{station.upper()} {target_date_f}] 补扫依然失败: {e}")
-                        still_failed.append(target_date_f)
-
-                if still_failed:
-                    raise GEFSDownloadError(
-                        f"Year {year} {station} has {len(still_failed)} missing days after sweep pass: {still_failed}"
-                    )
-
-            total_year_elapsed = time.perf_counter() - year_start_time
-            print(
-                f"✅ {station.upper()} {year} 年下载裁剪完成: 共 {completed_in_year} 天, "
-                f"总耗时 {total_year_elapsed/60:.1f} 分钟 (平均 {total_year_elapsed/max(completed_in_year, 1):.2f}s/天)"
+            logger.info(f"==> 开始下载 {station.upper()} {year} 年数据 (共 {len(dates)} 个时次)...")
+            _download_station_dates(
+                fetcher=self.fetcher,
+                station=station,
+                dates=dates,
+                out_dir=staging_dir / station,
+                target_offsets=self.target_offsets,
+                fxx_filter=self.fxx_filter,
             )
 
     def _default_crop_year(self, year: int) -> None:
-        """Persist staged cropped data into the processed tree, verify it
-        round-trips through xarray, then delete the staged copy to free raw-side
-        space. crop=done is only written after the data is on disk, re-openable,
-        and the staged copy is cleaned up."""
+        """Persist staged cropped data into the processed tree."""
         staging_dir = self.raw_cache_dir / "cropped" / str(year)
         for station in self.stations:
-            src_dir = staging_dir / station
-            dst_dir = self.processed_dir / str(year) / station
-            dst_dir.mkdir(parents=True, exist_ok=True)
-
-            files = sorted(src_dir.glob("*.nc")) if src_dir.exists() else []
-            if not files:
-                # idempotent resume: already cropped (staged cleaned), skip
-                if list(dst_dir.glob("*.nc")):
-                    continue
-                raise FileNotFoundError(
-                    f"no staged cropped data for {station} {year} under {src_dir}"
-                )
-            for src in files:
-                ds = None
-                max_heal_retries = 3
-                for heal_attempt in range(1, max_heal_retries + 1):
-                    try:
-                        ds = xr.open_dataset(src, engine="scipy")
-                        break
-                    except Exception as exc:
-                        logger.warning(
-                            f"⚠️ 校验发现损坏文件 {src.name} (原因: {exc})，准备进行第 {heal_attempt}/{max_heal_retries} 次自愈重拉..."
-                        )
-                        src.unlink(missing_ok=True)
-                        src.with_suffix(".nc.md5").unlink(missing_ok=True)
-                        if heal_attempt < max_heal_retries:
-                            try:
-                                date_str = src.stem
-                                init_d = datetime.strptime(date_str, "%Y%m%d").date()
-                                t_date = init_d + timedelta(days=1)
-                                windows = self.fetcher.select_contained_windows(
-                                    datetime(init_d.year, init_d.month, init_d.day, 0, 0),
-                                    t_date,
-                                    station,
-                                )
-                                bounds = DEFAULT_REGIONS[station]
-                                ds_fresh = self.fetcher.download_reforecast(
-                                    region_bounds=bounds,
-                                    date_range=(init_d, init_d),
-                                    members=list(VALID_MEMBERS),
-                                    cycles=[0],
-                                    forecast_hours=windows,
-                                )
-                                if ds_fresh is not None:
-                                    ds_fresh.to_netcdf(src, engine="scipy")
-                                    src.with_suffix(".nc.md5").write_text(
-                                        GEFSFetcher.calculate_md5(src)
-                                    )
-                            except Exception as re_err:
-                                logger.warning(f"自愈重拉单日失败 ({re_err})，将在下一次重试中继续...")
-                        else:
-                            raise RuntimeError(
-                                f"【熔断保护】文件 {src.name} 经 {max_heal_retries} 次尝试修复后依然无法读取，"
-                                f"可能存在磁盘坏道或源站数据异常，已安全中断以防死循环！错误: {exc}"
-                            )
-
-                dst = dst_dir / src.name
-                ds.to_netcdf(dst, engine="scipy")
-                # verify round-trip before counting this file as cropped
-                _ = xr.open_dataset(dst, engine="scipy")
-            logger.info(f"Cropped {station} {year}: {len(files)} files -> {dst_dir}")
-            # free raw-side space: staged copy is now redundant
-            shutil.rmtree(src_dir)
+            _crop_single_station(
+                fetcher=self.fetcher,
+                src_dir=staging_dir / station,
+                dst_dir=self.processed_dir / str(year) / station,
+                station=station,
+                year=year,
+                target_offsets=self.target_offsets,
+            )
         if staging_dir.exists() and not any(staging_dir.iterdir()):
             staging_dir.rmdir()
+
+    def download_gap_days(
+        self,
+        gap_dates: Sequence[Union[str, date]],
+        target_offsets: Optional[Sequence[int]] = None,
+    ) -> None:
+        """Download specified gap dates (B1 repair)."""
+        if not gap_dates:
+            logger.warning("No gap dates provided to download_gap_days.")
+            return
+        parsed_dates = [
+            datetime.strptime(d, "%Y-%m-%d").date() if isinstance(d, str) else d
+            for d in gap_dates
+        ]
+        offsets = target_offsets or self.target_offsets
+        for yr in sorted(set(d.year for d in parsed_dates)):
+            staging_dir = self.raw_cache_dir / "cropped" / str(yr)
+            for station in self.stations:
+                st_dates = [d for d in parsed_dates if d.year == yr]
+                _download_station_dates(
+                    fetcher=self.fetcher,
+                    station=station,
+                    dates=st_dates,
+                    out_dir=staging_dir / station,
+                    target_offsets=offsets,
+                    fxx_filter=self.fxx_filter,
+                )
 
     def run(
         self,
@@ -561,10 +489,6 @@ class GEFSBatchDownloader:
         states = self.load_or_init_state(start_year, end_year)
         for yr in range(start_year, end_year + 1):
             logger.info(f"--- Processing chunk: Year {yr} ---")
-            self.process_year(
-                yr,
-                states,
-                download_func=download_func,
-                crop_func=crop_func,
-            )
+            self.process_year(yr, states, download_func=download_func, crop_func=crop_func)
         logger.info("All requested years completed successfully.")
+

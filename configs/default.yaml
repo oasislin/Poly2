@@ -72,6 +72,9 @@ trigger:
 network:
   use_proxy: false            # 是否使用本机/系统代理 (false: 纯直连 AWS S3，true: 走代理)
   proxy_url: null             # 可选显式代理地址 (如 http://127.0.0.1:7897，null 则读取系统代理)
-  min_timeout_seconds: 120    # 跨洋链路保底超时阈值 (秒)
+  min_timeout_seconds: 180    # 跨洋链路保底超时阈值 (秒，3分钟主动熔断防假死)
+
+storage:
+  cold_storage_root: /Volumes/EricSSD/Poly RawData/gefs_reforecast
 
 

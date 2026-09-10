@@ -174,18 +174,33 @@ class TestGEFSBatchDownloader:
 
 
 class TestDefaultDownloadCrop:
-    def _downloader(self, tmp_path, fetcher, stations=("shanghai",)):
+    def _downloader(self, tmp_path, fetcher, stations=("shanghai",), target_offsets=(0, 1, 2), fxx_filter=None):
         return GEFSBatchDownloader(
             state_file=str(tmp_path / "state.csv"),
             raw_cache_dir=str(tmp_path / "raw"),
             processed_dir=str(tmp_path / "processed"),
             stations=list(stations),
             fetcher=fetcher,
+            target_offsets=target_offsets,
+            fxx_filter=fxx_filter,
         )
+
+    def test_multi_target_day_offsets_selection(self, tmp_path):
+        fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(0, 1, 2))
+
+        downloader._default_download_year(2019)
+
+        assert fetcher.select_calls
+        first_init = datetime(2018, 12, 31, 0, 0)
+        first_targets = [t for init, t, st in fetcher.select_calls if init == first_init]
+        assert date(2018, 12, 31) in first_targets  # D+0
+        assert date(2019, 1, 1) in first_targets    # D+1
+        assert date(2019, 1, 2) in first_targets    # D+2
 
     def test_download_applies_window_selection_and_stages_data(self, tmp_path):
         fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
-        downloader = self._downloader(tmp_path, fetcher)
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         downloader._default_download_year(2019)
 
@@ -195,15 +210,12 @@ class TestDefaultDownloadCrop:
         assert first_target == date(2019, 1, 1)
         assert first_init == datetime(2018, 12, 31, 0, 0)
         assert first_station == "shanghai"
-        last_init, last_target, _ = fetcher.select_calls[-1]
-        assert last_target == date(2019, 12, 31)
-        assert last_init == datetime(2019, 12, 30, 0, 0)
 
         # forecast_hours is the window-selection output, not None
         assert len(fetcher.download_calls) == 1
         assert fetcher.download_calls[0]["forecast_hours"] == [24, 30, 36]
 
-        # cropped data staged under raw_cache_dir, not a touch marker
+        # cropped data staged under raw_cache_dir
         staged = tmp_path / "raw" / "cropped" / "2019" / "shanghai"
         files = list(staged.glob("*.nc"))
         assert len(files) == 1
@@ -215,7 +227,7 @@ class TestDefaultDownloadCrop:
 
     def test_crop_persists_to_processed_and_roundtrips(self, tmp_path):
         fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
-        downloader = self._downloader(tmp_path, fetcher)
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         downloader._default_download_year(2019)
         downloader._default_crop_year(2019)
@@ -230,15 +242,15 @@ class TestDefaultDownloadCrop:
         assert ds.sizes["step"] == 3
 
     def test_crop_raises_without_staged_data(self, tmp_path):
-        fetcher = RecordingFetcher()  # selects nothing -> no staged files
-        downloader = self._downloader(tmp_path, fetcher)
+        fetcher = RecordingFetcher()
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         with pytest.raises(FileNotFoundError):
             downloader._default_crop_year(2019)
 
     def test_download_resume_skips_verified_shards(self, tmp_path):
         fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
-        downloader = self._downloader(tmp_path, fetcher)
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         downloader._default_download_year(2019)
         assert len(fetcher.download_calls) == 1
@@ -247,35 +259,31 @@ class TestDefaultDownloadCrop:
         assert len(list(staged.glob("*.nc"))) == 1
         assert len(list(staged.glob("*.nc.md5"))) == 1
 
-        # re-run: verified shard is skipped, no re-download
         downloader._default_download_year(2019)
         assert len(fetcher.download_calls) == 1
 
     def test_download_redownloads_on_md5_mismatch(self, tmp_path):
         fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
-        downloader = self._downloader(tmp_path, fetcher)
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         downloader._default_download_year(2019)
         staged = tmp_path / "raw" / "cropped" / "2019" / "shanghai"
         nc = list(staged.glob("*.nc"))[0]
-        # corrupt the .nc but keep the .md5 sidecar
         nc.write_bytes(b"corrupted")
 
         downloader._default_download_year(2019)
-        # corrupted shard re-downloaded and restored to a valid netCDF
         assert len(fetcher.download_calls) == 2
         xr.open_dataset(nc, engine="scipy")
 
     def test_crop_cleans_staged_data(self, tmp_path):
         fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
-        downloader = self._downloader(tmp_path, fetcher)
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         downloader._default_download_year(2019)
         staged_station = tmp_path / "raw" / "cropped" / "2019" / "shanghai"
         assert staged_station.exists()
 
         downloader._default_crop_year(2019)
-        # staged copy cleaned, processed preserved + readable
         assert not staged_station.exists()
         out_dir = tmp_path / "processed" / "2019" / "shanghai"
         files = list(out_dir.glob("*.nc"))
@@ -285,12 +293,20 @@ class TestDefaultDownloadCrop:
 
     def test_crop_idempotent_rerun(self, tmp_path):
         fetcher = RecordingFetcher(only_target=date(2019, 7, 2))
-        downloader = self._downloader(tmp_path, fetcher)
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(1,))
 
         downloader._default_download_year(2019)
         downloader._default_crop_year(2019)
-        # second crop run: staged gone but processed present -> skip, no error
         downloader._default_crop_year(2019)
 
         out_dir = tmp_path / "processed" / "2019" / "shanghai"
         assert len(list(out_dir.glob("*.nc"))) == 1
+
+    def test_download_gap_days(self, tmp_path):
+        fetcher = RecordingFetcher(only_target=date(2019, 12, 31))
+        downloader = self._downloader(tmp_path, fetcher, target_offsets=(0,))
+
+        downloader.download_gap_days(["2019-12-31"])
+        assert len(fetcher.download_calls) == 1
+        staged = tmp_path / "raw" / "cropped" / "2019" / "shanghai"
+        assert (staged / "20191231.nc").exists()

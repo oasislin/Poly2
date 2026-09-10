@@ -789,3 +789,151 @@ class TestMergeTolerance:
         assert merged["tmax"].values[0, 0, 0] == 280.0
         assert merged["tmin"].values[0, 0, 0] == 270.0
 
+
+class TestNetworkResilienceTimeout:
+    """Verify 180s minimum timeout, exponential retry, and read timeout enforcement."""
+
+    def test_normalize_timeout_enforces_180s(self):
+        from src.data_acquisition.gefs_fetcher import _normalize_timeout
+
+        assert _normalize_timeout(None) == 180.0
+        assert _normalize_timeout(60.0) == 180.0
+        assert _normalize_timeout(300.0) == 300.0
+        assert _normalize_timeout((30.0, 45.0)) == (180.0, 180.0)
+
+    def test_load_network_config_loads_180s(self):
+        from src.data_acquisition.gefs_fetcher import _load_network_config
+
+        cfg = _load_network_config()
+        assert cfg["min_timeout_seconds"] == 180
+
+    def test_send_with_retry_succeeds_first_try(self, monkeypatch):
+        import requests
+        from unittest.mock import MagicMock
+        from src.data_acquisition.gefs_fetcher import _send_with_retry
+
+        mock_send = MagicMock(return_value="success_response")
+        monkeypatch.setattr("src.data_acquisition.gefs_fetcher._orig_session_send", mock_send)
+
+        sess = requests.Session()
+        req = requests.Request("GET", "https://s3.example.com").prepare()
+        res = _send_with_retry(sess, req, {"timeout": 180.0}, max_retries=3)
+
+        assert res == "success_response"
+        assert mock_send.call_count == 1
+
+    def test_send_with_retry_succeeds_after_transient_error(self, monkeypatch):
+        import requests
+        from unittest.mock import MagicMock
+        from src.data_acquisition.gefs_fetcher import _send_with_retry
+
+        # Fail twice with SSLError, then succeed on 3rd attempt
+        mock_send = MagicMock(
+            side_effect=[
+                requests.exceptions.SSLError("SSL handshake dropped"),
+                requests.exceptions.ConnectionError("Connection reset"),
+                "recovered_response",
+            ]
+        )
+        monkeypatch.setattr("src.data_acquisition.gefs_fetcher._orig_session_send", mock_send)
+        monkeypatch.setattr("time.sleep", lambda s: None)
+
+        sess = requests.Session()
+        req = requests.Request("GET", "https://s3.example.com").prepare()
+        res = _send_with_retry(sess, req, {"timeout": 180.0}, max_retries=3)
+
+        assert res == "recovered_response"
+        assert mock_send.call_count == 3
+
+    def test_send_with_retry_exhausts_and_raises(self, monkeypatch):
+        import pytest
+        import requests
+        from unittest.mock import MagicMock
+        from src.data_acquisition.gefs_fetcher import _send_with_retry
+
+        mock_send = MagicMock(side_effect=requests.exceptions.ReadTimeout("Socket stall"))
+        monkeypatch.setattr("src.data_acquisition.gefs_fetcher._orig_session_send", mock_send)
+        monkeypatch.setattr("time.sleep", lambda s: None)
+
+        sess = requests.Session()
+        req = requests.Request("GET", "https://s3.example.com").prepare()
+        with pytest.raises(requests.exceptions.ReadTimeout):
+            _send_with_retry(sess, req, {"timeout": 180.0}, max_retries=3)
+
+        # 1 initial attempt + 3 retries = 4 attempts total
+        assert mock_send.call_count == 4
+
+    def test_send_with_retry_non_retryable_raises_immediately(self, monkeypatch):
+        import pytest
+        import requests
+        from unittest.mock import MagicMock
+        from src.data_acquisition.gefs_fetcher import _send_with_retry
+
+        mock_send = MagicMock(side_effect=ValueError("Invalid parameter"))
+        monkeypatch.setattr("src.data_acquisition.gefs_fetcher._orig_session_send", mock_send)
+
+        sess = requests.Session()
+        req = requests.Request("GET", "https://s3.example.com").prepare()
+        with pytest.raises(ValueError):
+            _send_with_retry(sess, req, {"timeout": 180.0}, max_retries=3)
+
+        assert mock_send.call_count == 1
+
+    def test_native_requests_stall_triggers_read_timeout(self, monkeypatch):
+        import socket
+        import threading
+        import time
+        import pytest
+        import requests
+        import src.data_acquisition.gefs_fetcher as fetcher_mod
+
+        real_sleep = time.sleep
+        # Use small timeout for test speed
+        monkeypatch.setattr(
+            fetcher_mod,
+            "_load_network_config",
+            lambda: {"use_proxy": False, "proxy_url": None, "min_timeout_seconds": 0.5},
+        )
+        monkeypatch.setattr("time.sleep", lambda s: None)
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind(("127.0.0.1", 0))
+        server.listen(10)
+        port = server.getsockname()[1]
+        stop_event = threading.Event()
+
+        def worker():
+            while not stop_event.is_set():
+                try:
+                    server.settimeout(0.2)
+                    conn, _ = server.accept()
+                except (socket.timeout, OSError):
+                    continue
+                try:
+                    conn.recv(1024)
+                    conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\n\r\n" + b"A" * 50)
+                    real_sleep(1.5)
+                except Exception:
+                    pass
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
+        th = threading.Thread(target=worker, daemon=True)
+        th.start()
+        try:
+            t0 = time.time()
+            with pytest.raises(requests.exceptions.Timeout):
+                requests.get(f"http://127.0.0.1:{port}", timeout=0.5)
+            elapsed = time.time() - t0
+            assert elapsed >= 0.4
+        finally:
+            stop_event.set()
+            server.close()
+            th.join(timeout=1.0)
+
+
+
+
+

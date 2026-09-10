@@ -23,7 +23,7 @@ updated: 2026-09-07 21:00:00
 3. 历史下载脚本存在硬编码 Bug：`target_date = init_day + timedelta(days=1)`（gefs_batch_downloader.py 第 264 行附近），导致 Day 0 目标日从未被调度，短 lead 段（0-21h）从未进入下载计划。
 4. 节点体系 {6h,30h,54h}/{24h,48h} 是上海（UTC+8）时区的 D+0/D+1/D+2 投影；美洲站点的投影整体右移，芝加哥（CDT=UTC-5）为 TMAX {24,48,72}h / TMIN {12,36}h（以 §3 Task A 探针输出为准）。
 5. 数据根目录已迁移至外部存储：`/Volumes/EricSSD/Poly RawData/gefs_reforecast/`（按日期分层子目录，如 20040101/）。
-6. 金样本（2004010100 起报，tmax_2m，24h lead）：KORD c00 = 277.33 K；KORD p03 = 277.39 K；ZSPD p03 = 282.53 K。
+6. 金样本（2004010100 起报，24h lead）：KORD tmax c00 = 278.81 K, p03 = 278.79 K（tmin c00 = 277.31 K, p03 = 277.34 K）；ZSPD tmax p03 = 282.53 K。
 7. 技术坑（已实测踩过）：
    - cfgrib 打开必须 `backend_kwargs={"indexpath": ""}`；
    - lead 换算小时用 `np.timedelta64(1, "h")`，禁止对 timedelta64 直接除法；

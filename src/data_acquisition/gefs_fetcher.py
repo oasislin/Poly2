@@ -17,34 +17,32 @@ Caching / retry belong to T06.
 import concurrent.futures
 import hashlib
 import logging
+import random
 import re
 import threading
 import time
+import socket
 import urllib.error
 import urllib.request
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 
 import os
 import yaml
 
-# Resilience & Live Progress Tracking:
+# Resilience & Live Download Configuration:
 # 1. Configurable proxy (default: direct S3 connection, bypassing local proxy to eliminate CLOSE_WAIT).
-# 2. Enforce minimum 120s HTTP timeout on Herbie/requests.
-# 3. Hook chunk streaming on genuine Range requests to track accurate per-member progress.
-# 4. Enforce resp.close() in finally block to ensure 100% immediate socket cleanup.
+# 2. Enforce minimum 180s HTTP timeout on Herbie/requests (3-min active stall protection).
+# 3. Transparent retry on transient network drops (SSLError, ConnectionError, ReadTimeout).
 _orig_session_send = requests.Session.send
-
-_active_member_progress = {}
-_active_progress_lock = threading.Lock()
 
 
 def _load_network_config() -> dict:
     """Load network settings from configs/default.yaml with env var fallback."""
-    cfg = {"use_proxy": False, "proxy_url": None, "min_timeout_seconds": 120}
+    cfg = {"use_proxy": False, "proxy_url": None, "min_timeout_seconds": 180}
     cfg_file = Path(__file__).resolve().parents[2] / "configs" / "default.yaml"
     if cfg_file.exists():
         try:
@@ -53,7 +51,7 @@ def _load_network_config() -> dict:
                 net_data = data.get("network", {})
                 cfg["use_proxy"] = net_data.get("use_proxy", False)
                 cfg["proxy_url"] = net_data.get("proxy_url", None)
-                cfg["min_timeout_seconds"] = net_data.get("min_timeout_seconds", 120)
+                cfg["min_timeout_seconds"] = net_data.get("min_timeout_seconds", 180)
         except Exception:
             pass
 
@@ -65,7 +63,7 @@ def _load_network_config() -> dict:
     return cfg
 
 
-def _normalize_timeout(timeout, min_timeout: float = 120.0):
+def _normalize_timeout(timeout, min_timeout: float = 180.0):
     """Enforce minimum timeout across scalar and tuple timeout configurations."""
     if timeout is None:
         return min_timeout
@@ -79,126 +77,63 @@ def _normalize_timeout(timeout, min_timeout: float = 120.0):
     return timeout
 
 
-def _extract_request_metadata(request) -> tuple[Optional[str], Optional[str], Optional[int]]:
-    """Extract ensemble member name, variable label, and exact slice length ONLY from valid Range requests."""
-    url_str = getattr(request, "url", "")
-    if ".idx" in url_str:
-        return None, None, None
-
-    mem_match = re.search(r"/(c\d{2}|p\d{2})/", url_str) or re.search(r"_(c\d{2}|p\d{2})\.", url_str)
-    if not mem_match:
-        return None, None, None
-    mem_name = mem_match.group(1)
-
-    var_label = "tmax" if "tmax" in url_str else ("tmin" if "tmin" in url_str else "")
-
-    range_hdr = request.headers.get("Range", "") if hasattr(request, "headers") else ""
-    if range_hdr.startswith("bytes="):
-        r_parts = range_hdr[6:].split("-")
-        if len(r_parts) == 2 and r_parts[0].isdigit() and r_parts[1].isdigit():
-            slice_bytes = int(r_parts[1]) - int(r_parts[0]) + 1
-            return mem_name, var_label, slice_bytes
-
-    return None, None, None
-
-
-def _wrap_socket_reader(resp, mem_name: str, var_label: str, slice_bytes: int):
-    """Wrap resp.raw.read to intercept live TCP chunks, accumulating sub-group slices for the same physical variable file."""
-    with _active_progress_lock:
-        prev = _active_member_progress.get(mem_name, {})
-        # If continuing the same variable file for this member, accumulate sub-group bytes
-        if prev.get("var") == var_label and prev.get("slice_id"):
-            base_cum = prev.get("cum_downloaded", 0)
-            expected_total = prev.get("total", 0) + slice_bytes
-            slice_id = prev["slice_id"]
-        else:
-            base_cum = 0
-            expected_total = slice_bytes
-            slice_id = f"{mem_name}_{var_label}_{time.time()}"
-
-        _active_member_progress[mem_name] = {
-            "var": var_label,
-            "slice_id": slice_id,
-            "downloaded": base_cum,
-            "cum_downloaded": base_cum,
-            "total": expected_total,
-            "speed_kb": 0.0,
-            "pct": (base_cum / max(expected_total, 1)) * 100.0,
-            "updated_at": time.time(),
+def _configure_session_proxy(session, kwargs: dict, net_cfg: dict) -> None:
+    """Apply proxy settings to requests.Session and kwargs based on network config."""
+    if not net_cfg["use_proxy"]:
+        session.trust_env = False
+        session.proxies = {}
+        kwargs["proxies"] = {}
+    elif net_cfg.get("proxy_url"):
+        session.trust_env = True
+        proxies_map = {
+            "http": net_cfg["proxy_url"],
+            "https": net_cfg["proxy_url"],
         }
+        session.proxies = proxies_map
+        kwargs["proxies"] = proxies_map
 
-    orig_read = resp.raw.read
-    var_dl = [0]
 
-    def wrapped_read(amt=None, *r_args, **r_kwargs):
+logger = logging.getLogger(__name__)
+
+
+def _send_with_retry(session, request, kwargs: dict, max_retries: int = 3):
+    """Execute session send with exponential backoff on transient network/SSL glitches.
+
+    Allows 1 initial attempt plus up to max_retries automatic retries (default 3 retries, total 4 attempts).
+    """
+    for retry_count in range(max_retries + 1):
         try:
-            chunk = orig_read(amt, *r_args, **r_kwargs)
-            if chunk:
-                var_dl[0] += len(chunk)
-                with _active_progress_lock:
-                    if mem_name in _active_member_progress:
-                        cur_cum = base_cum + var_dl[0]
-                        _active_member_progress[mem_name]["var"] = var_label
-                        _active_member_progress[mem_name]["slice_id"] = slice_id
-                        _active_member_progress[mem_name]["downloaded"] = cur_cum
-                        _active_member_progress[mem_name]["cum_downloaded"] = cur_cum
-                        _active_member_progress[mem_name]["total"] = expected_total
-                        _active_member_progress[mem_name]["pct"] = (cur_cum / max(expected_total, 1)) * 100.0
-                        _active_member_progress[mem_name]["updated_at"] = time.time()
-            else:
-                # EOF reached: clean up socket immediately
-                try:
-                    resp.close()
-                except Exception:
-                    pass
-            return chunk
-        except Exception:
-            try:
-                resp.close()
-            except Exception:
-                pass
-            raise
-
-    resp.raw.read = wrapped_read
+            return _orig_session_send(session, request, **kwargs)
+        except (
+            requests.exceptions.SSLError,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ChunkedEncodingError,
+            requests.exceptions.Timeout,
+        ) as exc:
+            if retry_count >= max_retries:
+                raise
+            sleep_s = 1.0 * (2 ** retry_count) + random.uniform(0.1, 0.5)
+            logger.warning(
+                f"[RETRY] requests.Session.send transient error ({type(exc).__name__}: {exc}), "
+                f"attempt {retry_count + 1}/{max_retries + 1}, retrying in {sleep_s:.2f}s"
+            )
+            time.sleep(sleep_s)
 
 
 def _resilient_session_send(self, request, **kwargs):
     net_cfg = _load_network_config()
+    _configure_session_proxy(self, kwargs, net_cfg)
 
-    # Configure proxy behavior dynamically
-    if not net_cfg["use_proxy"]:
-        self.trust_env = False
-        self.proxies = {}
-    elif net_cfg.get("proxy_url"):
-        self.trust_env = True
-        self.proxies = {
-            "http": net_cfg["proxy_url"],
-            "https": net_cfg["proxy_url"],
-        }
-
+    min_t = float(net_cfg["min_timeout_seconds"])
     kwargs["timeout"] = _normalize_timeout(
         kwargs.get("timeout"),
-        min_timeout=float(net_cfg["min_timeout_seconds"]),
+        min_timeout=min_t,
     )
 
-    mem_name, var_label, slice_bytes = _extract_request_metadata(request)
-    if mem_name and slice_bytes:
-        kwargs["stream"] = True
-
-    resp = _orig_session_send(self, request, **kwargs)
-
-    try:
-        if mem_name and slice_bytes and hasattr(resp, "raw") and hasattr(resp.raw, "read"):
-            _wrap_socket_reader(resp, mem_name, var_label, slice_bytes)
-    except (AttributeError, TypeError, ValueError):
-        pass
-
-    return resp
+    return _send_with_retry(self, request, kwargs)
 
 
 requests.Session.send = _resilient_session_send
-
-logger = logging.getLogger(__name__)
 
 def check_data_link_health(
     target_url: str = "https://noaa-gefs-retrospective.s3.amazonaws.com",
@@ -662,6 +597,11 @@ class GEFSFetcher:
         )
         return rf"{base}:(?:{windows})"
 
+    @classmethod
+    def build_search(cls, variable, forecast_hours):
+        """Public interface to construct wgrib2 regular expression for variable and forecast hours."""
+        return cls._build_search(variable, forecast_hours)
+
     @staticmethod
     def extract_region(ds, lat_bounds, lon_bounds):
         """Crop a Dataset to the given lat/lon window (handling 0-360 and +/-180
@@ -755,15 +695,10 @@ class GEFSFetcher:
 
     @classmethod
     def get_active_progress(cls) -> dict:
-        """Return a thread-safe snapshot of active member download metrics."""
-        with _active_progress_lock:
-            return {
-                mem: dict(data)
-                for mem, data in _active_member_progress.items()
-            }
+        """Return empty metrics for backward compatibility."""
+        return {}
 
     @classmethod
     def reset_active_progress(cls):
-        """Clear active member download metrics."""
-        with _active_progress_lock:
-            _active_member_progress.clear()
+        """No-op for backward compatibility."""
+        pass
