@@ -3,7 +3,7 @@
 Common constants and station metadata for the data processing package.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 # Central station metadata definition
 STATION_METADATA: Dict[str, Dict[str, Any]] = {
@@ -69,48 +69,7 @@ STATION_METADATA: Dict[str, Dict[str, Any]] = {
         "coastal_microclimate": False,
         "microclimate_score": 85.0,
     },
-    "KBKF": {
-        "station_id": "KBKF",
-        "name": "Buckley Space Force Base Station",
-        "city": "denver",
-        "country": "us",
-        "latitude": 39.70,
-        "longitude": -104.75,
-        "elevation": 1726.0,
-        "timezone": "America/Denver",
-        "temperature_unit": "F",
-        "polymarket_id": "denver",
-        "audit_status": "ADMITTED_SETTLEMENT_TARGET",
-        "nws_native": True,
-        "iem_network": "CO_ASOS",
-        "historical_coverage_pct": 98.4,
-        "update_lag_p50_min": 21.5,
-        "daily_recs_count": 25,
-        "active_polymarket": True,
-        "liquidity_usd": 19000.0,
-        "coastal_microclimate": False,
-    },
-    "KLGA": {
-        "station_id": "KLGA",
-        "name": "LaGuardia Airport",
-        "city": "nyc",
-        "country": "us",
-        "latitude": 40.77,
-        "longitude": -73.87,
-        "elevation": 4.0,
-        "timezone": "America/New_York",
-        "temperature_unit": "F",
-        "polymarket_id": "nyc",
-        "audit_status": "ADMITTED_TIER_1",
-        "nws_native": True,
-        "iem_network": "NY_ASOS",
-        "historical_coverage_pct": 99.6,
-        "update_lag_p50_min": 18.2,
-        "daily_recs_count": 313,
-        "active_polymarket": True,
-        "liquidity_usd": 45000.0,
-        "coastal_microclimate": True,
-    },
+
     "KORD": {
         "station_id": "KORD",
         "name": "Chicago O'Hare International Airport",
@@ -415,3 +374,19 @@ STATION_TIMEZONES: Dict[str, str] = {
 STATION_DEFAULT_UNITS: Dict[str, str] = {
     k: v["temperature_unit"] for k, v in STATION_METADATA.items()
 }
+
+# The 11 active US trading stations approved for Phase 1.5/2
+ACTIVE_11_STATIONS: Tuple[str, ...] = (
+    "KORD",
+    "KLGA",
+    "KATL",
+    "KDAL",
+    "KSEA",
+    "KLAX",
+    "KHOU",
+    "KMIA",
+    "KSFO",
+    "KBKF",
+    "KAUS",
+)
+
