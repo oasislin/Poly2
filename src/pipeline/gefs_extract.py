@@ -40,7 +40,9 @@ ACTIVE_11_STATIONS = (
     "KORD", "KLGA", "KATL", "KDAL", "KSEA", "KLAX",
     "KMIA", "KSFO", "KHOU", "KBKF", "KAUS"
 )
-DEFAULT_12_STATIONS = ACTIVE_11_STATIONS + ("KDCA",)
+DEFAULT_STATIONS = ACTIVE_11_STATIONS
+DEFAULT_11_STATIONS = ACTIVE_11_STATIONS
+DEFAULT_12_STATIONS = ACTIVE_11_STATIONS  # Backward-compatibility alias
 
 
 def _load_default_storage_root() -> str:
@@ -127,7 +129,7 @@ def get_station_coords(
     include_zspd: bool = False,
 ) -> Dict[str, Tuple[float, float]]:
     """Return a mapping of station_id -> (latitude, longitude_360)."""
-    selected = [resolve_station_id(s) for s in stations] if stations else list(DEFAULT_12_STATIONS)
+    selected = [resolve_station_id(s) for s in stations] if stations else list(DEFAULT_STATIONS)
     if include_zspd and "ZSPD" not in selected:
         selected.append("ZSPD")
 
@@ -738,7 +740,7 @@ def main():
     parser = argparse.ArgumentParser(description="GEFS station feature extractor CLI.")
     parser.add_argument("--input", "--grib-dir", dest="input", type=str, default=_load_default_storage_root(), help="Root path to raw GEFS storage")
     parser.add_argument("--out", "--output-dir", dest="out", type=str, default="data/processed/gefs_factors", help="Root path for Parquet output")
-    parser.add_argument("--stations", type=str, default=",".join(DEFAULT_12_STATIONS), help="Comma-separated station IDs (default: all 12 stations)")
+    parser.add_argument("--stations", type=str, default=",".join(DEFAULT_STATIONS), help="Comma-separated station IDs (default: all 11 active stations)")
     parser.add_argument("--years", type=str, default="2000-2019", help="Years specification: YYYY or YYYY-YYYY")
     parser.add_argument("--fxx", type=str, default="", help="Optional comma-separated fxx filter")
     parser.add_argument("--dry-run", action="store_true", help="Perform dry run without saving")

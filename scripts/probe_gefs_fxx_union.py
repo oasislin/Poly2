@@ -27,10 +27,11 @@ from src.modeling.partitioner import (
     STATION_UTC_OFFSETS,
 )
 
-STATIONS_12 = [
+STATIONS_11 = [
     "KORD", "KLGA", "KATL", "KDAL", "KSEA", "KLAX",
-    "KMIA", "KSFO", "KHOU", "KBKF", "KAUS", "KDCA"
+    "KMIA", "KSFO", "KHOU", "KBKF", "KAUS"
 ]
+STATIONS_12 = STATIONS_11  # Backward-compatibility alias
 
 SEASONS_INFO = [
     ("Winter", date(2024, 1, 15)),

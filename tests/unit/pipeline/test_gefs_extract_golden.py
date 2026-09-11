@@ -18,6 +18,7 @@ from src.pipeline.gefs_extract import (
     extract_day_to_dataframe,
     resolve_station_id,
     assert_golden_samples_gate,
+    DEFAULT_STATIONS,
     DEFAULT_12_STATIONS,
 )
 
@@ -83,10 +84,10 @@ class TestParseGribFilename:
 class TestGetStationCoords:
     """Contract tests for coordinate lookup and longitude normalization."""
 
-    def test_default_12_stations_coverage(self):
+    def test_default_11_stations_coverage(self):
         coords = get_station_coords()
-        assert len(coords) == 12
-        for st in DEFAULT_12_STATIONS:
+        assert len(coords) == 11
+        for st in DEFAULT_STATIONS:
             assert st in coords
             lat, lon = coords[st]
             assert -90.0 <= lat <= 90.0
@@ -95,7 +96,7 @@ class TestGetStationCoords:
     def test_include_zspd(self):
         coords = get_station_coords(include_zspd=True)
         assert "ZSPD" in coords
-        assert len(coords) == 13
+        assert len(coords) == 12
         lat, lon = coords["ZSPD"]
         assert round(lat, 2) == 31.15
         assert round(lon, 2) == 121.80

@@ -394,28 +394,6 @@ STATION_METADATA: Dict[str, Dict[str, Any]] = {
         "coastal_microclimate": False,
         "microclimate_score": 92.0,
     },
-    "KDCA": {
-        "station_id": "KDCA",
-        "name": "Ronald Reagan Washington National Airport",
-        "city": "dc",
-        "country": "us",
-        "latitude": 38.85,
-        "longitude": -77.04,
-        "elevation": 5.0,
-        "timezone": "America/New_York",
-        "temperature_unit": "F",
-        "polymarket_id": "dc",
-        "audit_status": "PENDING_AUDIT",
-        "nws_native": True,
-        "iem_network": "VA_ASOS",
-        "historical_coverage_pct": 95.0,
-        "update_lag_p50_min": 18.5,
-        "daily_recs_count": 315,
-        "active_polymarket": False,
-        "liquidity_usd": 5000.0,
-        "coastal_microclimate": False,
-        "microclimate_score": 90.0,
-    },
 }
 
 # Aliases for backward compatibility and specialized lookups
