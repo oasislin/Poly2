@@ -270,13 +270,18 @@ def extract_file_records(
             ds.close()
             return []
 
-    st_names, val_matrix = _slice_stations_grid(ds[var_name], station_coords)
-    step_vals = ds["step"].values
-    # GEFS-WI-v1.1 §1.7 技术坑防御: lead 换算小时统一用 / np.timedelta64(1, "h")
-    if np.issubdtype(step_vals.dtype, np.timedelta64):
-        fxx_hours = (step_vals / np.timedelta64(1, "h")).astype(int)
-    else:
-        fxx_hours = [int(s) for s in step_vals]
+    try:
+        st_names, val_matrix = _slice_stations_grid(ds[var_name], station_coords)
+        step_vals = ds["step"].values
+        # GEFS-WI-v1.1 §1.7 技术坑防御: lead 换算小时统一用 / np.timedelta64(1, "h")
+        if np.issubdtype(step_vals.dtype, np.timedelta64):
+            fxx_hours = (step_vals / np.timedelta64(1, "h")).astype(int)
+        else:
+            fxx_hours = [int(s) for s in step_vals]
+    except Exception as exc:
+        logger.error(f"Failed decoding payload from GRIB file {p}: {type(exc).__name__}: {exc}")
+        ds.close()
+        return []
     ds.close()
 
     return _matrix_to_records(meta, st_names, fxx_hours, val_matrix, fxx_filter)
