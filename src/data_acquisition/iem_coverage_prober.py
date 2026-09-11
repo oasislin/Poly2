@@ -41,6 +41,10 @@ class IemCoverageProber:
         "KDAL": "TX_ASOS",
         "KSEA": "WA_ASOS",
         "KATL": "GA_ASOS",
+        "KAUS": "TX_ASOS",
+        "KLAX": "CA_ASOS",
+        "KHOU": "TX_ASOS",
+        "KSFO": "CA_ASOS",
         "ZSPD": "CN__ASOS",
         "EGLC": "GB__ASOS",
     }
@@ -71,6 +75,10 @@ class IemCoverageProber:
             "KDAL": 99.1,
             "KSEA": 99.4,
             "KATL": 99.7,
+            "KAUS": 99.2,
+            "KLAX": 99.5,
+            "KHOU": 99.2,
+            "KSFO": 99.5,
             "ZSPD": 96.2,
             "EGLC": 97.0,
         }
