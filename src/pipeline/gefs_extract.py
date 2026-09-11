@@ -227,7 +227,9 @@ def _matrix_to_records(
         target_d = (datetime.strptime(init_d, "%Y-%m-%d") + timedelta(hours=int(fxx))).strftime("%Y-%m-%d")
         for st_idx, st_name in enumerate(st_names):
             raw_k = float(val_matrix[step_idx, st_idx])
-            if np.isnan(raw_k):
+            if np.isnan(raw_k) or raw_k < 213.15 or raw_k > 333.15:
+                if not np.isnan(raw_k):
+                    logger.warning(f"Unphysical temperature {raw_k:.2f}K rejected for {st_name}/{meta['member']}/{meta['variable']}/f{fxx}")
                 continue
             records.append(
                 ExtractionRecord(
