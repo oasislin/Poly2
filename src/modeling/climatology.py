@@ -45,6 +45,24 @@ class ClimatologyCalculator:
         # Lookup tables: {(station_id, target_type): pd.DataFrame(index=1..366)}
         self._climatology_tables: Dict[Tuple[str, str], pd.DataFrame] = {}
 
+    def load_from_floor_registry(self, registry: Any) -> "ClimatologyCalculator":
+        """Load precomputed 366-day climatology tables from a ClimateFloorRegistry."""
+        for (st, t_type), table in registry.items():
+            self._climatology_tables[(st.upper(), t_type.lower())] = table.to_dataframe()
+        return self
+
+    def load_from_floor_json(self, json_path: Union[str, Path]) -> "ClimatologyCalculator":
+        """Load precomputed 366-day climatology tables from a JSON config file."""
+        from src.modeling.climate_floor import ClimateFloorRegistry
+        registry = ClimateFloorRegistry.load_from_json(json_path)
+        return self.load_from_floor_registry(registry)
+
+    def load_from_floor_parquet_dir(self, parquet_dir: Union[str, Path]) -> "ClimatologyCalculator":
+        """Load precomputed 366-day climatology tables from directory of station parquet files."""
+        from src.modeling.climate_floor import ClimateFloorRegistry
+        registry = ClimateFloorRegistry.load_from_parquet_dir(parquet_dir)
+        return self.load_from_floor_registry(registry)
+
     def fit(
         self,
         observations_df: pd.DataFrame,

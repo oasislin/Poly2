@@ -2,6 +2,13 @@
 Modeling module for Gaussian EMOS probability prediction and climatological baselines.
 """
 
+from .climate_floor import (
+    ClimateFloorBuilder,
+    ClimateFloorConfig,
+    ClimateFloorPoint,
+    ClimateFloorRegistry,
+    ClimateFloorTable,
+)
 from .climatology import ClimatologyCalculator
 from .crps import emos_crps_loss, gaussian_crps
 from .degradation import DegradationDecision, DegradationHandler
@@ -16,6 +23,11 @@ from .report_generator import AcceptanceReport, ReportGenerator
 from .validation_engine import ValidationEngine, ValidationResult
 
 __all__ = [
+    "ClimateFloorBuilder",
+    "ClimateFloorConfig",
+    "ClimateFloorPoint",
+    "ClimateFloorRegistry",
+    "ClimateFloorTable",
     "ClimatologyCalculator",
     "GaussianEMOS",
     "gaussian_crps",

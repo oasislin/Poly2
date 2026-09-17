@@ -117,6 +117,9 @@ class TestClimatologyCalculations:
         assert mu_min < mu_max
 
 
+@pytest.mark.skip(
+    reason="Legacy WU SQLite database (wunderground.db) quarantined to data/legacy-v1-suspect/ in Task 01"
+)
 class TestRealDatabaseClimatology:
     """Test ClimatologyCalculator against real observations in SQLite."""
 
