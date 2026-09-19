@@ -1,16 +1,16 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-09-04 14:07:02
+updated: 2026-09-19 21:55:00
 ---
 # 项目状态（唯一状态入口）
 
-- **当前阶段**：Phase 1.5 —— 数据管道重建与校准语料库
-- **活跃工作流**：Task 01（基线封存）与 Task 09（GEFS 11 站特征提取）均已结项闭环；KDCA 已正式退役移除；准备进入 Task 02（IEM 管道正式化）
-- **冻结产物**：`docs/frozen/phase1/`（M0'/Round 5 全套审计产物 18 份，Git Tag `phase1-final`，只读）
+- **当前阶段**：Phase 1.5 全部结项闭环 —— 准备进入 Phase 2（盘口定价、套利与执行引擎）
+- **活跃工作流**：Task 01~09 全部结项闭环；`calib-dataset-v2.0` 正式发布（528 文件，六重大门全部 PASS，Active 11 站，KDCA 彻底退役）；准备进入 Phase 2 开工前三项 ADR 裁决
+- **冻结产物**：`docs/frozen/phase1/`（只读），`data/processed/calib-dataset-v2.0/`（生产级统一校准数据集 v2.0）
 - **隔离区**：`data/legacy-v1-suspect/`（Wunderground 等旧版疑似污染数据已物理隔离，SUPERSEDED）
-- **为什么处于 Phase 1.5**：见 `docs/adr/ADR-0007：数据源重铸与站点宇宙扩展（M0'  Round 5 综合裁决）.md`
-- **Phase 2 开工条件**：Task 08 完成 + 项目方案 v2.6 §8.1 三条 ADR 条目裁决
+- **为什么处于当前节点**：Phase 1.5 底层数据管道与特征矩阵重铸全面完成（见 `docs/reports/phase1.5-task08-dataset-release-report.md`）
+- **Phase 2 开工条件**：Task 08 已完成（✅）；待推进项目方案 v2.6 §8.1 三条 ADR 条目裁决后正式开工 Phase 2
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-09-11）
+（最近更新：2026-09-19）
 
