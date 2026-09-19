@@ -19,7 +19,7 @@
 
 随着 Task 06 生产级特征库（Feature Store v2，11 站 × 27 年 = 107,251 站-日）顺利落盘与闭环，系统已构建起完整的真值与特征矩阵。
 **Task 07 的核心使命是扩展台站元数据中央字典（`STATION_METADATA`）与固化采集入口单点 ℉→℃ 归一化关卡**：
-1. 完善 12 站美国站池（11 交易站 + KDCA 观察站）的六要素元数据定义（经纬度、高程、时区、单位、发报特性与网络标签）；
+1. 完善 Active 11 活跃交易站的六要素元数据定义（经纬度、高程、时区、单位、发报特性与网络标签），彻底核销 KDCA 站；
 2. 确保所有外部数据源在采集入口执行单点 ℉→℃ 归一化，使得后续管道内部全程以摄氏度运行，杜绝物理越界校验被误触发或漏触发；
 3. 扩展并强化单元测试集，保障全局元数据契约不可篡改。
 
@@ -28,10 +28,10 @@
 ## 2. 产物交付清单要求
 
 1. **中央元数据模块升级**：
-   - `src/data_processing/constants.py`（升级至 v2，六要素属性全量齐备）
+   - `src/data_processing/constants.py`（升级至 v2，Active 11 站六要素属性全量齐备）
 2. **测试套件扩展**：
    - `tests/unit/data_processing/test_unit_converter.py`（单点归一化扩展测试）
-   - `tests/unit/data_processing/test_constants.py`（或元数据契约测试，验证 12 站六要素完整性）
+   - `tests/unit/data_processing/test_constants.py`（元数据契约测试，验证 Active 11 站六要素完整性与 KDCA 严格隔离）
 3. **质检报告**：
    - `docs/reports/phase1.5-task07-metadata-expansion-report.md`
 4. **GEFS 真实网络冒烟测试**：

@@ -181,3 +181,45 @@ class UnitConverter:
             unit = "C"
 
         return convert_temperature(data, from_unit=unit, to_unit="C")
+
+    def normalize_observations(
+        self,
+        df: pd.DataFrame,
+        station_id: Optional[str] = None,
+        columns: Iterable[str] = ("temp_max", "temp_min"),
+    ) -> pd.DataFrame:
+        """Normalize observation temperature columns to Celsius (°C) based on station metadata.
+
+        If station_id is not explicitly passed, inspects 'station_id' or 'station' column in df.
+        Returns a copy with temperature columns converted to Celsius.
+        """
+        df_out = df.copy()
+        if df_out.empty:
+            return df_out
+
+        target_cols = [c for c in columns if c in df_out.columns]
+        if not target_cols:
+            return df_out
+
+        station_col_name = None
+        if station_id is None:
+            if "station_id" in df_out.columns:
+                station_col_name = "station_id"
+            elif "station" in df_out.columns:
+                station_col_name = "station"
+
+        if station_id is not None:
+            from_unit = STATION_DEFAULT_UNITS.get(station_id, "C")
+            return self.convert_dataframe(df_out, columns=target_cols, from_unit=from_unit, to_unit="C")
+        elif station_col_name is not None:
+            unique_stations = df_out[station_col_name].dropna().unique()
+            for st in unique_stations:
+                from_unit = STATION_DEFAULT_UNITS.get(str(st), "C")
+                if from_unit != "C":
+                    mask = df_out[station_col_name] == st
+                    for col in target_cols:
+                        vals = df_out.loc[mask, col].values
+                        df_out.loc[mask, col] = convert_temperature(vals, from_unit=from_unit, to_unit="C")
+            return df_out
+        else:
+            return df_out

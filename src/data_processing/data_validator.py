@@ -10,7 +10,7 @@ Validates:
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -122,8 +122,17 @@ class DataValidator:
 
         return self._finalize_result(errors, warnings, {"row_count": len(df)})
 
-    def validate_observations(self, df: pd.DataFrame) -> ValidationResult:
-        """Validate historical weather station observations DataFrame."""
+    def validate_observations(
+        self,
+        df: pd.DataFrame,
+        auto_normalize: bool = True,
+        station_id: Optional[str] = None,
+    ) -> ValidationResult:
+        """Validate historical weather station observations DataFrame.
+
+        If auto_normalize is True (default), temperatures are converted to Celsius based on
+        STATION_METADATA before physical bounds checks are evaluated.
+        """
         errors: List[str] = []
         warnings: List[str] = []
 
@@ -133,10 +142,17 @@ class DataValidator:
 
         self._check_missing_columns(df, REQUIRED_OBS_COLUMNS, errors)
         self._check_nulls_and_infs(df, ["temp_max", "temp_min"], errors)
-        self._check_physical_temp_ranges(df, ["temp_max", "temp_min"], errors)
 
-        if "temp_min" in df.columns and "temp_max" in df.columns:
-            if (df["temp_min"] > df["temp_max"]).any():
+        eval_df = df
+        if auto_normalize and "temp_max" in df.columns and "temp_min" in df.columns:
+            from src.data_processing.unit_converter import UnitConverter
+            converter = UnitConverter()
+            eval_df = converter.normalize_observations(df, station_id=station_id)
+
+        self._check_physical_temp_ranges(eval_df, ["temp_max", "temp_min"], errors)
+
+        if "temp_min" in eval_df.columns and "temp_max" in eval_df.columns:
+            if (eval_df["temp_min"] > eval_df["temp_max"]).any():
                 errors.append("Found rows where temp_min exceeds temp_max.")
 
         return self._finalize_result(errors, warnings, {"row_count": len(df)})

@@ -141,3 +141,70 @@ class TestStationAutoConversion:
         # GEFS source is Kelvin
         val_c = converter.to_standard_celsius(298.15, source="gefs")
         assert val_c == pytest.approx(25.0, abs=1e-4)
+
+    def test_all_active_stations_auto_conversion(self):
+        from src.data_processing.constants import ACTIVE_11_STATIONS
+        converter = UnitConverter()
+        # All Active 11 stations must default to Fahrenheit and convert 68°F to 20°C
+        for st in ACTIVE_11_STATIONS:
+            c = converter.to_standard_celsius(68.0, station_id=st)
+            assert c == pytest.approx(20.0, abs=1e-4), f"{st} conversion failed"
+
+    def test_fahrenheit_input_normalized_before_physical_check(self):
+        """
+        Enforce spec v2.6 §2.3 requirement:
+        All observation inputs must be normalized via STATION_METADATA to Celsius
+        before physical boundary [-60°C, +60°C] checks, preventing Fahrenheit
+        values (e.g. 86°F = 30°C) from erroneously triggering out-of-bounds errors.
+        """
+        from src.data_processing.data_validator import DataValidator
+
+        # 1. Create raw Fahrenheit observation data (86°F max, 50°F min) for Chicago KORD
+        raw_obs = pd.DataFrame({
+            "date": ["2026-08-15"],
+            "station_id": ["KORD"],
+            "temp_max": [86.0],  # 86°F == 30.0°C
+            "temp_min": [50.0],  # 50°F == 10.0°C
+        })
+
+        validator = DataValidator(strict=False)
+
+        # 2. Raw Fahrenheit input validated with default auto_normalize=True MUST PASS seamlessly
+        auto_norm_result = validator.validate_observations(raw_obs)
+        assert auto_norm_result.is_valid
+        assert len(auto_norm_result.errors) == 0
+
+        # 3. If normalization is explicitly disabled, 86°F (> 60°C) MUST FAIL
+        unnormalized_result = validator.validate_observations(raw_obs, auto_normalize=False)
+        assert not unnormalized_result.is_valid
+        assert any("outside physical range" in err for err in unnormalized_result.errors)
+
+        # 4. Pre-normalized via UnitConverter.normalize_observations MUST PASS
+        converter = UnitConverter()
+        norm_obs = converter.normalize_observations(raw_obs)
+        assert norm_obs["temp_max"].iloc[0] == pytest.approx(30.0, abs=1e-4)
+        assert norm_obs["temp_min"].iloc[0] == pytest.approx(10.0, abs=1e-4)
+
+        norm_result = validator.validate_observations(norm_obs, auto_normalize=False)
+        assert norm_result.is_valid
+        assert len(norm_result.errors) == 0
+
+    def test_normalize_observations_multi_station(self):
+        converter = UnitConverter()
+        multi_df = pd.DataFrame({
+            "date": ["2026-07-01", "2026-07-01", "2026-07-01"],
+            "station_id": ["KORD", "KBKF", "ZSPD"],
+            "temp_max": [86.0, 77.0, 32.0],  # KORD/KBKF in F (86->30, 77->25), ZSPD in C (32->32)
+            "temp_min": [68.0, 50.0, 24.0],  # 68->20, 50->10, 24->24
+        })
+
+        converted = converter.normalize_observations(multi_df)
+        # KORD
+        assert converted.loc[0, "temp_max"] == pytest.approx(30.0, abs=1e-4)
+        assert converted.loc[0, "temp_min"] == pytest.approx(20.0, abs=1e-4)
+        # KBKF
+        assert converted.loc[1, "temp_max"] == pytest.approx(25.0, abs=1e-4)
+        assert converted.loc[1, "temp_min"] == pytest.approx(10.0, abs=1e-4)
+        # ZSPD (unchanged)
+        assert converted.loc[2, "temp_max"] == pytest.approx(32.0, abs=1e-4)
+        assert converted.loc[2, "temp_min"] == pytest.approx(24.0, abs=1e-4)

@@ -38,6 +38,7 @@ from src.data_acquisition.observation_adapter import (
     ObservationRecord,
 )
 from src.data_processing.constants import ACTIVE_11_STATIONS, STATION_METADATA
+from src.data_processing.unit_converter import fahrenheit_to_celsius
 from src.utils.logger import contextualize, get_logger
 
 logger = get_logger("poly.pipeline.iem_adapter")
@@ -99,6 +100,19 @@ def _coalesce(*values: Any) -> Any:
         if v is not None:
             return v
     return None
+
+
+def _safe_float(val: Any) -> Optional[float]:
+    """Safely convert raw string or number to float, returning None on non-numeric or missing markers."""
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s or s.lower() in ("null", "none", "m", "t", "nan", "-"):
+        return None
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
 
 
 def parse_metar_dry_bulb(metar_text: str) -> Optional[float]:
@@ -308,12 +322,16 @@ class IemAdapter(BaseObservationAdapter):
         t_temp, t_dew = remarks.get("temp_high_res"), remarks.get("dewpoint_high_res")
 
         body_temp_c = parse_metar_dry_bulb(metar_text)
-        tmpc_raw = row.get("tmpc")
-        csv_temp_c = float(tmpc_raw) if tmpc_raw and tmpc_raw.lower() != "null" else None
-        final_temp_c = _coalesce(t_temp, body_temp_c, csv_temp_c)
+        csv_temp_c = _safe_float(row.get("tmpc"))
+        tmpf_val = _safe_float(row.get("tmpf"))
+        csv_from_tmpf = (
+            round(float(fahrenheit_to_celsius(tmpf_val)), TEMP_ROUND_DECIMALS)
+            if tmpf_val is not None
+            else None
+        )
+        final_temp_c = _coalesce(t_temp, body_temp_c, csv_temp_c, csv_from_tmpf)
 
-        dwpc_raw = row.get("dwpc")
-        csv_dew_c = float(dwpc_raw) if dwpc_raw and dwpc_raw.lower() != "null" else None
+        csv_dew_c = _safe_float(row.get("dwpc"))
         final_dew_c = _coalesce(t_dew, csv_dew_c)
 
         is_era2 = dt_utc.year >= ERA2_START_YEAR

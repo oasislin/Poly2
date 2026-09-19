@@ -1,6 +1,7 @@
 """Data processing package for Polymarket Temperature Prediction System."""
 
 from src.data_processing.constants import (
+    ACTIVE_11_STATIONS,
     STATION_COORDINATES,
     STATION_DEFAULT_UNITS,
     STATION_METADATA,
@@ -64,6 +65,7 @@ __all__ = [
     "STATION_COORDINATES",
     "STATION_TIMEZONES",
     "STATION_DEFAULT_UNITS",
+    "ACTIVE_11_STATIONS",
     "ForecastWindow",
     "TimeAligner",
     "TimeAlignmentError",
