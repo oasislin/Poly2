@@ -138,22 +138,40 @@ class TestMatrixPartitionsGeneration:
     """Test generating the 40 standard training matrix partitions."""
 
     def test_get_all_matrix_keys(self):
+        from src.data_processing.constants import ACTIVE_10_STATIONS
         partitioner = DatasetPartitioner()
-        keys = partitioner.get_all_matrix_keys()
-        
-        # 2 stations * 4 seasons * (3 max nodes + 2 min nodes = 5 nodes) = 40 keys
-        assert len(keys) == 40
-        
-        # Check components
-        stations = {k[0] for k in keys}
-        seasons = {k[1] for k in keys}
-        target_types = {k[2] for k in keys}
-        lead_buckets = {k[3] for k in keys}
 
-        assert stations == {"ZSPD", "KDEN"}
-        assert seasons == {"Spring", "Summer", "Autumn", "Winter"}
-        assert target_types == {"max", "min"}
-        assert lead_buckets == {6, 24, 30, 48, 54}
+        # Default Active 10 trading universe: 10 stations * 4 seasons * 5 nodes = 200 keys
+        keys_200 = partitioner.get_all_matrix_keys()
+        assert len(keys_200) == 200
+        assert {k[0] for k in keys_200} == set(ACTIVE_10_STATIONS)
+        assert {k[1] for k in keys_200} == {"Spring", "Summer", "Autumn", "Winter"}
+        assert {k[2] for k in keys_200} == {"max", "min"}
+
+        # Legacy Phase 1 stations: 2 stations * 4 seasons * 5 nodes = 40 keys
+        keys_40 = partitioner.get_all_matrix_keys(stations=["ZSPD", "KDEN"])
+        assert len(keys_40) == 40
+        assert {k[0] for k in keys_40} == {"ZSPD", "KDEN"}
+        assert {k[1] for k in keys_40} == {"Spring", "Summer", "Autumn", "Winter"}
+        assert {k[2] for k in keys_40} == {"max", "min"}
+        assert {k[3] for k in keys_40} == {6, 24, 30, 48, 54}
+
+    def test_get_station_lead_nodes_adaptive(self):
+        partitioner = DatasetPartitioner()
+        # Eastern
+        assert partitioner.get_station_lead_nodes("KLGA", target_type="max") == [66, 42, 18]
+        assert partitioner.get_station_lead_nodes("KLGA", target_type="min") == [60, 36]
+        # Pacific
+        assert partitioner.get_station_lead_nodes("KSEA", target_type="max") == [72, 48, 24]
+        assert partitioner.get_station_lead_nodes("KSEA", target_type="min") == [66, 42]
+        # Central Winter (CST) vs Summer (CDT)
+        assert partitioner.get_station_lead_nodes("KORD", season="Winter", target_type="max") == [72, 48, 24]
+        assert partitioner.get_station_lead_nodes("KORD", season="Summer", target_type="max") == [66, 42, 18]
+        assert partitioner.get_station_lead_nodes("KORD", target_type="min") == [60, 36]
+        # Legacy
+        assert partitioner.get_station_lead_nodes("ZSPD", target_type="max") == [54, 30, 6]
+        assert partitioner.get_station_lead_nodes("ZSPD", target_type="min") == [48, 24]
+
 
 
 class TestPartitionerPathSecurityAndIsolation:

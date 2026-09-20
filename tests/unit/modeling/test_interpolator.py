@@ -164,3 +164,41 @@ class TestFullGridInterpolation:
         for lead in grid_leads:
             assert lead in grid_min
             assert isinstance(grid_min[lead], GaussianEMOS)
+
+
+class TestHoldoutNodeInterpolation:
+    """Test reconstructing virtual models for holdout nodes (Gate 2 validation)."""
+
+    def test_interpolate_median_holdout_node(self, anchor_models_max):
+        interpolator = LeadTimeInterpolator()
+        # anchor_models_max has anchors {6, 30, 54} -> median is 30
+        lead, virt_model = interpolator.interpolate_holdout_node("max", anchor_models_max)
+        assert lead == 30
+        assert isinstance(virt_model, GaussianEMOS)
+
+        # 30h interpolated between 6h and 54h:
+        # weight = (30 - 6) / (54 - 6) = 24 / 48 = 0.5
+        expected_a = 0.5 * (anchor_models_max[6].a + anchor_models_max[54].a)
+        expected_b = 0.5 * (anchor_models_max[6].b + anchor_models_max[54].b)
+        assert np.isclose(virt_model.a, expected_a)
+        assert np.isclose(virt_model.b, expected_b)
+
+    def test_interpolate_explicit_holdout_node(self, anchor_models_max):
+        interpolator = LeadTimeInterpolator()
+        lead, virt_model = interpolator.interpolate_holdout_node(
+            "max", anchor_models_max, holdout_lead=30
+        )
+        assert lead == 30
+        assert np.isclose(virt_model.a, 0.5 * (anchor_models_max[6].a + anchor_models_max[54].a))
+
+    def test_insufficient_anchors_raises(self, anchor_models_min):
+        interpolator = LeadTimeInterpolator()
+        # anchor_models_min has only 2 anchors {24, 48} -> cannot hold out a middle node
+        with pytest.raises(ValueError, match="At least 3 anchor models required"):
+            interpolator.interpolate_holdout_node("min", anchor_models_min)
+
+    def test_nonexistent_holdout_lead_raises(self, anchor_models_max):
+        interpolator = LeadTimeInterpolator()
+        with pytest.raises(KeyError, match="Specified holdout lead 99 not found"):
+            interpolator.interpolate_holdout_node("max", anchor_models_max, holdout_lead=99)
+

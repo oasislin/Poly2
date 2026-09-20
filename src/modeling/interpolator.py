@@ -130,9 +130,47 @@ class LeadTimeInterpolator:
         anchor_models: Dict[int, GaussianEMOS],
         grid_leads: Optional[Sequence[int]] = None,
     ) -> Dict[int, GaussianEMOS]:
-        """Construct the complete dense 6h-spaced model dictionary across 6h to 54h."""
+        """Construct the complete dense 6h-spaced model dictionary across 6h to 54h (or custom grid)."""
         leads = list(grid_leads or [6, 12, 18, 24, 30, 36, 42, 48, 54])
         return {
             lead: self.get_model_at_lead(target_type, lead, anchor_models)
             for lead in leads
         }
+
+    def interpolate_holdout_node(
+        self,
+        target_type: str,
+        anchor_models: Dict[int, GaussianEMOS],
+        holdout_lead: Optional[int] = None,
+    ) -> Tuple[int, GaussianEMOS]:
+        """Reconstruct a virtual interpolated model for a holdout node from remaining outer anchors (Gate 2).
+
+        Args:
+            target_type: 'max' or 'min'
+            anchor_models: Dictionary mapping lead hours to GaussianEMOS models
+            holdout_lead: Optional specific lead hour to hold out. If None, automatically selects
+                          the median / middle anchor lead.
+
+        Returns:
+            Tuple[int, GaussianEMOS]: (holdout_lead, virtual_model)
+        """
+        sorted_leads = sorted(anchor_models.keys())
+        if len(sorted_leads) < 3:
+            raise ValueError(f"At least 3 anchor models required for holdout interpolation, got {len(sorted_leads)}")
+
+        if holdout_lead is None:
+            # Select median anchor node
+            mid_idx = len(sorted_leads) // 2
+            target_lead = sorted_leads[mid_idx]
+        else:
+            target_lead = int(holdout_lead)
+            if target_lead not in anchor_models:
+                raise KeyError(f"Specified holdout lead {target_lead} not found in anchor_models: {sorted_leads}")
+
+        # Construct outer anchors excluding target_lead
+        remaining_anchors = {k: v for k, v in anchor_models.items() if k != target_lead}
+
+        # Interpolate virtual model at target_lead
+        virt_model = self.get_model_at_lead(target_type, target_lead, remaining_anchors)
+        return target_lead, virt_model
+

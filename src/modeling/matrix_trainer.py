@@ -11,23 +11,25 @@ Coordinates:
 
 from dataclasses import dataclass, field
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from src.data_processing.constants import ACTIVE_10_STATIONS
 from src.modeling.climatology import ClimatologyCalculator
 from src.modeling.crps import gaussian_crps
 from src.modeling.degradation import DegradationDecision, DegradationHandler
 from src.modeling.emos_trainer import EMOSOptimizer, ModelTrainingDiagnostics
 from src.modeling.gaussian_emos import GaussianEMOS
-from src.modeling.partitioner import DatasetPartitioner
+from src.modeling.partitioner import DatasetPartitioner, SEASONS
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class MatrixScorecard:
-    """Aggregated scorecard and inventory for all 40 matrix-trained EMOS models."""
+    """Aggregated scorecard and inventory for matrix-trained EMOS models."""
 
     models: Dict[Tuple[str, str, str, int], Tuple[GaussianEMOS, ModelTrainingDiagnostics, DegradationDecision]]
     total_trained: int = 0
@@ -61,7 +63,7 @@ class MatrixScorecard:
             self.mean_crpss_vs_clim = float(np.mean(clim_skills))
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Export all 40 model diagnostics and parameters to a tabular DataFrame."""
+        """Export all model diagnostics and parameters to a tabular DataFrame."""
         records = []
         for (station, season, target_type, lead_bucket), (model, diag, decision) in sorted(self.models.items()):
             a, b, c, d = diag.params
@@ -89,14 +91,14 @@ class MatrixScorecard:
         return pd.DataFrame(records)
 
     def summary_report(self) -> str:
-        """Generate a clean markdown summary report of the 40-model matrix training results."""
+        """Generate a clean markdown summary report of the matrix training results."""
         df = self.to_dataframe()
         lines = [
-            "# Matrix Training Scorecard (40 Models)",
+            f"# Matrix Training Scorecard ({self.total_trained} Models)",
             f"- **Total Models**: {self.total_trained}",
-            f"- **Healthy (Level 1)**: {self.healthy_count} ({self.healthy_count / self.total_trained:.1%})",
-            f"- **Warnings (Soft Alert)**: {self.warning_count} ({self.warning_count / self.total_trained:.1%})",
-            f"- **Degraded (Level 2 Climatology)**: {self.degraded_count} ({self.degraded_count / self.total_trained:.1%})",
+            f"- **Healthy (Level 1)**: {self.healthy_count} ({self.healthy_count / self.total_trained:.1%})" if self.total_trained > 0 else "- **Healthy (Level 1)**: 0",
+            f"- **Warnings (Soft Alert)**: {self.warning_count} ({self.warning_count / self.total_trained:.1%})" if self.total_trained > 0 else "- **Warnings (Soft Alert)**: 0",
+            f"- **Degraded (Level 2 Climatology)**: {self.degraded_count} ({self.degraded_count / self.total_trained:.1%})" if self.total_trained > 0 else "- **Degraded (Level 2 Climatology)**: 0",
             f"- **Average In-Sample CRPSS vs Raw Ensemble**: {self.mean_crpss_vs_raw:+.2%}",
             f"- **Average In-Sample CRPSS vs Climatology**: {self.mean_crpss_vs_clim:+.2%}",
             "",
@@ -113,29 +115,34 @@ class MatrixScorecard:
 
 
 class MatrixTrainer:
-    """Batch training engine orchestrating the 40-model parameter estimation matrix."""
+    """Batch training engine orchestrating the Active 10 parameter estimation matrix."""
 
     def __init__(
         self,
-        storage_manager: Any,
-        climatology_calculator: Any,
+        storage_manager: Optional[Any] = None,
+        climatology_calculator: Optional[Any] = None,
         stations: Optional[Sequence[str]] = None,
         train_start_year: int = 2000,
         train_end_year: int = 2018,
         l2_lambda_d: float = 1e-3,
         random_seed: Optional[int] = 42,
+        min_sample_count: int = 50,
+        calib_dataset_dir: Union[str, Path] = Path("data/processed/calib-dataset-v2.0"),
     ):
         self.storage_manager = storage_manager
         self.climatology_calculator = climatology_calculator
-        self.stations = list(stations or ["ZSPD", "KDEN"])
+        self.stations = list(stations if stations is not None else ACTIVE_10_STATIONS)
         self.train_start_year = train_start_year
         self.train_end_year = train_end_year
         self.l2_lambda_d = l2_lambda_d
         self.random_seed = random_seed
+        self.min_sample_count = min_sample_count
+        self.calib_dataset_dir = Path(calib_dataset_dir)
 
         self.optimizer = EMOSOptimizer(l2_lambda_d=l2_lambda_d, random_seed=random_seed)
-        self.degradation_handler = DegradationHandler()
+        self.degradation_handler = DegradationHandler(min_sample_count=min_sample_count)
         self.partitioner = DatasetPartitioner()
+
 
     def train_slice(
         self,
@@ -164,9 +171,26 @@ class MatrixTrainer:
                 grad_norm=0.0,
                 restarts_used=0,
                 sample_count=n_samples,
+                warnings=[f"Sample count {n_samples} below minimum threshold {self.degradation_handler.min_sample_count}"],
             )
             decision = self.degradation_handler.evaluate(diag)
             return fallback_model, diag, decision
+
+        # Ensure climatology calculator is initialized and fitted
+        if self.climatology_calculator is None:
+            self.climatology_calculator = ClimatologyCalculator(
+                train_start_year=self.train_start_year,
+                train_end_year=self.train_end_year,
+            )
+        if hasattr(self.climatology_calculator, "is_fitted") and not self.climatology_calculator.is_fitted:
+            floor_dir = self.calib_dataset_dir / "climate_floor"
+            if floor_dir.exists():
+                self.climatology_calculator.load_from_floor_parquet_dir(floor_dir)
+            elif hasattr(self.climatology_calculator, "fit_from_db"):
+                try:
+                    self.climatology_calculator.fit_from_db(station_ids=[station_id])
+                except Exception:
+                    pass
 
         # Extract climatology variance floor and params for each sample
         clim_vars = np.array([
@@ -180,63 +204,115 @@ class MatrixTrainer:
         mu_clim = np.array([p[0] for p in clim_params])
         sigma_clim = np.array([p[1] for p in clim_params])
 
-        # Run L-BFGS-B optimization
-        model, diag = self.optimizer.fit(
-            ensemble_mean=df_slice["ensemble_mean"],
-            ensemble_variance=df_slice["ensemble_variance"],
-            sigma_clim_squared=clim_vars,
-            observed_temp=df_slice["observed_temp"],
-            mu_clim=mu_clim,
-            sigma_clim=sigma_clim,
-        )
+        try:
+            # Run L-BFGS-B optimization
+            model, diag = self.optimizer.fit(
+                ensemble_mean=df_slice["ensemble_mean"],
+                ensemble_variance=df_slice["ensemble_variance"],
+                sigma_clim_squared=clim_vars,
+                observed_temp=df_slice["observed_temp"],
+                mu_clim=mu_clim,
+                sigma_clim=sigma_clim,
+            )
 
-        # Compute sample-level CRPS for paired statistical testing in degradation handler
-        pred_mu, pred_sigma = model.compute_params(
-            ensemble_mean=df_slice["ensemble_mean"].values,
-            ensemble_variance=df_slice["ensemble_variance"].values,
-            sigma_clim_squared=clim_vars,
-        )
-        emos_sample_crps = gaussian_crps(df_slice["observed_temp"].values, pred_mu, pred_sigma)
-        clim_sample_crps = gaussian_crps(df_slice["observed_temp"].values, mu_clim, sigma_clim)
+            # Compute sample-level CRPS for paired statistical testing in degradation handler
+            pred_mu, pred_sigma = model.compute_params(
+                ensemble_mean=df_slice["ensemble_mean"].values,
+                ensemble_variance=df_slice["ensemble_variance"].values,
+                sigma_clim_squared=clim_vars,
+            )
+            emos_sample_crps = gaussian_crps(df_slice["observed_temp"].values, pred_mu, pred_sigma)
+            clim_sample_crps = gaussian_crps(df_slice["observed_temp"].values, mu_clim, sigma_clim)
 
-        # Evaluate degradation
-        decision = self.degradation_handler.evaluate(
-            diagnostics=diag,
-            emos_sample_crps=emos_sample_crps,
-            clim_sample_crps=clim_sample_crps,
-        )
+            # Evaluate degradation
+            decision = self.degradation_handler.evaluate(
+                diagnostics=diag,
+                emos_sample_crps=emos_sample_crps,
+                clim_sample_crps=clim_sample_crps,
+            )
 
-        return model, diag, decision
+            # If degraded, enforce identity fallback model parameters
+            if decision.is_degraded:
+                model = GaussianEMOS(a=0.0, b=1.0, c=0.0, d=1.0)
+
+            return model, diag, decision
+
+        except Exception as exc:
+            logger.warning(
+                "Optimization exception for %s %s %s lead %dh: %s. Degrading to Level 2 Climatology.",
+                station_id, season, target_type, lead_bucket, exc,
+            )
+            fallback_model = GaussianEMOS(a=0.0, b=1.0, c=0.0, d=1.0)
+            diag = ModelTrainingDiagnostics(
+                success=False,
+                params=(0.0, 1.0, 0.0, 1.0),
+                crps_in_sample=0.0,
+                crps_raw_ensemble=0.0,
+                crps_climatology=0.0,
+                crpss_vs_raw=0.0,
+                crpss_vs_clim=0.0,
+                n_iterations=0,
+                n_evaluations=0,
+                grad_norm=0.0,
+                restarts_used=0,
+                sample_count=n_samples,
+                warnings=[f"Optimization exception: {exc}"],
+            )
+            decision = self.degradation_handler.evaluate(diag)
+            return fallback_model, diag, decision
 
     def train_all(self) -> MatrixScorecard:
-        """Batch train all 40 matrix subsets across all configured stations."""
+        """Batch train all matrix subsets across all configured stations."""
         models: Dict[Tuple[str, str, str, int], Tuple[GaussianEMOS, ModelTrainingDiagnostics, DegradationDecision]] = {}
 
         for station in self.stations:
             for target_type in ["max", "min"]:
-                lead_nodes = self.partitioner.get_lead_time_nodes(target_type)
-                for lead_bucket in lead_nodes:
-                    # Load full training dataset for (station, target_type, lead_bucket)
-                    df_full = self.storage_manager.load_training_dataset(
-                        station_id=station,
-                        target_type=target_type,
-                        lead_time_bucket=lead_bucket,
-                        start_year=self.train_start_year,
-                        end_year=self.train_end_year,
+                # If using high-performance partitioner dataset (no custom storage_manager):
+                # Pre-load full aligned dataset across all leads and years for this (station, target_type) once!
+                df_station_aligned = None
+                if self.storage_manager is None or not hasattr(self.storage_manager, "load_training_dataset"):
+                    try:
+                        df_station_aligned = self.partitioner.load_training_dataset(
+                            station=station,
+                            start_year=self.train_start_year,
+                            end_year=self.train_end_year,
+                            target_type=target_type,
+                            base_dir=self.calib_dataset_dir,
+                        )
+                    except Exception as exc:
+                        logger.warning("Failed to pre-load training dataset for %s %s: %s", station, target_type, exc)
+                        df_station_aligned = pd.DataFrame()
+
+                for season in SEASONS:
+                    lead_nodes = self.partitioner.get_station_lead_nodes(
+                        station, season=season, target_type=target_type
                     )
+                    for lead_bucket in lead_nodes:
+                        if self.storage_manager is not None and hasattr(self.storage_manager, "load_training_dataset"):
+                            df_full = self.storage_manager.load_training_dataset(
+                                station_id=station,
+                                target_type=target_type,
+                                lead_time_bucket=lead_bucket,
+                                start_year=self.train_start_year,
+                                end_year=self.train_end_year,
+                            )
+                            seasonal_splits = self.partitioner.split_by_season(df_full, date_col="target_date")
+                            df_slice = seasonal_splits.get(season, pd.DataFrame())
+                        else:
+                            if df_station_aligned is not None and not df_station_aligned.empty:
+                                mask = (df_station_aligned["season"] == season) & (df_station_aligned["lead_hours"] == lead_bucket)
+                                df_slice = df_station_aligned[mask].copy()
+                            else:
+                                df_slice = pd.DataFrame()
 
-                    # Split into 4 seasonal DataFrames
-                    seasonal_splits = self.partitioner.split_by_season(df_full, date_col="target_date")
-
-                    for season in ["Spring", "Summer", "Autumn", "Winter"]:
-                        df_season = seasonal_splits[season]
                         model, diag, decision = self.train_slice(
                             station_id=station,
                             season=season,
                             target_type=target_type,
                             lead_bucket=lead_bucket,
-                            df_slice=df_season,
+                            df_slice=df_slice,
                         )
                         models[(station, season, target_type, lead_bucket)] = (model, diag, decision)
 
         return MatrixScorecard(models=models)
+

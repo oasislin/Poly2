@@ -390,3 +390,19 @@ ACTIVE_11_STATIONS: Tuple[str, ...] = (
     "KAUS",
 )
 
+# The 10 active US trading universe stations approved for Phase 2 Task 01 calibration matrix
+# Excludes KBKF (Tier 3 warning settlement target)
+ACTIVE_10_STATIONS: Tuple[str, ...] = (
+    "KORD",
+    "KLGA",
+    "KATL",
+    "KDAL",
+    "KSEA",
+    "KLAX",
+    "KHOU",
+    "KMIA",
+    "KSFO",
+    "KAUS",
+)
+
+

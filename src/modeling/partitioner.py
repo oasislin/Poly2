@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from src.data_processing.constants import (
+    ACTIVE_10_STATIONS,
     ACTIVE_11_STATIONS,
     STATION_METADATA,
     STATION_TIMEZONES,
@@ -254,6 +255,81 @@ class DatasetPartitioner:
         return list(LEAD_TIME_NODES[t_type])
 
     @classmethod
+    def get_station_lead_nodes(
+        cls,
+        station_id: str,
+        season: Optional[str] = None,
+        target_type: Optional[str] = None,
+    ) -> Union[Dict[str, List[int]], List[int]]:
+        """Return the adaptive discrete lead time training nodes for a station and season.
+
+        Eliminates clock drift across US timezones and Daylight Saving Time (DST) shifts.
+        - Eastern (KLGA, KATL, KMIA): Max {66, 42, 18}, Min {60, 36}
+        - Pacific (KSEA, KLAX, KSFO): Max {72, 48, 24}, Min {66, 42}
+        - Central (KORD, KDAL, KHOU, KAUS):
+            - Winter (CST): Max {72, 48, 24}, Min {60, 36}
+            - Spring/Summer/Autumn (CDT): Max {66, 42, 18}, Min {60, 36}
+        - Mountain (KBKF):
+            - Winter (MST): Max {72, 48, 24}, Min {60, 36}
+            - Spring/Summer/Autumn (MDT): Max {66, 42, 18}, Min {60, 36}
+        - Legacy stations (ZSPD, KDEN):
+            - Max {54, 30, 6}, Min {48, 24}
+
+        Returns:
+            If target_type is specified: List[int]
+            Otherwise: Dict[str, List[int]] mapping 'max' and 'min' to their lead nodes.
+        """
+        st_norm = validate_station_id(station_id)
+        tz_name = STATION_TIMEZONES.get(st_norm, "")
+
+        if st_norm in STATION_UTC_OFFSETS and st_norm not in ACTIVE_11_STATIONS:
+            # Legacy Phase 1 stations
+            nodes = {
+                "max": [54, 30, 6],
+                "min": [48, 24],
+            }
+        elif tz_name == "America/New_York":
+            # Eastern Time (KLGA, KATL, KMIA)
+            nodes = {
+                "max": [66, 42, 18],
+                "min": [60, 36],
+            }
+        elif tz_name == "America/Los_Angeles":
+            # Pacific Time (KSEA, KLAX, KSFO)
+            nodes = {
+                "max": [72, 48, 24],
+                "min": [66, 42],
+            }
+        elif tz_name in ("America/Chicago", "America/Denver"):
+            # Central Time (KORD, KDAL, KHOU, KAUS) and Mountain Time (KBKF)
+            if season == "Winter":
+                nodes = {
+                    "max": [72, 48, 24],
+                    "min": [60, 36],
+                }
+            else:
+                nodes = {
+                    "max": [66, 42, 18],
+                    "min": [60, 36],
+                }
+        else:
+            # Fallback to standard lead nodes
+            nodes = {
+                "max": [54, 30, 6],
+                "min": [48, 24],
+            }
+
+        if target_type is not None:
+            t_norm = target_type.strip().lower()
+            if t_norm in ("tmax", "max"):
+                return list(nodes["max"])
+            elif t_norm in ("tmin", "min"):
+                return list(nodes["min"])
+            raise ValueError(f"Unknown target_type: {target_type}, expected 'max' or 'min'")
+
+        return nodes
+
+    @classmethod
     def split_by_season(
         cls,
         df: pd.DataFrame,
@@ -272,13 +348,22 @@ class DatasetPartitioner:
         }
 
     @classmethod
-    def get_all_matrix_keys(cls) -> List[Tuple[str, str, str, int]]:
-        """Return the exhaustive list of 40 training matrix keys: (station_id, season, target_type, lead_bucket)."""
+    def get_all_matrix_keys(
+        cls,
+        stations: Optional[Sequence[str]] = None,
+    ) -> List[Tuple[str, str, str, int]]:
+        """Return the exhaustive list of training matrix keys: (station_id, season, target_type, lead_bucket).
+
+        Defaults to the 200 keys for ACTIVE_10_STATIONS.
+        If legacy stations (e.g. ['ZSPD', 'KDEN']) are passed, returns their 40 keys.
+        """
+        st_list = list(stations) if stations is not None else list(ACTIVE_10_STATIONS)
         keys = []
-        for station in sorted(STATION_UTC_OFFSETS.keys()):
+        for station in sorted(st_list):
             for season in SEASONS:
+                station_nodes = cls.get_station_lead_nodes(station, season=season)
                 for target_type in ["max", "min"]:
-                    for lead in LEAD_TIME_NODES[target_type]:
+                    for lead in station_nodes[target_type]:
                         keys.append((station, season, target_type, lead))
         return keys
 
