@@ -164,3 +164,53 @@ class TestTimeWallAndValidation:
         f4_train, f4_test = folds[3]
         assert f4_train == (2010, 2017)
         assert f4_test == 2018
+
+    def test_validation_engine_loads_direct_from_calib_dataset(self, tmp_path):
+        """ValidationEngine loads 2019 validation data directly via DatasetPartitioner when storage_manager is None."""
+        clim_calc = MockClimForValidation()
+        registry = ModelRegistry(base_dir=tmp_path / "models")
+
+        engine = ValidationEngine(
+            storage_manager=None,
+            climatology_calculator=clim_calc,
+            model_registry=registry,
+            train_end_year=2018,
+            val_start_year=2019,
+            val_end_year=2019,
+        )
+
+        df_val = engine.load_val_data("KORD", "max", 42)
+        assert not df_val.empty
+        years = pd.to_datetime(df_val["target_date"]).dt.year.unique()
+        assert list(years) == [2019]
+        assert "observed_temp" in df_val.columns
+        assert "ensemble_mean" in df_val.columns
+        assert "ensemble_variance" in df_val.columns
+
+    def test_evaluate_slice_populates_station_and_season_metadata(self, tmp_path):
+        """evaluate_slice must annotate df_daily with station_id, season, target_type, and lead_hours."""
+        storage = MockStorageForValidation()
+        clim_calc = MockClimForValidation()
+        registry = ModelRegistry(base_dir=tmp_path / "models")
+
+        for season in ["Spring", "Summer", "Autumn", "Winter"]:
+            m = GaussianEMOS(a=0.0, b=1.0, c=0.0, d=1.0)
+            registry.save_model(m, "KLGA", season, "max", 42)
+
+        engine = ValidationEngine(
+            storage_manager=storage,
+            climatology_calculator=clim_calc,
+            model_registry=registry,
+            train_end_year=2018,
+            val_start_year=2019,
+            val_end_year=2019,
+        )
+
+        res = engine.evaluate_slice(station_id="KLGA", target_type="max", lead_hours=42, season="Summer")
+        assert res.station_id == "KLGA"
+        assert res.lead_hours == 42
+        assert res.season == "Summer"
+        assert "station_id" in res.df_daily.columns
+        assert (res.df_daily["station_id"] == "KLGA").all()
+        assert (res.df_daily["season"] == "Summer").all()
+

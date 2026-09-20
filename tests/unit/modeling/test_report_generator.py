@@ -166,3 +166,128 @@ class TestTripleAcceptanceGates:
         assert "Gate 1 (PIT Calibration)" in md_text
         assert "Gate 2 (30h Virtual Holdout)" in md_text
         assert "Gate 3 (Extreme Tail Skill & Coverage)" in md_text
+
+    def test_gate1_dual_assertion_skill_and_pit(self):
+        """Gate 1 must assert both PIT uniformity (p > 0.05) AND skill superior to climatology (CRPS_model < CRPS_clim)."""
+        generator = ReportGenerator(pit_alpha_threshold=0.05)
+        np.random.seed(42)
+        uniform_pit = np.random.uniform(0.01, 0.99, 500)
+
+        # 1. Both uniform PIT and CRPS_model < CRPS_clim -> Pass
+        passed, p_val, crps_m, crps_c = generator.evaluate_gate1(
+            pit_values=uniform_pit, crps_model=1.5, crps_clim=2.5
+        )
+        assert passed is True
+        assert p_val > 0.05
+        assert crps_m < crps_c
+
+        # 2. Uniform PIT but model worse than climatology -> Fail
+        passed_bad_skill, _, _, _ = generator.evaluate_gate1(
+            pit_values=uniform_pit, crps_model=3.0, crps_clim=2.5
+        )
+        assert passed_bad_skill is False
+
+        # 3. Biased PIT but good CRPS -> Fail
+        biased_pit = np.random.beta(5, 1, 500)
+        passed_bad_pit, _, _, _ = generator.evaluate_gate1(
+            pit_values=biased_pit, crps_model=1.5, crps_clim=2.5
+        )
+        assert passed_bad_pit is False
+
+    def test_gate2_adaptive_holdout_interpolation_nodes(self):
+        """Gate 2 must verify accuracy conservation (ratio <= 1.05) across adaptive holdout nodes (30h, 42h, 48h)."""
+        generator = ReportGenerator(max_interp_degradation=0.05)
+        np.random.seed(42)
+        uniform_pit = np.random.uniform(0.01, 0.99, 300)
+
+        # Holdout nodes for Eastern (42h), Pacific (48h), Legacy (30h)
+        holdout_cases = [
+            {"node": 42, "crps_virt": 1.54, "crps_real": 1.50, "expected_pass": True},   # 2.67% degradation
+            {"node": 48, "crps_virt": 1.88, "crps_real": 1.80, "expected_pass": True},   # 4.44% degradation
+            {"node": 30, "crps_virt": 2.20, "crps_real": 2.00, "expected_pass": False},  # 10.0% degradation (Fail)
+        ]
+
+        for case in holdout_cases:
+            passed, ratio, p_val = generator.evaluate_gate2_interpolation(
+                crps_virt=case["crps_virt"],
+                crps_real=case["crps_real"],
+                pit_values_virt=uniform_pit,
+            )
+            assert passed is case["expected_pass"]
+            assert np.isclose(ratio, case["crps_virt"] / case["crps_real"])
+
+    def test_gate3_station_aware_extreme_tail_coverage(self):
+        """Gate 3 must compute 10th/90th percentile extremes per station when multi-station data is present."""
+        generator = ReportGenerator(min_extreme_coverage=0.80)
+        np.random.seed(42)
+
+        # Station 1: Chicago (Cold climate, mean 40°F, std 15°F)
+        n1 = 200
+        chicago_obs = np.random.normal(40.0, 15.0, n1)
+        df_chicago = pd.DataFrame({
+            "station_id": "KORD",
+            "target_date": [f"2019-01-{i:02d}" for i in range(1, 201)],
+            "observed_temp": chicago_obs,
+            "in_90_ci": np.random.binomial(1, 0.90, n1).astype(bool),
+            "crps_emos": np.full(n1, 1.2),
+            "crps_clim": np.full(n1, 2.5),
+        })
+
+        # Station 2: Miami (Warm climate, mean 80°F, std 5°F)
+        n2 = 200
+        miami_obs = np.random.normal(80.0, 5.0, n2)
+        df_miami = pd.DataFrame({
+            "station_id": "KMIA",
+            "target_date": [f"2019-01-{i:02d}" for i in range(1, 201)],
+            "observed_temp": miami_obs,
+            "in_90_ci": np.random.binomial(1, 0.88, n2).astype(bool),
+            "crps_emos": np.full(n2, 1.1),
+            "crps_clim": np.full(n2, 2.0),
+        })
+
+        df_combined = pd.concat([df_chicago, df_miami], ignore_index=True)
+
+        passed, cov, emos_ext, clim_ext = generator.evaluate_gate3_extreme_tail(df_combined)
+        assert passed is True
+        assert cov >= 0.80
+        assert emos_ext <= clim_ext
+
+    def test_full_phase2_acceptance_report_markdown_and_scorecard(self, well_calibrated_validation_result):
+        """Test Phase 2 acceptance report rendering with full Active 10 metadata and triple gate details."""
+        generator = ReportGenerator()
+        np.random.seed(42)
+        virt_pit = np.random.uniform(0.01, 0.99, 365)
+
+        station_summaries = {
+            "KORD_max_42h": {
+                "sample_count": 92,
+                "mae_emos": "1.20 °F",
+                "crps_emos": "1.050",
+                "crpss_vs_raw": "+15.20%",
+                "crpss_vs_clim": "+22.50%",
+                "coverage_90_ci": "91.3%",
+            }
+        }
+
+        gate2_details = {
+            "KORD_max_42h": {"crps_virt": 1.07, "crps_real": 1.05, "ratio": 1.019, "passed": True}
+        }
+
+        report = generator.generate_report(
+            val_results={"KORD_max_42h": well_calibrated_validation_result},
+            crps_virt_30h=1.02,
+            crps_real_30h=1.00,
+            pit_virt_30h=virt_pit,
+            gate2_details=gate2_details,
+            station_summaries_extra=station_summaries,
+            total_models_evaluated=200,
+        )
+
+        md = report.to_markdown()
+        assert "Phase 2 Task 01" in md
+        assert "Triple Acceptance" in md
+        assert "Gate 1 (PIT Calibration)" in md
+        assert "Gate 2" in md
+        assert "Gate 3" in md
+        assert "PASSED" in md
+

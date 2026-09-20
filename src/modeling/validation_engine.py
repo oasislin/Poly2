@@ -11,6 +11,7 @@ Implements (v5.9.1 §5):
 
 from dataclasses import dataclass, field
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
@@ -42,11 +43,13 @@ class ValidationResult:
     coverage_90_ci: float
     pit_values: np.ndarray
     df_daily: pd.DataFrame = field(repr=False)
+    season: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize validation result summary to dictionary."""
         return {
             "station_id": self.station_id,
+            "season": self.season,
             "target_type": self.target_type,
             "lead_hours": self.lead_hours,
             "sample_count": self.sample_count,
@@ -66,14 +69,17 @@ class ValidationEngine:
 
     def __init__(
         self,
-        storage_manager: Any,
-        climatology_calculator: Any,
-        model_registry: ModelRegistry,
+        storage_manager: Any = None,
+        climatology_calculator: Any = None,
+        model_registry: Optional[ModelRegistry] = None,
         train_start_year: int = 2000,
         train_end_year: int = 2018,
         val_start_year: int = 2019,
         val_end_year: int = 2019,
+        calib_dataset_dir: Union[str, Path] = Path("data/processed/calib-dataset-v2.0"),
     ):
+        from src.modeling.partitioner import DatasetPartitioner
+
         self.storage_manager = storage_manager
         self.climatology_calculator = climatology_calculator
         self.model_registry = model_registry
@@ -81,6 +87,8 @@ class ValidationEngine:
         self.train_end_year = train_end_year
         self.val_start_year = val_start_year
         self.val_end_year = val_end_year
+        self.calib_dataset_dir = Path(calib_dataset_dir)
+        self.partitioner = DatasetPartitioner()
 
         if self.val_start_year <= self.train_end_year:
             raise ValueError(
@@ -90,13 +98,31 @@ class ValidationEngine:
 
     def load_train_data(self, station_id: str, target_type: str, lead_hours: int) -> pd.DataFrame:
         """Load in-sample training dataset with strict time wall enforcement."""
-        df = self.storage_manager.load_training_dataset(
-            station_id=station_id,
-            target_type=target_type,
-            lead_time_bucket=lead_hours,
-            start_year=self.train_start_year,
-            end_year=self.train_end_year,
-        )
+        df: Optional[pd.DataFrame] = None
+        if self.storage_manager is not None and hasattr(self.storage_manager, "load_training_dataset"):
+            try:
+                loaded = self.storage_manager.load_training_dataset(
+                    station_id=station_id,
+                    target_type=target_type,
+                    lead_time_bucket=lead_hours,
+                    start_year=self.train_start_year,
+                    end_year=self.train_end_year,
+                )
+                if loaded is not None and not loaded.empty:
+                    df = loaded
+            except Exception as exc:
+                logger.debug("StorageManager failed to load training data: %s", exc)
+
+        if df is None or df.empty:
+            df = self.partitioner.load_training_dataset(
+                station=station_id,
+                start_year=self.train_start_year,
+                end_year=self.train_end_year,
+                target_type=target_type,
+                lead_bucket=lead_hours,
+                base_dir=self.calib_dataset_dir,
+            )
+
         years = pd.to_datetime(df["target_date"]).dt.year
         if not (years <= self.train_end_year).all():
             raise ValueError(
@@ -106,13 +132,30 @@ class ValidationEngine:
 
     def load_val_data(self, station_id: str, target_type: str, lead_hours: int) -> pd.DataFrame:
         """Load out-of-sample validation dataset."""
-        df = self.storage_manager.load_training_dataset(
-            station_id=station_id,
-            target_type=target_type,
-            lead_time_bucket=lead_hours,
-            start_year=self.val_start_year,
-            end_year=self.val_end_year,
-        )
+        df: Optional[pd.DataFrame] = None
+        if self.storage_manager is not None and hasattr(self.storage_manager, "load_training_dataset"):
+            try:
+                loaded = self.storage_manager.load_training_dataset(
+                    station_id=station_id,
+                    target_type=target_type,
+                    lead_time_bucket=lead_hours,
+                    start_year=self.val_start_year,
+                    end_year=self.val_end_year,
+                )
+                if loaded is not None and not loaded.empty:
+                    df = loaded
+            except Exception as exc:
+                logger.debug("StorageManager failed to load validation data: %s", exc)
+
+        if df is None or df.empty:
+            df = self.partitioner.load_validation_dataset(
+                station=station_id,
+                year=self.val_start_year,
+                target_type=target_type,
+                lead_bucket=lead_hours,
+                base_dir=self.calib_dataset_dir,
+            )
+
         years = pd.to_datetime(df["target_date"]).dt.year
         if not ((years >= self.val_start_year) & (years <= self.val_end_year)).all():
             raise ValueError(
@@ -126,14 +169,31 @@ class ValidationEngine:
         target_type: str,
         lead_hours: int,
         df_val: Optional[pd.DataFrame] = None,
+        season: Optional[str] = None,
     ) -> ValidationResult:
         """Run out-of-sample evaluation on holdout dataset and compute statistical metrics."""
         if df_val is None:
             df_val = self.load_val_data(station_id, target_type, lead_hours)
 
+        if season is not None and "season" in df_val.columns:
+            df_val = df_val[df_val["season"] == season].copy()
+
         n_samples = len(df_val)
         if n_samples == 0:
-            raise ValueError(f"No validation samples found for {station_id} {target_type} lead={lead_hours}")
+            raise ValueError(f"No validation samples found for {station_id} {target_type} lead={lead_hours} season={season}")
+
+        current_season = season or (self.partitioner.get_season(df_val["target_date"].iloc[0]) if not df_val.empty else "Spring")
+
+        # Ensure climatology calculator is fitted
+        if hasattr(self.climatology_calculator, "is_fitted") and not self.climatology_calculator.is_fitted:
+            floor_dir = self.calib_dataset_dir / "climate_floor"
+            if floor_dir.exists() and hasattr(self.climatology_calculator, "load_from_floor_parquet_dir"):
+                self.climatology_calculator.load_from_floor_parquet_dir(floor_dir)
+            elif hasattr(self.climatology_calculator, "fit_from_db"):
+                try:
+                    self.climatology_calculator.fit_from_db(station_ids=[station_id])
+                except Exception:
+                    pass
 
         # Extract climatology baseline params for all test dates
         clim_vars = np.array([
@@ -148,9 +208,10 @@ class ValidationEngine:
         sigma_clim = np.array([p[1] for p in clim_params])
 
         # Run model inference
+        target_ref_date = df_val["target_date"].iloc[0]
         pred_dist = self.model_registry.predict(
             station_id=station_id,
-            target_date=df_val["target_date"].iloc[0],  # Facade automatically handles season internally
+            target_date=target_ref_date,
             target_type=target_type,
             lead_hours=lead_hours,
             ensemble_mean=df_val["ensemble_mean"].values,
@@ -197,6 +258,10 @@ class ValidationEngine:
         coverage_90 = float(np.mean(in_90_ci))
 
         df_daily = pd.DataFrame({
+            "station_id": station_id,
+            "season": current_season,
+            "target_type": target_type,
+            "lead_hours": lead_hours,
             "target_date": df_val["target_date"].values,
             "observed_temp": obs,
             "ensemble_mean": ens_mean,
@@ -226,6 +291,7 @@ class ValidationEngine:
             coverage_90_ci=coverage_90,
             pit_values=pit_values,
             df_daily=df_daily,
+            season=current_season,
         )
 
     @staticmethod

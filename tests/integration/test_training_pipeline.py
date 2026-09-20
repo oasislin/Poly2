@@ -119,3 +119,42 @@ class TestTrainingPipelineIntegration:
         assert "Train Gaussian EMOS Matrix across stations" in res.stdout
         assert "--stations" in res.stdout
         assert "--output-dir" in res.stdout
+
+    def test_phase2_training_pipeline_report_and_triple_gates(self, tmp_path):
+        """Integration test: pipeline executes with adaptive holdout and writes Phase 2 report."""
+        models_dir = tmp_path / "models"
+        reports_dir = tmp_path / "reports"
+
+        storage = MockPipelineStorageManager()
+        clim_calc = MockPipelineClimatologyCalculator()
+        registry = ModelRegistry(base_dir=models_dir)
+
+        pipeline = TrainingPipeline(
+            storage_manager=storage,
+            climatology_calculator=clim_calc,
+            model_registry=registry,
+            stations=["KLGA", "KORD"],
+            train_start_year=2016,
+            train_end_year=2018,
+            val_start_year=2019,
+            val_end_year=2019,
+            report_dir=reports_dir,
+            report_filename="phase2-task01-model-calibration-acceptance-report.md",
+            random_seed=42,
+        )
+
+        result = pipeline.run()
+        assert isinstance(result, PipelineResult)
+        assert result.acceptance_report is not None
+        assert result.scorecard.total_trained == 40
+        assert len(result.validation_results) == 40
+
+        p2_report_file = reports_dir / "phase2-task01-model-calibration-acceptance-report.md"
+        assert p2_report_file.exists()
+        content = p2_report_file.read_text(encoding="utf-8")
+        assert "Phase 2 Task 01" in content
+        assert "Triple Acceptance" in content
+        assert "Gate 1" in content
+        assert "Gate 2" in content
+        assert "Gate 3" in content
+
