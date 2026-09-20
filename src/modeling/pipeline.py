@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from src.data_processing.constants import ACTIVE_10_STATIONS
 from src.data_processing.storage_manager import StorageManager
 from src.modeling.climatology import ClimatologyCalculator
 from src.modeling.crps import gaussian_crps
@@ -47,7 +48,7 @@ class PipelineResult:
 
 
 class TrainingPipeline:
-    """Master orchestrator for Phase 1B model training, interpolation, persistence, and acceptance testing."""
+    """Master orchestrator for Phase 1B/Phase 2 model training, persistence, and acceptance testing."""
 
     def __init__(
         self,
@@ -69,8 +70,8 @@ class TrainingPipeline:
             train_start_year=train_start_year,
             train_end_year=train_end_year,
         )
-        self.model_registry = model_registry or ModelRegistry()
-        self.stations = list(stations or ["ZSPD", "KDEN"])
+        self.model_registry = model_registry or ModelRegistry(base_dir="data/models")
+        self.stations = list(stations if stations is not None else ACTIVE_10_STATIONS)
         self.train_start_year = train_start_year
         self.train_end_year = train_end_year
         self.val_start_year = val_start_year
@@ -87,12 +88,17 @@ class TrainingPipeline:
 
     def run(self) -> PipelineResult:
         """Execute full training and validation lifecycle with modular step runners."""
-        logger.info("=== Phase 1B Training Pipeline Started ===")
+        logger.info("=== Training Pipeline Started ===")
         self._ensure_climatology_fitted()
 
         # Step 1: Matrix batch training & persistence
         scorecard = self._train_matrix_models()
         self.model_registry.save_scorecard(scorecard, build_dense_grid=True)
+        self.model_registry.save_scorecard_json(
+            scorecard=scorecard,
+            train_start_year=self.train_start_year,
+            train_end_year=self.train_end_year,
+        )
 
         # Step 2: Out-of-sample validation on holdout period
         val_engine, val_results, val_dict = self._run_out_of_sample_validation()
@@ -153,7 +159,7 @@ class TrainingPipeline:
         val_results: Dict[Tuple[str, str, str, int], ValidationResult] = {}
         val_dict: Dict[str, ValidationResult] = {}
 
-        for (station, season, target_type, lead_bucket) in self.partitioner.get_all_matrix_keys():
+        for (station, season, target_type, lead_bucket) in self.partitioner.get_all_matrix_keys(stations=self.stations):
             df_val_full = val_engine.load_val_data(station, target_type, lead_bucket)
             seasonal_splits = self.partitioner.split_by_season(df_val_full, date_col="target_date")
             df_val_season = seasonal_splits[season]
@@ -226,3 +232,114 @@ class TrainingPipeline:
             f.write(report.to_markdown())
         logger.info("Acceptance report saved to %s", report_path)
         return report, report_path
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """CLI entry point for training pipeline execution and parameter persistence."""
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        prog="python -m src.modeling.pipeline",
+        description="End-to-end training pipeline and parameter persistence for Gaussian EMOS models.",
+    )
+    parser.add_argument(
+        "--stations",
+        nargs="+",
+        default=list(ACTIVE_10_STATIONS),
+        help="List of station IDs to calibrate (default: Active 10 trading universe).",
+    )
+    parser.add_argument(
+        "--train-start-year",
+        type=int,
+        default=2000,
+        help="Start year for training window (default: 2000).",
+    )
+    parser.add_argument(
+        "--train-end-year",
+        type=int,
+        default=2018,
+        help="End year for training window (default: 2018).",
+    )
+    parser.add_argument(
+        "--val-start-year",
+        type=int,
+        default=2019,
+        help="Start year for validation window (default: 2019).",
+    )
+    parser.add_argument(
+        "--val-end-year",
+        type=int,
+        default=2019,
+        help="End year for validation window (default: 2019).",
+    )
+    parser.add_argument(
+        "--model-dir",
+        type=str,
+        default="data/models",
+        help="Directory to persist calibrated models and manifest (default: data/models).",
+    )
+    parser.add_argument(
+        "--report-dir",
+        type=str,
+        default="reports",
+        help="Directory to write acceptance reports (default: reports).",
+    )
+    parser.add_argument(
+        "--verify-manifest",
+        action="store_true",
+        help="Run fail-closed SHA256 manifest verification after persistence.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned pipeline configuration without executing training.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for optimization reproducibility (default: 42).",
+    )
+
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+    if args.dry_run:
+        print("=== Dry Run Mode: Training Pipeline Configuration ===")
+        print(f"Stations ({len(args.stations)}): {args.stations}")
+        print(f"Training Period: {args.train_start_year}-{args.train_end_year}")
+        print(f"Validation Period: {args.val_start_year}-{args.val_end_year}")
+        print(f"Model Output Directory: {args.model_dir}")
+        print(f"Report Output Directory: {args.report_dir}")
+        print(f"Verify Manifest: {args.verify_manifest}")
+        return 0
+
+    registry = ModelRegistry(base_dir=args.model_dir)
+    pipeline = TrainingPipeline(
+        model_registry=registry,
+        stations=args.stations,
+        train_start_year=args.train_start_year,
+        train_end_year=args.train_end_year,
+        val_start_year=args.val_start_year,
+        val_end_year=args.val_end_year,
+        report_dir=args.report_dir,
+        random_seed=args.seed,
+    )
+
+    result = pipeline.run()
+
+    if args.verify_manifest:
+        logger.info("Executing fail-closed manifest verification on %s...", args.model_dir)
+        registry.verify_and_load_manifest()
+        logger.info("Manifest verification succeeded.")
+
+    logger.info("Pipeline run completed successfully. Models trained: %d", result.scorecard.total_trained)
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+

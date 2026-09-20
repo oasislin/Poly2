@@ -169,3 +169,244 @@ class TestModelRegistryQueryFacade:
         # sigma^2 = 0.04 + 1.0 * 1.0 + 4.0 = 5.04 -> sigma = sqrt(5.04)
         assert np.isclose(pred_dist.mu, 9.5)
         assert np.isclose(pred_dist.sigma, np.sqrt(5.04))
+
+
+class TestModelRegistryJSONAndManifest:
+    """Production-grade tests for 200-model JSON persistence, manifest generation, and tamper-evident verification."""
+
+    def test_save_and_load_model_json(self, temp_registry_dir):
+        from src.modeling.registry import ManifestVerificationError
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+
+        model = GaussianEMOS(a=0.31234567, b=0.98765432, c=0.12345678, d=0.87654321)
+        diag = ModelTrainingDiagnostics(
+            success=True,
+            params=(0.31234567, 0.98765432, 0.12345678, 0.87654321),
+            crps_in_sample=1.23456,
+            crps_raw_ensemble=1.87654,
+            crps_climatology=2.46810,
+            crpss_vs_raw=0.3421,
+            crpss_vs_clim=0.4998,
+            n_iterations=25,
+            n_evaluations=36,
+            grad_norm=1.2e-7,
+            restarts_used=0,
+            sample_count=365,
+            warnings=["Minor iteration notice"],
+        )
+        decision = DegradationDecision(level=1, is_degraded=False, reason="Healthy")
+
+        # Save model in JSON format
+        json_path = registry.save_model_json(
+            model=model,
+            station_id="KORD",
+            season="Winter",
+            target_type="max",
+            lead_hours=48,
+            diagnostics=diag,
+            decision=decision,
+        )
+
+        expected_relpath = Path("emos") / "KORD" / "max_Winter_48h.json"
+        assert json_path.relative_to(temp_registry_dir) == expected_relpath
+        assert json_path.exists()
+
+        # Load back
+        loaded_model, metadata = registry.load_model_json(
+            station_id="KORD",
+            season="Winter",
+            target_type="max",
+            lead_hours=48,
+        )
+
+        assert np.isclose(loaded_model.a, 0.31234567)
+        assert np.isclose(loaded_model.b, 0.98765432)
+        assert np.isclose(loaded_model.c, 0.12345678)
+        assert np.isclose(loaded_model.d, 0.87654321)
+
+        assert metadata["station"] == "KORD"
+        assert metadata["variable"] == "max"
+        assert metadata["season"] == "Winter"
+        assert metadata["lead_hours"] == 48
+        assert metadata["health_grade"] == "WARNING"
+        assert metadata["decision"]["level"] == 1
+        assert metadata["decision"]["is_degraded"] is False
+        assert metadata["diagnostics"]["sample_count"] == 365
+        assert "saved_at" in metadata
+        assert metadata["format_version"] == "2.0.0"
+
+    def test_save_200_models_matrix_and_manifest(self, temp_registry_dir):
+        from src.data_processing.constants import ACTIVE_10_STATIONS
+        from src.modeling.partitioner import DatasetPartitioner, SEASONS, TRAIN_START_YEAR, TRAIN_END_YEAR
+
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+        partitioner = DatasetPartitioner()
+
+        models = {}
+        for station in ACTIVE_10_STATIONS:
+            for season in SEASONS:
+                for target_type in ["max", "min"]:
+                    lead_nodes = partitioner.get_station_lead_nodes(station, season=season, target_type=target_type)
+                    for lead in lead_nodes:
+                        m = GaussianEMOS(a=0.1, b=0.9, c=0.05, d=0.95)
+                        diag = ModelTrainingDiagnostics(
+                            success=True,
+                            params=(0.1, 0.9, 0.05, 0.95),
+                            crps_in_sample=1.0,
+                            crps_raw_ensemble=1.5,
+                            crps_climatology=2.0,
+                            crpss_vs_raw=0.33,
+                            crpss_vs_clim=0.5,
+                            n_iterations=10,
+                            n_evaluations=15,
+                            grad_norm=1e-6,
+                            restarts_used=0,
+                            sample_count=300,
+                        )
+                        dec = DegradationDecision(level=1, is_degraded=False, reason="Healthy")
+                        models[(station, season, target_type, lead)] = (m, diag, dec)
+
+        scorecard = MatrixScorecard(models=models)
+        assert len(scorecard.models) == 200
+
+        # Persist full scorecard as JSON with manifest
+        saved_paths, manifest_path = registry.save_scorecard_json(scorecard)
+
+        assert len(saved_paths) == 200
+        assert manifest_path.exists()
+        assert manifest_path.name == "manifest.json"
+
+        # Check manifest contents
+        import json
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        assert manifest["manifest_version"] == "2.0.0"
+        assert manifest["train_start_year"] == TRAIN_START_YEAR
+        assert manifest["train_end_year"] == TRAIN_END_YEAR
+        assert manifest["station_count"] == 10
+        assert manifest["total_models"] == 200
+        assert set(manifest["station_universe"]) == set(ACTIVE_10_STATIONS)
+        assert len(manifest["models"]) == 200
+
+        # Verify manifest entry keys
+        sample_key = "emos/KORD/max_Winter_48h.json"
+        assert sample_key in manifest["models"]
+        sample_entry = manifest["models"][sample_key]
+        assert "sha256" in sample_entry
+        assert len(sample_entry["sha256"]) == 64
+        assert sample_entry["station"] == "KORD"
+        assert sample_entry["variable"] == "max"
+
+    def test_verify_and_load_manifest_success_and_fail_closed(self, temp_registry_dir):
+        from src.data_processing.constants import ACTIVE_10_STATIONS
+        from src.modeling.partitioner import DatasetPartitioner, SEASONS
+        from src.modeling.registry import ManifestVerificationError
+
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+        partitioner = DatasetPartitioner()
+
+        models = {}
+        for station in ACTIVE_10_STATIONS:
+            for season in SEASONS:
+                for target_type in ["max", "min"]:
+                    lead_nodes = partitioner.get_station_lead_nodes(station, season=season, target_type=target_type)
+                    for lead in lead_nodes:
+                        m = GaussianEMOS(a=0.1, b=0.9, c=0.05, d=0.95)
+                        diag = ModelTrainingDiagnostics(
+                            success=True,
+                            params=(0.1, 0.9, 0.05, 0.95),
+                            crps_in_sample=1.0,
+                            crps_raw_ensemble=1.5,
+                            crps_climatology=2.0,
+                            crpss_vs_raw=0.33,
+                            crpss_vs_clim=0.5,
+                            n_iterations=10,
+                            n_evaluations=15,
+                            grad_norm=1e-6,
+                            restarts_used=0,
+                            sample_count=300,
+                        )
+                        dec = DegradationDecision(level=1, is_degraded=False, reason="Healthy")
+                        models[(station, season, target_type, lead)] = (m, diag, dec)
+
+        scorecard = MatrixScorecard(models=models)
+        registry.save_scorecard_json(scorecard)
+
+        # 1. Normal verification passes
+        verified_manifest = registry.verify_and_load_manifest()
+        assert verified_manifest["total_models"] == 200
+
+        # 2. Tampering injection test: alter a byte in one JSON file
+        target_file = temp_registry_dir / "emos" / "KORD" / "max_Winter_48h.json"
+        import json
+        with open(target_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        data["parameters"]["a"] = 999.999  # Tamper parameter
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+        # Verification must fail-closed immediately!
+        with pytest.raises(ManifestVerificationError) as exc_info:
+            registry.verify_and_load_manifest()
+        assert "tampered" in str(exc_info.value).lower() or "mismatch" in str(exc_info.value).lower()
+
+        # 3. Missing file test
+        target_file.unlink()
+        with pytest.raises(ManifestVerificationError) as exc_info_missing:
+            registry.verify_and_load_manifest()
+        assert "missing" in str(exc_info_missing.value).lower() or "not found" in str(exc_info_missing.value).lower()
+
+    def test_get_model_json_compatibility(self, temp_registry_dir):
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+        m = GaussianEMOS(a=0.45, b=0.88, c=0.15, d=0.92)
+        diag = ModelTrainingDiagnostics(
+            success=True, params=(0.45, 0.88, 0.15, 0.92), crps_in_sample=1.0, crps_raw_ensemble=1.0,
+            crps_climatology=1.0, crpss_vs_raw=0.0, crpss_vs_clim=0.0, n_iterations=1,
+            n_evaluations=1, grad_norm=0, restarts_used=0, sample_count=100
+        )
+        dec = DegradationDecision(level=1, is_degraded=False, reason="Healthy")
+
+        # Save via new JSON method
+        registry.save_model_json(
+            model=m,
+            station_id="KORD",
+            season="Winter",
+            target_type="max",
+            lead_hours=48,
+            diagnostics=diag,
+            decision=dec,
+        )
+
+        # get_model should seamlessly resolve and load it
+        loaded = registry.get_model("KORD", target_date="2019-01-15", target_type="max", lead_hours=48)
+        assert np.isclose(loaded.a, 0.45)
+        assert np.isclose(loaded.b, 0.88)
+
+    def test_inventory_with_json_and_pkl(self, temp_registry_dir):
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+        m = GaussianEMOS(a=0.1, b=1.0, c=0.1, d=1.0)
+        diag = ModelTrainingDiagnostics(
+            success=True, params=(0.1, 1.0, 0.1, 1.0), crps_in_sample=1.0, crps_raw_ensemble=1.0,
+            crps_climatology=1.0, crpss_vs_raw=0.0, crpss_vs_clim=0.0, n_iterations=1,
+            n_evaluations=1, grad_norm=0, restarts_used=0, sample_count=100
+        )
+        dec = DegradationDecision(level=1, is_degraded=False, reason="Healthy")
+
+        # 1. Save one PKL model
+        registry.save_model(m, "ZSPD", "Winter", "max", 30, diag, dec)
+        # 2. Save one JSON model
+        registry.save_model_json(m, "KORD", "Winter", "max", 48, diag, dec)
+
+        df_inv = registry.list_inventory()
+        assert len(df_inv) == 2
+        assert set(df_inv["format"].values) == {"pkl", "json"}
+        assert "KORD" in df_inv["station_id"].values
+        assert "ZSPD" in df_inv["station_id"].values
+
+    def test_pipeline_cli_dry_run(self):
+        from src.modeling.pipeline import main
+        ret = main(["--dry-run", "--stations", "KORD", "KLGA", "--model-dir", "data/models"])
+        assert ret == 0
+
+
