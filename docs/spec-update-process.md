@@ -41,6 +41,7 @@
 将 spec 拆成**垂直切片 ticket**（tracer bullet）：
 - 每个 ticket 是可独立演示的完整纵向切片，声明 **Blocked by**（依赖哪些前置 ticket）
 - 无依赖的 ticket 可立即开始（frontier）
+- **命名规范（强制拼接前缀）**：Issue 与 Ticket 标题必须采用 `Phase X Task YY - Ticket ZZ: <type>(<scope>): <描述>`，Spec 采用 `Spec: Phase X Task YY - <描述>`，绝不使用孤立的 `Ticket 01` 或隐式缩写
 - 先呈现拆分方案给用户确认（粒度、依赖关系），批准后再生成发布命令
 
 ### 3.3 生成发布命令（交给用户执行）

@@ -20,6 +20,11 @@
 - 设计文档更新采用**版本标注**（"已对齐 vX.Y"），不重写既有内容。
 - 项目内部文档版本号由 agent 决定（核心架构变更 → 次版本 +1；细节修正 → 修订号 +1），并向用户报告；用户提供的输入文档版本号由用户定。
 - 用 `gh` 代跑（如 issue 验收/关闭）遇认证或权限报错时，**不得反复重试**：先请用户完成认证后再重跑一次；持续报错则停止。
+- **Task 与 Ticket 显式全拼命名原则（Phase 2 起强制）**：为避免跨阶段编号混淆，Phase 2 起所有新任务的 GitHub Issue 与 Ticket 必须采用**显式全拼前缀拼接格式**：
+  - Spec 主 Issue：`Spec: Phase X Task YY - <描述>`（如 `Spec: Phase 2 Task 01 - Active 10 站生产级概率分布模型重训与三重验收`）
+  - 切片 Ticket Issue：`Phase X Task YY - Ticket ZZ: <type>(<scope>): <描述>`（如 `Phase 2 Task 01 - Ticket 01: feat(modeling): ...`）
+  - 严禁使用容易引起跨阶段歧义的孤立简称（如单独的 `Ticket 01` 或隐式缩写）。
+  - **历史向前兼容**：既往已完成、已冻结的历史 Issue 与文档（Phase 1 的 2.x/3.x/4.x，调查单的 Ticket 01~05，Phase 1.5 的 Task 01~09）保持原貌，不作破坏性回改，杜绝引用断裂。
 
 ## 代码生成约束
 
