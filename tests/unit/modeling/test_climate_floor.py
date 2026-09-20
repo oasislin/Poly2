@@ -332,3 +332,38 @@ class TestGovernanceContractADR0010:
         )
 
 
+class TestCalibDatasetV2FloorLoadingAndADR0010:
+    """Test loading and validating production climate floors from calib-dataset-v2.0."""
+
+    CALIB_V2_FLOOR_DIR = Path("data/processed/calib-dataset-v2.0/climate_floor")
+
+    def test_load_all_active_stations_and_validate_adr0010(self):
+        registry = ClimateFloorRegistry.load_from_parquet_dir(self.CALIB_V2_FLOOR_DIR)
+        # All 11 stations must be registered with max and min tables
+        assert len(registry.tables) == 22
+
+        for (st, t_type), table in registry.items():
+            assert len(table.points) == 366
+            for pt in table.points:
+                assert FLOOR_PHYSICAL_MIN_F <= pt.sigma_clim <= FLOOR_PHYSICAL_MAX_F, (
+                    f"Station {st} {t_type} DOY {pt.day_of_year} sigma_clim {pt.sigma_clim} "
+                    f"violates ADR-0010 bounds [{FLOOR_PHYSICAL_MIN_F}, {FLOOR_PHYSICAL_MAX_F}]"
+                )
+
+    def test_blocks_legacy_path_in_load_from_parquet_dir(self):
+        with pytest.raises(ValueError, match="strictly blocked"):
+            ClimateFloorRegistry.load_from_parquet_dir("data/legacy-v1-suspect/climate")
+
+    def test_climatology_calculator_integration_with_calib_v2(self):
+        calc = ClimatologyCalculator()
+        assert not calc.is_fitted
+        calc.load_from_floor_parquet_dir(self.CALIB_V2_FLOOR_DIR)
+        assert calc.is_fitted
+
+        # Test get_climatology_params alias
+        mu, sigma = calc.get_climatology_params("KORD", "max", "2018-07-01")
+        assert mu > 0.0
+        assert FLOOR_PHYSICAL_MIN_F <= sigma <= FLOOR_PHYSICAL_MAX_F
+
+
+

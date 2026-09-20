@@ -10,7 +10,7 @@ Verifies:
 5. Dataset partitioning producing exact 40 matrix subsets (2 stations x 4 seasons x 5 nodes).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import numpy as np
 import pandas as pd
 import pytest
@@ -154,3 +154,163 @@ class TestMatrixPartitionsGeneration:
         assert seasons == {"Spring", "Summer", "Autumn", "Winter"}
         assert target_types == {"max", "min"}
         assert lead_buckets == {6, 24, 30, 48, 54}
+
+
+class TestPartitionerPathSecurityAndIsolation:
+    """Test blocking of deprecated/polluted legacy paths and Wunderground data."""
+
+    def test_blocks_legacy_v1_suspect_path(self):
+        partitioner = DatasetPartitioner()
+        with pytest.raises(ValueError, match="strictly blocked"):
+            partitioner.validate_safe_dataset_path("data/legacy-v1-suspect/processed/gefs")
+
+    def test_blocks_wunderground_references(self):
+        partitioner = DatasetPartitioner()
+        with pytest.raises(ValueError, match="strictly blocked"):
+            partitioner.validate_safe_dataset_path("data/raw/wunderground/kord")
+
+    def test_allows_calib_dataset_v2(self):
+        partitioner = DatasetPartitioner()
+        safe_path = partitioner.validate_safe_dataset_path("data/processed/calib-dataset-v2.0")
+        assert "calib-dataset-v2.0" in str(safe_path)
+
+
+class TestPartitionerTimeWallDiscipline:
+    """Test strict out-of-sample time-wall boundaries for training and validation."""
+
+    def test_training_time_wall_valid(self):
+        partitioner = DatasetPartitioner()
+        # Full training period (2000-2018) is valid
+        partitioner.validate_time_wall(2000, 2018, split_type="train")
+        # Subsets within [2000, 2018] are also valid
+        partitioner.validate_time_wall(2010, 2015, split_type="train")
+
+    def test_training_time_wall_rejects_2019_leakage(self):
+        partitioner = DatasetPartitioner()
+        with pytest.raises(ValueError, match="Training set violates OOS boundary"):
+            partitioner.validate_time_wall(2000, 2019, split_type="train")
+
+        with pytest.raises(ValueError, match="Training set violates OOS boundary"):
+            partitioner.validate_time_wall(2019, 2019, split_type="train")
+
+    def test_training_time_wall_rejects_pre_2000(self):
+        partitioner = DatasetPartitioner()
+        with pytest.raises(ValueError, match="cannot be prior to"):
+            partitioner.validate_time_wall(1999, 2018, split_type="train")
+
+    def test_validation_time_wall_valid(self):
+        partitioner = DatasetPartitioner()
+        partitioner.validate_time_wall(2019, 2019, split_type="validation")
+
+    def test_validation_time_wall_rejects_non_2019(self):
+        partitioner = DatasetPartitioner()
+        with pytest.raises(ValueError, match="Validation set strictly locked"):
+            partitioner.validate_time_wall(2018, 2018, split_type="validation")
+        with pytest.raises(ValueError, match="Validation set strictly locked"):
+            partitioner.validate_time_wall(2020, 2020, split_type="validation")
+
+
+class TestPartitionerActive10Support:
+    """Test timezone resolution and nominal lead time calculation across Active 10 trading stations."""
+
+    @pytest.mark.parametrize("station_id", [
+        "KORD", "KLGA", "KATL", "KDAL", "KSEA", "KLAX", "KHOU", "KMIA", "KSFO", "KAUS"
+    ])
+    def test_active_10_nominal_lead_hours_computable(self, station_id):
+        partitioner = DatasetPartitioner()
+        lead = partitioner.compute_nominal_lead_hours(
+            station_id=station_id,
+            target_type="max",
+            init_datetime=datetime(2018, 7, 1, 0, 0),
+            target_date=date(2018, 7, 2),
+        )
+        assert 10.0 <= lead <= 50.0
+        assert partitioner.round_to_nearest_6h(lead) in [24, 30, 36, 42, 48]
+
+    def test_unknown_or_decommissioned_station_raises(self):
+        partitioner = DatasetPartitioner()
+        with pytest.raises(ValueError, match="Unknown or non-compliant station_id"):
+            partitioner.compute_nominal_lead_hours(
+                station_id="KDCA",
+                target_type="max",
+                init_datetime=datetime(2018, 7, 1, 0, 0),
+                target_date=date(2018, 7, 2),
+            )
+
+    def test_get_contained_lead_windows_active_10(self):
+        partitioner = DatasetPartitioner()
+        # For KORD on 2018-07-02 with default previous day 00Z init:
+        windows = partitioner.get_contained_lead_windows(
+            station_id="KORD",
+            target_date=date(2018, 7, 2),
+            init_time_utc=datetime(2018, 7, 1, 0, 0, tzinfo=timezone.utc),
+        )
+        assert len(windows) > 0
+        assert all(w % 6 == 0 for w in windows)
+
+
+
+class TestPartitionerCalibDatasetV2Alignment:
+    """Test loading and aligning features and gefs_factors from calib-dataset-v2.0."""
+
+    def test_load_aligned_dataset_kord_2018(self):
+        partitioner = DatasetPartitioner()
+        df = partitioner.load_aligned_dataset(
+            station="KORD",
+            years=[2018],
+            target_type="max",
+            lead_bucket=30,
+        )
+        assert not df.empty
+        expected_cols = {
+            "station",
+            "target_date",
+            "season",
+            "target_type",
+            "lead_hours",
+            "ensemble_mean",
+            "ensemble_variance",
+            "observed_temp",
+        }
+        assert expected_cols.issubset(set(df.columns))
+        # No NaNs in critical modeling columns
+        assert df["ensemble_mean"].notna().all()
+        assert df["ensemble_variance"].notna().all()
+        assert df["observed_temp"].notna().all()
+        # Physical variance is non-negative
+        assert (df["ensemble_variance"] >= 0.0).all()
+
+    def test_load_training_dataset_enforces_time_wall(self):
+        partitioner = DatasetPartitioner()
+        # Valid training period
+        df_train = partitioner.load_training_dataset(
+            station="KORD",
+            start_year=2018,
+            end_year=2018,
+            target_type="max",
+            lead_bucket=30,
+        )
+        assert len(df_train) > 0
+
+        # Attempt to leak 2019 into training
+        with pytest.raises(ValueError, match="Training set violates OOS boundary"):
+            partitioner.load_training_dataset(
+                station="KORD",
+                start_year=2018,
+                end_year=2019,
+                target_type="max",
+                lead_bucket=30,
+            )
+
+    def test_load_validation_dataset_enforces_2019_wall(self):
+        partitioner = DatasetPartitioner()
+        # Valid 2019
+        df_val = partitioner.load_validation_dataset(
+            station="KORD",
+            target_type="max",
+            lead_bucket=30,
+        )
+        assert len(df_val) > 0
+        val_years = pd.to_datetime(df_val["target_date"]).dt.year.unique()
+        assert list(val_years) == [2019]
+

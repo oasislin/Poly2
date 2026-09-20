@@ -106,6 +106,25 @@ def validate_year_range(start_year: int, end_year: int) -> None:
         )
 
 
+FORBIDDEN_PATH_SUBSTRINGS: Tuple[str, ...] = (
+    "legacy-v1-suspect",
+    "wunderground",
+)
+
+
+def validate_safe_dataset_path(path: Union[str, Path]) -> Path:
+    """Enforce strict isolation blocking deprecated/polluted legacy data paths."""
+    p_str = str(path).lower()
+    for forbidden in FORBIDDEN_PATH_SUBSTRINGS:
+        if forbidden in p_str:
+            raise ValueError(
+                f"Access to deprecated/polluted legacy path is strictly blocked: '{path}'. "
+                f"Matched forbidden token: '{forbidden}'."
+            )
+    return Path(path)
+
+
+
 @dataclass
 class ClimateFloorPoint:
     """Daily climatological baseline and variance floor data point."""
@@ -537,7 +556,7 @@ class ClimateFloorRegistry:
     @classmethod
     def load_from_parquet_dir(cls, parquet_dir: Union[str, Path]) -> ClimateFloorRegistry:
         """Instantiate registry from directory of station parquet files."""
-        p_dir = Path(parquet_dir)
+        p_dir = validate_safe_dataset_path(parquet_dir)
         if not p_dir.exists():
             raise FileNotFoundError(f"Directory not found: {p_dir}")
 

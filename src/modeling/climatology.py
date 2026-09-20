@@ -45,6 +45,11 @@ class ClimatologyCalculator:
         # Lookup tables: {(station_id, target_type): pd.DataFrame(index=1..366)}
         self._climatology_tables: Dict[Tuple[str, str], pd.DataFrame] = {}
 
+    @property
+    def is_fitted(self) -> bool:
+        """Indicate whether climatology tables have been loaded or fitted."""
+        return len(self._climatology_tables) > 0
+
     def load_from_floor_registry(self, registry: Any) -> "ClimatologyCalculator":
         """Load precomputed 366-day climatology tables from a ClimateFloorRegistry."""
         for (st, t_type), table in registry.items():
@@ -229,6 +234,15 @@ class ClimatologyCalculator:
         mu = float(row["mu_clim"].values[0])
         sigma = float(row["sigma_clim"].values[0])
         return mu, sigma
+
+    def get_climatology_params(
+        self,
+        station_id: str,
+        target_type: str,
+        target: Union[str, date, datetime, int],
+    ) -> Tuple[float, float]:
+        """Query (mu_clim, sigma_clim) tuple for a specific station, target type, and target date or DOY."""
+        return self.get_climatology(station_id, target_type, target)
 
     def get_climatology_variance(
         self,
