@@ -42,6 +42,31 @@ LEAD_TIME_NODES: Dict[str, List[int]] = {
 
 SEASONS: List[str] = ["Spring", "Summer", "Autumn", "Winter"]
 
+# ==============================================================================
+# 物理与先验回退常量 (Physical & Statistical Fallback Constants)
+# 规范依据: ADR-0001 (高斯 EMOS 模型基石), ADR-0003 (两级降级策略), ADR-0010 (方差下限治理)
+# 业务语义: 当集合预报成员数 N <= 1 时，无样本内离散度自由度 (ddof=1)，无法估算集合内部扰动方差。
+#          此时返回 0.0 作为退化集合方差先验，下游 EMOS 与静态预测器在遭遇退化预报方差时，
+#          将由 ADR-0010 验证的气候学方差底座 sigma_clim^2 (>= 1.5°F^2) 提供物理托底，
+#          并触发 Level 2 气候学降级保护机制。
+# 更新日期: 2026-09-20
+# ==============================================================================
+FALLBACK_DEGENERATE_ENSEMBLE_VARIANCE: float = 0.0
+
+# ==============================================================================
+# 受控非法与污染数据路径黑名单 (Forbidden Legacy/Polluted Path Tokens)
+# 更新日期: 2026-09-20
+# 依托规范文档与版本:
+#   - 《项目方案 (v2.7)》§2.2 (数据治理与物理隔离原则) & §8.1 (物理真值合流)
+#   - ADR-0007: 数据源重铸与站点宇宙扩展 (M0' Round 5 综合裁决)
+#   - ADR-0012: 法定结算真值源确立与 Wunderground 彻底下线隔离裁决
+#   - 《Phase 1.5 执行文件 v1.1》§2 Task 04 & Task 08 (发布数据集零污染关)
+# 业务与风控原因:
+#   1. "legacy-v1-suspect": Phase 1 原型期残留的未校准历史数据，存在时区错配与不可溯源缺陷，已物理隔离；
+#   2. "wunderground": 旧版非官方爬虫数据源，实测存在 -2°F ~ -5°F 系统性负偏差及整度截断伪影，
+#      已被 ADR-0012 法定结算裁决永久下线。
+# 变更纪律: 任何新增或解封必须经由量化架构组发布新 ADR 批准并更新版本日期。
+# ==============================================================================
 TRAIN_START_YEAR: int = 2000
 TRAIN_END_YEAR: int = 2018
 VAL_YEAR: int = 2019
@@ -317,7 +342,7 @@ class DatasetPartitioner:
             full_gefs.groupby(["station", "target_date", "variable", "lead_hours"], observed=True)["temp_f"]
             .agg(
                 ensemble_mean="mean",
-                ensemble_variance=lambda s: float(np.var(s, ddof=1)) if len(s) > 1 else 0.0,
+                ensemble_variance=lambda s: float(np.var(s, ddof=1)) if len(s) > 1 else FALLBACK_DEGENERATE_ENSEMBLE_VARIANCE,
             )
             .reset_index()
         )
