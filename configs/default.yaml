@@ -84,4 +84,15 @@ truncation_rules:
   climatological_max_f: 135.0
   stale_packet_threshold_minutes: 15.0
 
+arbiter:
+  cooldown_seconds: 60.0
+  consecutive_healthy_frames_required: 3
+  max_daily_suspensions: 3
+  retry_budget_seconds: 30.0
+
+pre_buy_gate:
+  max_observation_age_minutes: 7.0
+  escape_hatch_window_minutes: 30.0
+
+
 
