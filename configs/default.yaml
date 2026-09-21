@@ -77,4 +77,11 @@ network:
 storage:
   cold_storage_root: /Volumes/EricSSD/Poly RawData/gefs_reforecast
 
+truncation_rules:
+  max_temperature_jump_step_f: 15.0
+  max_body_rmk_delta_f: 1.8
+  climatological_min_f: -40.0
+  climatological_max_f: 135.0
+  stale_packet_threshold_minutes: 15.0
+
 

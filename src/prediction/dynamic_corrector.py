@@ -235,6 +235,21 @@ class DynamicCorrector:
             sigma=sigma,
         )
 
+    def correct_with_station_state(
+        self,
+        base_distribution: Union[GaussianEMOS, Any],
+        station_state: Any,
+        target_type: str,
+    ) -> TruncatedDistribution:
+        """Apply conditional truncation using StationDayState from MonotonicConfluenceEngine."""
+        t_now = station_state.tmax_so_far if target_type.lower() == "max" else station_state.tmin_so_far
+        return self.correct(
+            base_distribution=base_distribution,
+            target_type=target_type,
+            current_temperature=t_now,
+            observation_time=station_state.last_update_utc,
+        )
+
     def correct_max_temp_probability(
         self,
         base_distribution: Union[GaussianEMOS, Any],
