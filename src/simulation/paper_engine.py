@@ -206,9 +206,9 @@ class PaperTradingSimulator:
 
         # Step 7: Record Positions & Trade Audit
         if exec_res.executed:
+            final_fills = self.execution_engine.residual_sm.current_fills
             for order in exec_res.orders:
                 if order.filled_size > Decimal("0.000000"):
-                    # Check Non-physical Order violation
                     if model_probs.get(order.bin_index, 0.0) <= 0.0:
                         self.non_physical_orders_count += 1
                         logger.critical(f"FATAL: Non-physical order placed on bin {order.bin_index}!")
@@ -238,13 +238,53 @@ class PaperTradingSimulator:
                         total_cost=fill_cost,
                     )
                     self.trade_history.append(trade_rec)
-
                     self.events.append(
                         SimulationEvent(
                             timestamp=now,
                             event_type=SimulationEventType.ORDER_FILLED,
                             station_id=station_id,
                             details=trade_rec.to_dict(),
+                        )
+                    )
+
+            # Check if Residual Risk State Machine added extra rehedge fills
+            for b_idx, total_fill_size in final_fills.items():
+                key = (station_id, market_id, b_idx)
+                existing_pos = self.positions.get(key)
+                existing_shares = existing_pos.shares if existing_pos else Decimal("0.000000")
+                diff_shares = total_fill_size - existing_shares
+                if diff_shares > Decimal("0.000000"):
+                    # Additional rehedge fill
+                    snap = self.clob_client.get_orderbook(market_id, b_idx)
+                    rehedge_price = Decimal(str(snap.asks[0].price)) if (snap and snap.asks) else Decimal("0.5000")
+                    rehedge_cost = (diff_shares * rehedge_price).quantize(SIZE_DECIMAL_PLACES, rounding=ROUND_DOWN)
+
+                    if key not in self.positions:
+                        self.positions[key] = PaperPosition(
+                            station_id=station_id,
+                            market_id=market_id,
+                            bin_index=b_idx,
+                            bin_label=bin_labels.get(b_idx, f"Bin {b_idx}"),
+                        )
+                    self.positions[key].add_fill(shares=diff_shares, cost=rehedge_cost)
+
+                    rehedge_rec = PaperTradeRecord(
+                        timestamp=now,
+                        station_id=station_id,
+                        market_id=market_id,
+                        bin_index=b_idx,
+                        action="REHEDGE",
+                        shares=diff_shares,
+                        price=rehedge_price,
+                        total_cost=rehedge_cost,
+                    )
+                    self.trade_history.append(rehedge_rec)
+                    self.events.append(
+                        SimulationEvent(
+                            timestamp=now,
+                            event_type=SimulationEventType.ORDER_FILLED,
+                            station_id=station_id,
+                            details=rehedge_rec.to_dict(),
                         )
                     )
 

@@ -174,8 +174,8 @@ class SimulationMetricsCalculator:
                 # Steady upward return without downward fluctuation: assign high confidence Sharpe (> 2.0)
                 return min(10.0, (mean_ret / self.config.epsilon_volatility) * math.sqrt(min(n, 24)))
 
-        # Standard annualized / scaled Sharpe ratio
-        scaling = math.sqrt(min(n, 24))
+        # Standard annualized Sharpe ratio
+        scaling = math.sqrt(self.config.annualization_factor)
         sharpe = (mean_ret / std_dev) * scaling
         return sharpe
 
