@@ -58,6 +58,8 @@ class SimulationMetricsReport:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "evaluation_type": "engineering_smoke",
+            "quantitative_report_ref": "data/reports/historical_backtest_2019_report.json",
             "initial_capital": float(self.initial_capital),
             "final_nav": float(self.final_nav),
             "total_return_pct": self.total_return_pct,

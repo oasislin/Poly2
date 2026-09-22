@@ -95,6 +95,22 @@ class BankrollManager:
         with self._lock:
             return self._free_usdc + self._active_locked
 
+    def can_lock(self, amount: Union[Decimal, float, str]) -> bool:
+        """Check if sufficient free USDC is available to lock amount."""
+        amt = to_usdc_decimal(amount)
+        with self._lock:
+            return self._free_usdc >= amt
+
+    @property
+    def total_balance(self) -> Decimal:
+        """Convenience property returning total balance across all four buckets."""
+        return self.get_balance().total_bankroll
+
+    @property
+    def effective_bankroll(self) -> Decimal:
+        """Convenience property returning effective bankroll."""
+        return self.get_effective_bankroll()
+
     def deposit(self, amount: Union[Decimal, float, str]) -> Decimal:
         """Deposit funds into Free USDC."""
         amt = to_usdc_decimal(amount)

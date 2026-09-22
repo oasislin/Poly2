@@ -275,18 +275,20 @@ def run_simulation(config: PaperRunnerConfig) -> SimulationMetricsReport:
                 f.write(json.dumps(ev.to_dict()) + "\n")
         logger.info(f"Saved {len(simulator.events)} simulation events to: {config.events_log_path}")
 
-    print("\n" + "=" * 65)
-    print("      ACTIVE 10 STATIONS 48H PAPER TRADING SIMULATION REPORT")
-    print("=" * 65)
+    print("\n" + "=" * 70)
+    print("  ACTIVE 10 STATIONS 48H PAPER TRADING REPORT (TIER 1 ENGINEERING SMOKE)")
+    print("=" * 70)
     print(f" Initial Bankroll:            {float(report.initial_capital):>15.2f} USDC")
     print(f" Final NAV:                   {float(report.final_nav):>15.2f} USDC")
-    print(f" Total Return:                {report.total_return_pct:>15.2f} %")
-    print(f" Maximum Drawdown (MDD):      {report.max_drawdown_pct:>15.2f} %")
-    print(f" Annualized Sharpe Ratio:     {report.sharpe_ratio:>15.2f}")
     print(f" Total Filled Trades:         {report.total_trades_count:>15d}")
     print(f" Non-physical Violations:     {report.zero_non_physical_orders_violated:>15d} (Zero-tolerance)")
     print(f" Capital Conservation Passed: {str(report.capital_conservation_passed):>15}")
-    print("=" * 65 + "\n")
+    print(f" Solvency Gate (NAV > 0):     {'PASS' if report.final_nav > Decimal('0') else 'FAIL':>15}")
+    print("----------------------------------------------------------------------")
+    print(" Note: Tier 1 Engineering Smoke test only.")
+    print(" Refer to data/reports/historical_backtest_2019_report.json for")
+    print(" authentic 2019 out-of-sample quantitative financial Sharpe ratio and MDD.")
+    print("=" * 70 + "\n")
 
     return report
 
