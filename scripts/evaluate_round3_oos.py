@@ -37,6 +37,8 @@ from scipy import stats, integrate
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.utils.airgap import verify_file_path
+
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
 DATA_DIR = PROJECT_ROOT / "data" / "processed" / "audit_arrays"
 OOS_INPUT_PARQUET = DATA_DIR / "2019_oos_evaluation_arrays.parquet"
@@ -96,6 +98,7 @@ def evaluate_round3():
     print("================================================================================")
     print("      ROUND 3 OOS BLIND EVALUATION: R-6 & R-7 SETTLEMENT EXECUTION               ")
     print("================================================================================")
+    verify_file_path(OOS_INPUT_PARQUET, "evaluate_round3_oos.py")
 
     if not OOS_INPUT_PARQUET.exists():
         raise FileNotFoundError(f"{OOS_INPUT_PARQUET} not found.")

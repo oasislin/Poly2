@@ -24,6 +24,7 @@ import pandas as pd
 from scipy import stats
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 GHCN_DIR = PROJECT_ROOT / "data" / "processed" / "truth_ghcn_daily"
 GEFS_DIR = PROJECT_ROOT / "data" / "processed" / "calib-dataset-v2.0" / "gefs_factors"
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
@@ -71,7 +72,11 @@ def get_season(month: int) -> str:
         return "Autumn"
 
 
+from src.utils.airgap import verify_year_whitelist
+
+
 def load_station_data(station: str, years: List[int]) -> pd.DataFrame:
+    verify_year_whitelist(years, source_description=f"standalone_recompute_active10:{station}")
     ghcn_file = GHCN_DIR / f"{station}.parquet"
     df_ghcn = pd.read_parquet(ghcn_file)
     df_ghcn["target_date"] = pd.to_datetime(df_ghcn["target_date"]).dt.date

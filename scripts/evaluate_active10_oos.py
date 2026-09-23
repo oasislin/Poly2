@@ -39,6 +39,7 @@ from scripts.fit_training_variance_factors import (
     STATIONS,
     get_season,
 )
+from src.utils.airgap import verify_year_whitelist
 
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
 AUDIT_DIR = PROJECT_ROOT / "data" / "processed" / "audit_arrays"
@@ -78,6 +79,7 @@ def compute_weighted_ece(pred_probs: np.ndarray, hits: np.ndarray, num_bins: int
 
 def load_station_multi_year(station: str, years: List[int]) -> pd.DataFrame:
     """Load and merge GHCN truth and GEFS factors for given station and years."""
+    verify_year_whitelist(years, source_description=f"evaluate_active10_oos:{station}")
     ghcn_file = GHCN_DIR / f"{station}.parquet"
     if not ghcn_file.exists():
         raise FileNotFoundError(f"GHCN file {ghcn_file} not found!")

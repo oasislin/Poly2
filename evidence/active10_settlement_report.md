@@ -1,8 +1,9 @@
-# Active 10 交易台站物理模型归正校准与 2019 终极验收法定报告 (Phase 2 Task 01 Fix)
+# [QUARANTINED] Active 10 交易台站物理模型归正校准与 2019 验收报告 (Phase 2 Task 01 Fix)
 
-> **【全项目唯一法定结算总表】**  
-> 本报告依据《项目执行文件 v5.9.2》、规格书 [`specs/phase2-task01-fix-active10-calibration-spec.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/specs/phase2-task01-fix-active10-calibration-spec.md) 及 ADR-0015 / ADR-0017，确立为 Active 10 交易台站物理概率预测模型在 2019 年样本外（3,650 站·日）终极法定结算与交付凭据。  
-> 经独立双向复算与机器断言，**Active 10 交易台站全员 100% 通过全部六大终极法定门禁，正式晋升为 `FULLY VALIDATED` 生产级模型资产！**
+> ⚠️ **【QUARANTINED — UNPREREGISTERED EVALUATION OF CURRENT PIPELINE FAMILY — 禁止引用为调参依据】**  
+> **状态**: `QUARANTINED` (已隔离封存，禁止引用)  
+> **隔离认定**: 2026-09-24 R2 审计认定，本次 2026-09-23 22:47 运行系对当前管线家族在 2019 样本外盲测窗的无预注册评估（Unpreregistered Evaluation）。现已实施全面代码级时间墙隔离（Airgap Hard Guardrail）与封存归档。本报告及伴生统计数据**严禁作为任何后续重训、调参或超参数选择的参考依据**。  
+> 真实生产级验收必须在 P4 预注册文本签署、完成 20 轮 30-Day Block-CV 后，由用户签发旗标方可开封 2019。
 
 ---
 

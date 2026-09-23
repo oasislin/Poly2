@@ -25,6 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.metrics.calibration_audit import SIGMA_INST_PHYSICAL_FLOOR
+from src.utils.airgap import verify_year_whitelist
 
 STATIONS = [
     "KORD", "KLGA", "KATL", "KDAL", "KSEA",
@@ -55,6 +56,7 @@ def get_season(month: int) -> str:
 
 
 def load_station_training_data(station: str, years: range = range(2000, 2019)) -> pd.DataFrame:
+    verify_year_whitelist(years, f"load_station_training_data({station})")
     ghcn_file = GHCN_DIR / f"{station}.parquet"
     if not ghcn_file.exists():
         raise FileNotFoundError(f"GHCN truth file {ghcn_file} not found!")

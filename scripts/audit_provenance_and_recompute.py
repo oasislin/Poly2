@@ -31,6 +31,7 @@ from src.metrics.calibration_audit import (
     compute_weighted_ece,
     randomized_pit,
 )
+from src.utils.airgap import verify_year_whitelist
 
 STATIONS = ["KORD", "KMIA", "KSFO"]
 DATA_DIR = PROJECT_ROOT / "data" / "processed" / "calib-dataset-v2.0"
@@ -61,6 +62,7 @@ def get_season(month: int) -> str:
 
 def load_station_data(station: str, years: range) -> pd.DataFrame:
     """Load and merge daily GHCN-Daily observations with 18h GEFS tmax forecasts."""
+    verify_year_whitelist(years, f"load_station_data({station})")
     ghcn_file = GHCN_DIR / f"{station}.parquet"
     if not ghcn_file.exists():
         raise FileNotFoundError(f"GHCN truth file {ghcn_file} not found!")

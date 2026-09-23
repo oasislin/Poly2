@@ -133,7 +133,7 @@ def test_expand_prediction_records_properties(sample_training_df, mock_station_p
     # 2. sum of hit should be exactly 1
     for date, grp in expanded.groupby(["station", "date"]):
         assert math.isclose(grp["p_pred"].sum(), 1.0, abs_tol=1e-5)
-        assert grp["hit"].sum() == 1
+        assert math.isclose(grp["hit"].sum(), 1.0, abs_tol=1e-5)
         assert (grp["p_pred"] >= 0.0).all()
         assert (grp["p_pred"] <= 1.0).all()
 

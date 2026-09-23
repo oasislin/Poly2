@@ -78,7 +78,7 @@ def test_active10_recomputed_statistics_six_gates():
     csv_path = EVIDENCE_DIR / "active10_recomputed_statistics.csv"
     assert csv_path.exists(), f"{csv_path} must exist"
 
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, comment="#")
     assert len(df) == 10
 
     for _, row in df.iterrows():
