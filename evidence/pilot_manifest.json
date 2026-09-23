@@ -32,6 +32,7 @@
     "src/verification/settlement.py": "3416ca986b475c478624e575daafbf3908d60421307e0a99d2714c59c227b316",
     "src/verification/resampling.py": "931563d0f6ebccf5d4d8d811de9d5f4cc140547259e08097621ddec7ea10c026",
     "evidence/cv_split_blocks_20rounds.json": "0333b30285f104baa8153f0ebf7e4a0c91ab27296c0de8ac6f1d1e7f95fcee67",
-    "p5_tool_audit_report.md": "961e48a4b92035551bef4ef2f5a1cbd925b2c6779a5b6247f217b314a55ffde1"
+    "p5_tool_audit_report.md": "961e48a4b92035551bef4ef2f5a1cbd925b2c6779a5b6247f217b314a55ffde1",
+    "p5_reliability_tool_overhaul_and_audit_report.md": "81ec0d6242a39262f357de692874503a32bfb89b3cdabb82aad99053821899ad"
   }
 }
