@@ -1,20 +1,20 @@
-# Handoff 指南：Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收
+# Handoff 指南：Phase 2 Task 01 Fix - Active 10 站物理模型归正校准与 2019 终极验收
 
 > **交接日期**: 2026-09-23  
 > **前置会话结项状态**: Phase 1 先导站（KORD, KMIA, KSFO）已获 `FULLY VALIDATED` 终局裁决；Task 07“虚假盘口与合成做市商回测”已正式标记废除/挂起。  
-> **接收对象**: 接棒进行 Phase 2 Task 08 全量生产级推广的新 Agent / 会话。  
-> **核心使命**: 将先导站打磨成熟的整套物理模型升级规范（$c_{\text{train}}$ 外生冻结、因果滑动窗口、R-6 偏态校正、R-7 EVT 极值尾部、ADR-0017 离散化门禁），全量覆盖至全部 Active 10 交易台站，完成 2019 样本外全量法定盲测验收！
+> **接收对象**: 接棒进行 Phase 2 Task 01 Fix 全量生产级模型归正与重训的新 Agent / 会话。  
+> **核心使命**: 承接初版 Task 01（Issue #59），将先导站打磨成熟的整套物理模型升级规范（$c_{\text{train}}$ 外生冻结、因果滑动窗口、R-6 偏态校正、R-7 EVT 极值尾部、ADR-0017 离散化门禁），全量覆盖至全部 Active 10 交易台站，完成 2019 样本外全量法定盲测验收！
 
 ---
 
-## 一、 为什么必须做 Task 08？（前情提要与战略定调）
+## 一、 为什么必须做 Task 01 Fix？（前情提要与战略定调）
 
 1. **破除假象**：此前曾试图构建所谓的“Task 07 历史回测”，但经架构审查与用户指正，2019 年客观不存在 Polymarket 真实订单簿，用“自制合成做市商 + 粗糙下注规则”跑出的夏普和胜率属于**自欺欺人的无意义内耗**。该伪需求已被正式废除。
 2. **战略归位**：用户明确裁定：**当前处于物理模型研发阶段，核心使命是确保物理模型本身对全美交易宇宙输出真实、精准、合格的概率分布。** 至于如何运用该概率进行交易决策，是后续独立的【投注算法与凯利决策引擎】的工作。
 3. **严重断层现状**：
-   - 基础 EMOS 模型在 `data/models/` 虽有 10 站文件，但属于未经修正的旧版基线；
+   - 基础 EMOS 模型在 `data/models/` 虽有 10 站文件（Issue #59 初版遗留），但属于未经本次升级的旧版基线；
    - 真正具备防数据泄漏（无 Case-B 前瞻）、因果滑动去偏、外生 $c_{\text{train}}$ 冻结、R-6/R-7 极值校准以及 ADR-0017 离散化半度修正的最新模型，**目前仅在 3 个先导站（KORD, KMIA, KSFO）跑通**；
-   - 其余 7 个核心台站（`KLGA, KATL, KDAL, KSEA, KLAX, KHOU, KAUS`）尚未进行新参数拟合与 2019 样本外验收！Task 08 就是补齐这块最核心的生产拼图。
+   - 其余 7 个核心台站（`KLGA, KATL, KDAL, KSEA, KLAX, KHOU, KAUS`）尚未进行新参数拟合与 2019 样本外验收！Task 01 Fix 就是补齐这块最核心的生产拼图。
 
 ---
 
@@ -79,10 +79,10 @@
 
 全量 Issue 已遵照《AGENTS.md》显式全拼命名规范正式在 GitHub 上立项：
 
-- **Spec 主 Issue**: [#114](https://github.com/oasislin/Poly2/issues/114) `Spec: Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收`
-- **Ticket 01**: [#115](https://github.com/oasislin/Poly2/issues/115) `Phase 2 Task 08 - Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`
-- **Ticket 02**: [#116](https://github.com/oasislin/Poly2/issues/116) `Phase 2 Task 08 - Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`
-- **Ticket 03**: [#117](https://github.com/oasislin/Poly2/issues/117) `Phase 2 Task 08 - Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`
-- **Ticket 04**: [#119](https://github.com/oasislin/Poly2/issues/119) `Phase 2 Task 08 - Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`
-- **Ticket 05**: [#123](https://github.com/oasislin/Poly2/issues/123) `Phase 2 Task 08 - Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`
+- **Spec 主 Issue**: [#114](https://github.com/oasislin/Poly2/issues/114) `Spec: Phase 2 Task 01 Fix - Active 10 站物理模型归正校准与 2019 终极验收`
+- **Fix Ticket 01**: [#115](https://github.com/oasislin/Poly2/issues/115) `Phase 2 Task 01 - Fix Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`
+- **Fix Ticket 02**: [#116](https://github.com/oasislin/Poly2/issues/116) `Phase 2 Task 01 - Fix Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`
+- **Fix Ticket 03**: [#117](https://github.com/oasislin/Poly2/issues/117) `Phase 2 Task 01 - Fix Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`
+- **Fix Ticket 04**: [#119](https://github.com/oasislin/Poly2/issues/119) `Phase 2 Task 01 - Fix Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`
+- **Fix Ticket 05**: [#123](https://github.com/oasislin/Poly2/issues/123) `Phase 2 Task 01 - Fix Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`
 

@@ -1,7 +1,7 @@
-# 规格书：Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收 (Phase 2 Task 08)
+# 规格书：Active 10 站物理模型归正校准与 2019 终极验收 (Phase 2 Task 01 Fix)
 
-> **规格版本**: v1.0.0 Engineering-Spec Final  
-> **任务性质**: 核心物理概率模型全台站宇宙生产级推广与终极法定验收  
+> **规格版本**: v1.1.0 Engineering-Spec Final  
+> **任务性质**: 承接初版 Task 01（Issue #59），全量消除旧版未校准参数缺陷，实现 Active 10 站物理概率模型生产级归正与终极法定验收  
 > **前置依赖**: 
 > 1. Phase 1 先导站（KORD, KMIA, KSFO）FULL VALIDATION 终局闭环；
 > 2. 统一校准数据集 `data/processed/calib-dataset-v2.0/`（2000–2018 训练窗，2019 OOS 评估集）；
@@ -14,12 +14,12 @@
 
 在 Phase 1 的独立复算与审计中，工程组完成了对统计作弊（Case-B 泄漏、构造恒等式）的彻底铲除，并确立了外生冻结 $c_{\text{train}}$、因果滑动去偏窗口（`window=30`）、迈阿密 R-6 对流偏度修正、R-7 极值 EVT 厚尾校准，以及 ADR-0017 离散化加权 ECE 门禁体系。
 
-然而，**上述所有千锤百炼打磨成型的最新科学修正公式与参数，目前仅在 3 个先导站（KORD, KMIA, KSFO）完成了闭环**。其余 7 个核心交易台站（`KLGA, KATL, KDAL, KSEA, KLAX, KHOU, KAUS`）仍处于旧版未校准状态：
+然而，**上述所有千锤百炼打磨成型的最新科学修正公式与参数，目前仅在 3 个先导站（KORD, KMIA, KSFO）完成了闭环**。初版 Task 01（Issue #59）当时生成的 10 站参数未融入这些校准，其余 7 个核心交易台站（`KLGA, KATL, KDAL, KSEA, KLAX, KHOU, KAUS`）仍处于旧版未校准状态：
 - 未在 2000–2018 历史训练窗拟合专属的外生 $c_{\text{train}}$ 与去偏参数；
 - 未经过南部强对流与局地微地形的偏态（R-6）与极值厚尾（R-7）检验；
 - 未曾通过 2019 年整年样本外 365 天严格的 ADR-0017 离散门禁验收。
 
-**Task 08 的核心使命**：  
+**Task 01 Fix 的核心使命**：  
 将先导站已完全验证成功的整套“物理模型升级与防泄漏校准体系”，**无损、全量、严格地扩展到全部 Active 10 交易台站**，为全部 10 个站点生成生产级参数资产，并在 2019 样本外完成终极法定结算与独立双向复算验证，使全台站宇宙正式晋升为 **`FULLY VALIDATED`**。
 
 ---
@@ -77,15 +77,15 @@
 
 ## 四、 任务垂直切片与工件规划 (Tickets & Deliverables)
 
-- **Spec 主 Issue**: [#114](https://github.com/oasislin/Poly2/issues/114) (`Spec: Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收`)
+- **Spec 主 Issue**: [#114](https://github.com/oasislin/Poly2/issues/114) (`Spec: Phase 2 Task 01 Fix - Active 10 站物理模型归正校准与 2019 终极验收`)
 - **切片 Tickets**:
-  1. **Ticket 01**: [#115](https://github.com/oasislin/Poly2/issues/115) (`Phase 2 Task 08 - Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`)
+  1. **Fix Ticket 01**: [#115](https://github.com/oasislin/Poly2/issues/115) (`Phase 2 Task 01 - Fix Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`)
      - 扩展 `scripts/fit_training_variance_factors.py`，全量计算 Active 10 站并产出 `evidence/active10_training_variance_factors.json`。
-  2. **Ticket 02**: [#116](https://github.com/oasislin/Poly2/issues/116) (`Phase 2 Task 08 - Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`)
+  2. **Fix Ticket 02**: [#116](https://github.com/oasislin/Poly2/issues/116) (`Phase 2 Task 01 - Fix Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`)
      - 产出针对其余 7 站的局地气候校准参数 `evidence/active10_climate_calibration.json`。
-  3. **Ticket 03**: [#117](https://github.com/oasislin/Poly2/issues/117) (`Phase 2 Task 08 - Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`)
+  3. **Fix Ticket 03**: [#117](https://github.com/oasislin/Poly2/issues/117) (`Phase 2 Task 01 - Fix Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`)
      - 运行 10 站 2019 年推演，生成只读底账 `data/processed/audit_arrays/2019_oos_active10_arrays.parquet`。
-  4. **Ticket 04**: [#119](https://github.com/oasislin/Poly2/issues/119) (`Phase 2 Task 08 - Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`)
+  4. **Fix Ticket 04**: [#119](https://github.com/oasislin/Poly2/issues/119) (`Phase 2 Task 01 - Fix Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`)
      - 产出机器可读的统计表 `evidence/active10_recomputed_statistics.csv`，断言六大门禁全绿。
-  5. **Ticket 05**: [#123](https://github.com/oasislin/Poly2/issues/123) (`Phase 2 Task 08 - Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`)
+  5. **Fix Ticket 05**: [#123](https://github.com/oasislin/Poly2/issues/123) (`Phase 2 Task 01 - Fix Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`)
      - 产出法定报告 `evidence/active10_settlement_report.md`、零依赖复算脚本 `scripts/standalone_recompute_active10.py`，并刷新 `evidence/active10_manifest.json`。
