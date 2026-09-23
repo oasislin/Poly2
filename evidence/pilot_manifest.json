@@ -33,6 +33,9 @@
     "src/verification/resampling.py": "931563d0f6ebccf5d4d8d811de9d5f4cc140547259e08097621ddec7ea10c026",
     "evidence/cv_split_blocks_20rounds.json": "0333b30285f104baa8153f0ebf7e4a0c91ab27296c0de8ac6f1d1e7f95fcee67",
     "p5_tool_audit_report.md": "961e48a4b92035551bef4ef2f5a1cbd925b2c6779a5b6247f217b314a55ffde1",
-    "p5_reliability_tool_overhaul_and_audit_report.md": "81ec0d6242a39262f357de692874503a32bfb89b3cdabb82aad99053821899ad"
+    "p5_reliability_tool_overhaul_and_audit_report.md": "81ec0d6242a39262f357de692874503a32bfb89b3cdabb82aad99053821899ad",
+    "specs/preregistration-p4-active10-retrain.md": "b607cc609dd7c6a449b0576b7832f067badad16318534ef0c06b4f61101e9247",
+    "r2_mainline_p1_to_p4_audit_and_delivery_report.md": "8ad5cb92097848b2ea81634f02fc59182a9fd31d1b1484435dc1eec324a095e1",
+    "model_inventory_audit.csv": "0fbfbf17d64867e017e5242d55ebad3ad4090e4ba98441aac858f454e415da9d"
   }
 }
