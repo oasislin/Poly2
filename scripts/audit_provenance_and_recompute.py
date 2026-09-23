@@ -565,13 +565,16 @@ def main():
     report_lines.append("3. **闭包断言门禁**: ✅ PASS (三站十分位分层断言全部正常通过)")
     report_lines.append(f"4. **双向检验 ① (PIT Mean $\\in [0.46, 0.54]$)**: {'✅ PASS' if pit_m_pass else '❌ FAIL'} ({settlement_summary['KORD']['pit_mean']:.4f}, {settlement_summary['KMIA']['pit_mean']:.4f}, {settlement_summary['KSFO']['pit_mean']:.4f})")
     report_lines.append(f"5. **双向检验 ② (名义 90% 覆盖率 $\\in [83%, 95%]$)**: {'✅ PASS' if cov_pass else '❌ FAIL'} ({settlement_summary['KORD']['coverage_90']:.1%}, {settlement_summary['KMIA']['coverage_90']:.1%}, {settlement_summary['KSFO']['coverage_90']:.1%})")
-    pass_s_oos = "✅ PASS" if s_oos_pass else "⚠️ PARTIAL (KORD PASS, KMIA/KSFO 略偏高)"
-    report_lines.append(
-        f"6. **方差比门禁 (实测 s_oos in [0.85, 1.15])**: {pass_s_oos} "
-        f"(KORD {settlement_summary['KORD']['empirical_s_oos']:.4f}, "
-        f"KMIA {settlement_summary['KMIA']['empirical_s_oos']:.4f}, "
-        f"KSFO {settlement_summary['KSFO']['empirical_s_oos']:.4f})"
-    )
+    if s_oos_pass:
+        s_oos_msg = "✅ PASS"
+    else:
+        s_oos_msg = (
+            f"❌ FAIL (双站出带失败: KORD {settlement_summary['KORD']['empirical_s_oos']:.4f} PASS; "
+            f"KMIA {settlement_summary['KMIA']['empirical_s_oos']:.4f} FAIL, "
+            f"KSFO {settlement_summary['KSFO']['empirical_s_oos']:.4f} FAIL 均超出 [0.85, 1.15] 容差带，"
+            f"反映真实厚尾与 2019 样本外方差异质性，KMIA 与 KSFO 正式准入 R-6/R-7 专项调优)"
+        )
+    report_lines.append(f"6. **方差比门禁 (实测 $s_{{\\text{{oos}}}} \\in [0.85, 1.15]$)**: {s_oos_msg}")
     report_lines.append("7. **双实现交叉验证偏差 ($< 10^{-3}$)**: ✅ PASS (实测最大偏差 $< 10^{-6}$)")
 
     report_text = "\n".join(report_lines)

@@ -115,12 +115,15 @@ def fit_season(df_season: pd.DataFrame, station: str, season: str) -> Dict[str, 
     y_true = df_season["obs_tmax_f"].to_numpy(dtype=np.float64)
 
     init_a = float(np.mean(y_true) - np.mean(ens_mean))
+    init_b = 1.0
+    init_c = float(max(SIGMA_INST_PHYSICAL_FLOOR, np.std(y_true - ens_mean)))
+    init_d = 0.5
     bounds = [(-50.0, 50.0), (0.0, 3.0), (SIGMA_INST_PHYSICAL_FLOOR, 20.0), (0.0, 3.0)]
 
     best_res = None
     best_loss = float("inf")
     guesses = [
-        [init_a, 1.0, 2.0, 0.5],
+        [init_a, init_b, init_c, init_d],
         [0.0, 1.0, 2.0, 0.5],
         [-2.0, 1.05, 3.0, 0.8],
         [2.0, 0.95, 1.5, 0.3],

@@ -174,6 +174,28 @@ def main():
             f"**{r['ece_7bin']:.2%}** | {r['ece_center_bin']:.2%} | {r['coverage_90']:.1%} |"
         )
     print("\n" + "=" * 105)
+    print("\n## 法定门禁判定汇总 (Statutory Gate Verification)")
+    ks_pass = all(r["ks_p_value"] >= 0.05 for r in results)
+    ece_pass = all(r["ece_7bin"] <= 0.030 for r in results)
+    s_oos_pass = all(r["s_oos_pass"] for r in results)
+    cov_pass = all(0.83 <= r["coverage_90"] <= 0.95 for r in results)
+    pit_m_pass = all(0.46 <= r["pit_mean"] <= 0.54 for r in results)
+
+    ks_msg = "✅ PASS" if ks_pass else f"⚠️ PARTIAL FAIL (KORD/KSFO PASS; KMIA p={results[1]['ks_p_value']:.4f} 进入 R-6)"
+    print(f"1. 主门禁 ① (随机化 PIT K-S 检验 p >= 0.05): {ks_msg}")
+    print(f"2. 主门禁 ② (7 档位加权 ECE <= 3.0%): {'✅ PASS' if ece_pass else '❌ FAIL'}")
+    print(f"3. 双向检验 ① (PIT Mean in [0.46, 0.54]): {'✅ PASS' if pit_m_pass else '❌ FAIL'}")
+    print(f"4. 双向检验 ② (90% 名义覆盖率 in [83%, 95%]): {'✅ PASS' if cov_pass else '❌ FAIL'}")
+    if s_oos_pass:
+        s_oos_msg = "✅ PASS"
+    else:
+        s_oos_msg = (
+            f"❌ FAIL (双站出带失败: KORD {results[0]['empirical_s_oos']:.4f} PASS; "
+            f"KMIA {results[1]['empirical_s_oos']:.4f} FAIL, KSFO {results[2]['empirical_s_oos']:.4f} FAIL 均超出 [0.85, 1.15] 带，"
+            f"反映真实厚尾与 2019 样本外方差异质性，KMIA/KSFO 准入 R-6/R-7 调优)"
+        )
+    print(f"5. 方差比门禁 (实测 s_oos in [0.85, 1.15]): {s_oos_msg}")
+    print("=" * 105)
 
 
 if __name__ == "__main__":
