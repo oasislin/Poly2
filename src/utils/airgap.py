@@ -9,13 +9,45 @@ Strictly enforces zero lookahead and access restrictions into the 2019 blind tes
 3. The authorization flag CANNOT be a simple boolean toggle; it MUST embed a frozen
    statutory gates specification (all thresholds explicitly locked).
 4. Without verified pre-registration authorization, an AirgapViolationError is raised unconditionally.
+5. All dataframe sanitization events (stripping 2019 rows from multi-year tables) are explicitly
+   logged and tracked in SANITIZATION_AUDIT for complete audit-trail visibility.
+
+HISTORICAL SCRIPTS NOTE (ROUND 3):
+Round 3's use of 2019 OOS data was historically authorized under Phase 1 statutory governance.
+`scripts/evaluate_round3_oos.py` is now guarded by this airgap and will be intercepted if executed.
+If future operational needs require re-running Round 3 evaluation, the Review Committee must
+issue a dedicated pre-registration authorization flag, rather than adding exceptions/backdoors in code.
 """
 
 import json
+import logging
 from pathlib import Path
 import re
-from typing import Any, Dict, Iterable, Optional, Sequence, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 import pandas as pd
+
+logger = logging.getLogger("airgap")
+
+# Exposed audit trail for data sanitization events
+SANITIZATION_AUDIT: Dict[str, Any] = {
+    "total_sanitized_rows": 0,
+    "events": [],
+}
+
+
+def get_sanitization_audit_log() -> Dict[str, Any]:
+    """Retrieve copy of all sanitization events recorded during process execution."""
+    return {
+        "total_sanitized_rows": SANITIZATION_AUDIT["total_sanitized_rows"],
+        "events": list(SANITIZATION_AUDIT["events"]),
+    }
+
+
+def reset_sanitization_audit_log() -> None:
+    """Reset the in-memory sanitization audit log (primarily for unit testing)."""
+    SANITIZATION_AUDIT["total_sanitized_rows"] = 0
+    SANITIZATION_AUDIT["events"] = []
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTHORIZATION_FLAG_FILE = PROJECT_ROOT / "evidence" / "preregistered_2019_authorization.flag"
@@ -152,6 +184,19 @@ def sanitize_dataframe(
                 f"Access denied."
             )
         # Otherwise, filter out 2019 rows to protect downstream pipeline from leakage
+        logger.warning(
+            "AIRGAP SANITIZATION: Stripped %d rows belonging to sealed year %d from '%s'.",
+            rows_2019,
+            SEALED_YEAR,
+            source_description or "unnamed_dataframe",
+        )
+        SANITIZATION_AUDIT["total_sanitized_rows"] += rows_2019
+        SANITIZATION_AUDIT["events"].append({
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "rows_sanitized": rows_2019,
+            "source_description": source_description or "unnamed_dataframe",
+        })
+
         if year_col in df.columns:
             return df[df[year_col] != SEALED_YEAR].copy()
         else:
