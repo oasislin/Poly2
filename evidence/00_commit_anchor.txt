@@ -1,0 +1,19 @@
+=== git log --oneline -5 ===
+67d668b fix(metrics): pilot-audit-evidence: implement bias-aware statistical closure and regression fixtures
+0dc8bc5 fix(simulation): 对齐 Phase 2 Task 07 纸面盘缺陷，落地对抗做市商与 2019 高保真历史回测 (#100)
+81168c7 docs(status): 记录 Phase 2 Task 07 结项与 Phase 2 全量工程收官 (813 tests)
+608731f feat(runner): Active 10 站 48h 纸面盘仿真运行器 CLI 与全量验证 (#99)
+d3fe81b test(acceptance): 全套注入测试（Test-Scenario A~E）统一验收门禁与端到端串联 (#98)
+
+=== git show 67d668b --stat ===
+commit 67d668b77dc58b92c9a939cd2d93c34477224dbf
+Author: oasislin <oasis.lin@gemcycle.com>
+Date:   Wed Sep 23 12:45:19 2026 +0800
+
+    fix(metrics): pilot-audit-evidence: implement bias-aware statistical closure and regression fixtures
+    
+    incorporates reviewer corrections r5 (bias-aware closure, fixture expectations, dual tolerances)
+
+ src/metrics/calibration_audit.py | 372 +++++++++++++++++++++++++++++++++++++++
+ tests/test_closure_regression.py | 154 ++++++++++++++++
+ 2 files changed, 526 insertions(+)

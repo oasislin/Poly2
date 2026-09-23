@@ -1,0 +1,386 @@
+commit 67d668b77dc58b92c9a939cd2d93c34477224dbf
+Author: oasislin <oasis.lin@gemcycle.com>
+Date:   Wed Sep 23 12:45:19 2026 +0800
+
+    fix(metrics): pilot-audit-evidence: implement bias-aware statistical closure and regression fixtures
+    
+    incorporates reviewer corrections r5 (bias-aware closure, fixture expectations, dual tolerances)
+
+diff --git a/src/metrics/calibration_audit.py b/src/metrics/calibration_audit.py
+new file mode 100644
+index 0000000..f90f47a
+--- /dev/null
++++ b/src/metrics/calibration_audit.py
+@@ -0,0 +1,372 @@
++#!/usr/bin/env python3
++"""
++src/metrics/calibration_audit.py: Statistically Rigorous Verification and Closure Audit Metrics.
++
++Core Design Principles:
++1. Pure functions without implicit global state or contexts.
++2. Explicit errors on invalid inputs (e.g. sigma <= 0); NO silent np.clip() truncation.
++3. Bias-aware theoretical PIT moment derivation via bivariate normal CDF Phi_2.
++4. Built-in statistical closure assertions with analytical sampling tolerances and guardrails.
++5. Czado (2009) randomized PIT transform to eliminate discrete observational step artifacts.
++"""
++
++import math
++from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
++import numpy as np
++from scipy import stats
++
++
++class StatisticalClosureError(Exception):
++    """Base exception for statistical closure violations."""
++    pass
++
++
++class MagnitudeClosureError(StatisticalClosureError):
++    """Raised when observed PIT std deviates beyond theoretical boundary."""
++    pass
++
++
++class MeanClosureError(StatisticalClosureError):
++    """Raised when observed PIT mean deviates beyond theoretical boundary."""
++    pass
++
++
++def compute_theoretical_pit_moments(
++    mean_bias: float,
++    sigma_r: float,
++    mean_sigma_f: float,
++) -> Tuple[float, float]:
++    """Compute exact theoretical mean and standard deviation of PIT variable U = Phi((Y - mu_f) / sigma_f).
++
++    Under observation model Y - mu_f ~ N(mean_bias, sigma_r^2) with forecast spread mean_sigma_f:
++        Let W = (Y - mu_f) / mean_sigma_f ~ N(m, s^2)
++        where m = mean_bias / mean_sigma_f, s = sigma_r / mean_sigma_f.
++        Standardized parameters:
++            a = mean_bias / sqrt(sigma_r^2 + mean_sigma_f^2)
++            rho = sigma_r^2 / (sigma_r^2 + mean_sigma_f^2)
++        Then:
++            E[U] = Phi(a)
++            E[U^2] = Phi_2(a, a; rho)
++            std_theo(U) = sqrt(Phi_2(a, a; rho) - (Phi(a))^2)
++        Special case (mean_bias == 0 => a == 0):
++            std_theo(U) = sqrt(arcsin(rho) / (2 * pi))
++
++    Args:
++        mean_bias: Mean forecast residual (E[Y - mu_f]).
++        sigma_r: Empirical residual standard deviation (std(Y - mu_f)). Must be > 0.
++        mean_sigma_f: Characteristic forecast spread (sigma_f). Must be > 0.
++
++    Returns:
++        (mean_theo, std_theo): Exact theoretical moments of U.
++    """
++    if sigma_r <= 0.0:
++        raise ValueError(f"sigma_r must be strictly positive, got {sigma_r}")
++    if mean_sigma_f <= 0.0:
++        raise ValueError(f"mean_sigma_f must be strictly positive, got {mean_sigma_f}")
++
++    total_var = sigma_r ** 2 + mean_sigma_f ** 2
++    sqrt_total_var = math.sqrt(total_var)
++    a = mean_bias / sqrt_total_var
++    rho = (sigma_r ** 2) / total_var
++
++    # Theoretical mean E[U] = Phi(a)
++    mean_theo = float(stats.norm.cdf(a))
++
++    # Theoretical second moment E[U^2]
++    if abs(a) < 1e-12:
++        # Unbiased special case: exact arcsin closed form
++        # Phi_2(0, 0; rho) = 1/4 + arcsin(rho) / (2 * pi)
++        # Var(U) = arcsin(rho) / (2 * pi) since (E[U])^2 = 1/4
++        var_theo = math.asin(rho) / (2.0 * math.pi)
++    else:
++        # General biased case: evaluate bivariate normal CDF Phi_2(a, a; rho)
++        cov = [[1.0, rho], [rho, 1.0]]
++        mvn = stats.multivariate_normal(mean=[0.0, 0.0], cov=cov, allow_singular=False)
++        e_u2 = float(mvn.cdf([a, a]))
++        var_theo = e_u2 - (mean_theo ** 2)
++
++    std_theo = math.sqrt(max(0.0, var_theo))
++    return mean_theo, std_theo
++
++
++def assert_statistical_closure_summary(
++    mean_bias: float,
++    sigma_r: float,
++    mean_sigma_f: float,
++    observed_mean_u: float,
++    observed_std_u: float,
++    N: int,
++    verbose: bool = True,
++) -> Dict[str, float]:
++    """Assert mathematical closure between residual moments, forecast spread, and PIT moments.
++
++    Validates that observed PIT summary statistics match theoretical bounds derived from
++    underlying residual and forecast spread parameters, preventing fabricated or corrupt metrics.
++
++    Tolerances:
++        sampling_tol_mean = 2.576 / sqrt(12 * N)  # Asymptotic 99% CI noise for uniform mean
++        sampling_tol_std = 2.576 / sqrt(60 * N)   # Asymptotic 99% CI noise for uniform std
++        tol_mean = max(0.04, sampling_tol_mean)   # 0.04: 护栏，非门禁 (Guardrail, not gate threshold)
++        tol_std  = max(0.05, sampling_tol_std)    # 0.05: 护栏，非门禁 (Guardrail, not gate threshold)
++        Note: At N=365, sampling_tol_mean ≈ 0.0389 < 0.04 and sampling_tol_std ≈ 0.0174 < 0.05,
++              so guardrail constants are actively binding to guard against model/evaluation flaws.
++
++    Args:
++        mean_bias: E[y - mu_f]
++        sigma_r: std(y - mu_f)
++        mean_sigma_f: mean(sigma_f)
++        observed_mean_u: Empirical mean of PIT values
++        observed_std_u: Empirical standard deviation of PIT values
++        N: Sample count
++        verbose: If True, prints theoretical and observed values to stdout
++
++    Raises:
++        ValueError: On non-positive spreads or N <= 0.
++        MagnitudeClosureError: If observed std(U) violates theoretical magnitude closure.
++        MeanClosureError: If observed mean(U) violates theoretical mean closure.
++    """
++    if N <= 0:
++        raise ValueError(f"Sample size N must be positive, got {N}")
++    if sigma_r <= 0.0:
++        raise ValueError(f"sigma_r must be strictly positive, got {sigma_r}")
++    if mean_sigma_f <= 0.0:
++        raise ValueError(f"mean_sigma_f must be strictly positive, got {mean_sigma_f}")
++
++    mean_theo, std_theo = compute_theoretical_pit_moments(mean_bias, sigma_r, mean_sigma_f)
++
++    # Analytically derived sampling error bounds (PIT binomial/uniform noise under N)
++    sampling_tol_mean = 2.576 / math.sqrt(12.0 * N)
++    sampling_tol_std = 2.576 / math.sqrt(60.0 * N)
++
++    # 0.04 / 0.05: 护栏，非门禁 (Guardrail, not gate threshold)
++    tol_mean = max(0.04, sampling_tol_mean)
++    tol_std = max(0.05, sampling_tol_std)
++
++    diff_mean = abs(observed_mean_u - mean_theo)
++    diff_std = abs(observed_std_u - std_theo)
++
++    if verbose:
++        print(f"[Closure Audit] N={N}, bias={mean_bias:.4f}, sigma_r={sigma_r:.4f}, sigma_f={mean_sigma_f:.4f}")
++        print(f"[Closure Audit] Mean: observed={observed_mean_u:.4f}, theoretical={mean_theo:.4f}, diff={diff_mean:.4f}, tol={tol_mean:.4f}")
++        print(f"[Closure Audit] Std:  observed={observed_std_u:.4f}, theoretical={std_theo:.4f}, diff={diff_std:.4f}, tol={tol_std:.4f}")
++
++    # Magnitude closure check
++    if diff_std > tol_std:
++        raise MagnitudeClosureError(
++            f"Magnitude closure violated: observed std(U)={observed_std_u:.4f}, "
++            f"theoretical std(U)={std_theo:.4f}, diff={diff_std:.4f} > tol_std={tol_std:.4f}"
++        )
++
++    # Mean closure check
++    if diff_mean > tol_mean:
++        raise MeanClosureError(
++            f"Mean closure violated: observed mean(U)={observed_mean_u:.4f}, "
++            f"theoretical mean(U)={mean_theo:.4f}, diff={diff_mean:.4f} > tol_mean={tol_mean:.4f}"
++        )
++
++    return {
++        "mean_theo": mean_theo,
++        "std_theo": std_theo,
++        "observed_mean_u": observed_mean_u,
++        "observed_std_u": observed_std_u,
++        "diff_mean": diff_mean,
++        "diff_std": diff_std,
++        "tol_mean": tol_mean,
++        "tol_std": tol_std,
++    }
++
++
++def assert_statistical_closure(
++    mu_f: np.ndarray,
++    sigma_f: np.ndarray,
++    y_true: np.ndarray,
++    pit_u: np.ndarray,
++    n_deciles: int = 10,
++    verbose: bool = False,
++) -> List[Dict[str, float]]:
++    """Array-level statistical closure assertion with sigma_f stratification (deciles).
++
++    Strictly forbids silent np.clip() truncation; raises ValueError immediately if sigma_f <= 0.
++    Stratifies samples into quantiles of sigma_f to satisfy intra-stratum homoscedasticity.
++    """
++    mu_arr = np.asarray(mu_f, dtype=np.float64)
++    sigma_arr = np.asarray(sigma_f, dtype=np.float64)
++    y_arr = np.asarray(y_true, dtype=np.float64)
++    u_arr = np.asarray(pit_u, dtype=np.float64)
++
++    if not (len(mu_arr) == len(sigma_arr) == len(y_arr) == len(u_arr)):
++        raise ValueError("Input arrays mu_f, sigma_f, y_true, pit_u must have identical length")
++    if len(mu_arr) == 0:
++        raise ValueError("Input arrays must not be empty")
++
++    # Explicit check against non-positive spreads - NO silent np.clip() allowed
++    if np.any(sigma_arr <= 0.0) or np.any(np.isnan(sigma_arr)):
++        raise ValueError("sigma_f contains non-positive values or NaN; silent clipping forbidden")
++
++    N_total = len(mu_arr)
++    # Stratification by sigma_f quantiles (deciles)
++    quantiles = np.linspace(0.0, 1.0, n_deciles + 1)
++    bin_edges = np.quantile(sigma_arr, quantiles)
++    # Ensure strictly increasing edges to avoid empty bins on constant quantiles
++    bin_edges[0] -= 1e-6
++    bin_edges[-1] += 1e-6
++
++    audit_results = []
++    for i in range(n_deciles):
++        mask = (sigma_arr > bin_edges[i]) & (sigma_arr <= bin_edges[i + 1])
++        n_stratum = int(np.sum(mask))
++        if n_stratum < 5:
++            continue
++
++        res_stratum = y_arr[mask] - mu_arr[mask]
++        bias_stratum = float(np.mean(res_stratum))
++        sigma_r_stratum = float(np.std(res_stratum, ddof=1)) if n_stratum > 1 else float(np.std(res_stratum))
++        mean_sig_stratum = float(np.mean(sigma_arr[mask]))
++        obs_mean_u = float(np.mean(u_arr[mask]))
++        obs_std_u = float(np.std(u_arr[mask], ddof=1)) if n_stratum > 1 else float(np.std(u_arr[mask]))
++
++        # Run closure check on this homoscedastic stratum
++        res = assert_statistical_closure_summary(
++            mean_bias=bias_stratum,
++            sigma_r=max(1e-6, sigma_r_stratum),
++            mean_sigma_f=mean_sig_stratum,
++            observed_mean_u=obs_mean_u,
++            observed_std_u=obs_std_u,
++            N=n_stratum,
++            verbose=verbose,
++        )
++        res["stratum_index"] = i
++        audit_results.append(res)
++
++    return audit_results
++
++
++def randomized_pit(
++    y: Union[Sequence[float], np.ndarray],
++    mu: Union[Sequence[float], np.ndarray],
++    sigma: Union[Sequence[float], np.ndarray],
++    resolution: float = 0.1,
++    seed: Optional[int] = None,
++) -> np.ndarray:
++    """Compute Randomized Probability Integral Transform (Czado et al. 2009).
++
++    Eliminates discrete observational rounding step artifacts (e.g. 0.1°C or 1°F METAR bins).
++    Formula:
++        U = F(y^-) + V * [F(y^+) - F(y^-)],  V ~ Uniform(0, 1)
++        where y^- = y - resolution/2, y^+ = y + resolution/2.
++
++    Explicit error on sigma <= 0; NO silent clipping.
++    """
++    y_arr = np.asarray(y, dtype=np.float64)
++    mu_arr = np.asarray(mu, dtype=np.float64)
++    sig_arr = np.asarray(sigma, dtype=np.float64)
++
++    if np.any(sig_arr <= 0.0) or np.any(np.isnan(sig_arr)):
++        raise ValueError("sigma contains non-positive values or NaN; silent clipping forbidden")
++
++    rng = np.random.default_rng(seed)
++    half_res = resolution / 2.0
++    y_lower = y_arr - half_res
++    y_upper = y_arr + half_res
++
++    z_lower = (y_lower - mu_arr) / sig_arr
++    z_upper = (y_upper - mu_arr) / sig_arr
++
++    f_lower = stats.norm.cdf(z_lower)
++    f_upper = stats.norm.cdf(z_upper)
++
++    v = rng.uniform(0.0, 1.0, size=len(y_arr))
++    pit_u = f_lower + v * (f_upper - f_lower)
++    return np.asarray(pit_u, dtype=np.float64)
++
++
++def compute_ks_test(u: np.ndarray) -> Tuple[float, float]:
++    """Perform Kolmogorov-Smirnov test against standard uniform U(0, 1).
++
++    Returns:
++        (ks_statistic, p_value)
++    """
++    u_arr = np.asarray(u, dtype=np.float64)
++    res = stats.kstest(u_arr, "uniform", args=(0.0, 1.0))
++    return float(res.statistic), float(res.pvalue)
++
++
++def compute_weighted_ece(
++    predicted_probs: Sequence[float],
++    actual_hits: Sequence[int],
++    num_bins: int = 20,
++) -> float:
++    """Compute Expected Calibration Error (ECE) across equal-width probability bins.
++
++    Returns:
++        ECE as a scalar in [0.0, 1.0].
++    """
++    p_arr = np.asarray(predicted_probs, dtype=np.float64)
++    y_arr = np.asarray(actual_hits, dtype=np.int32)
++    if len(p_arr) != len(y_arr):
++        raise ValueError(f"Lengths must match: probs={len(p_arr)}, hits={len(y_arr)}")
++    if len(p_arr) == 0:
++        return 0.0
++
++    bin_edges = np.linspace(0.0, 1.0, num_bins + 1)
++    total_samples = len(p_arr)
++    weighted_err = 0.0
++
++    for i in range(num_bins):
++        low, high = bin_edges[i], bin_edges[i + 1]
++        mask = (p_arr >= low) & (p_arr <= high) if i == num_bins - 1 else (p_arr >= low) & (p_arr < high)
++        count = int(np.sum(mask))
++        if count > 0:
++            mean_pred = float(np.mean(p_arr[mask]))
++            hit_rate = float(np.mean(y_arr[mask]))
++            weighted_err += abs(mean_pred - hit_rate) * count
++
++    return float(weighted_err / total_samples)
++
++
++def compute_variance_ratio_f_test(
++    residuals: Sequence[float],
++    sigma_f: Sequence[float],
++) -> Dict[str, float]:
++    """Auxiliary diagnostic: Variance ratio F-test on centered residuals.
++
++    Pre-processing requirements:
++    1. Residuals must be centered (demeaned) to prevent mean bias from inflating the denominator.
++    2. F-test is an auxiliary diagnostic, NOT a primary gate.
++    """
++    res_arr = np.asarray(residuals, dtype=np.float64)
++    sig_arr = np.asarray(sigma_f, dtype=np.float64)
++    if len(res_arr) != len(sig_arr):
++        raise ValueError("Residuals and sigma_f must have identical length")
++    if len(res_arr) < 2:
++        raise ValueError("At least 2 samples required for F-test")
++
++    # 1. Demean residuals
++    centered_res = res_arr - np.mean(res_arr)
++    s2_residual = float(np.var(centered_res, ddof=1))
++    mean_s2_forecast = float(np.mean(sig_arr ** 2))
++
++    if s2_residual <= 0.0 or mean_s2_forecast <= 0.0:
++        raise ValueError("Variances must be strictly positive")
++
++    f_stat = mean_s2_forecast / s2_residual
++    df1 = len(sig_arr) - 1
++    df2 = len(res_arr) - 1
++
++    p_value = 2.0 * min(
++        float(stats.f.cdf(f_stat, df1, df2)),
++        1.0 - float(stats.f.cdf(f_stat, df1, df2)),
++    )
++
++    # Theoretical 95% CI critical values for F(df1, df2)
++    f_crit_lower = float(stats.f.ppf(0.025, df1, df2))
++    f_crit_upper = float(stats.f.ppf(0.975, df1, df2))
++
++    return {
++        "f_stat": f_stat,
++        "p_value": p_value,
++        "f_crit_lower_95": f_crit_lower,
++        "f_crit_upper_95": f_crit_upper,
++        "s_ratio": math.sqrt(f_stat),
++        "is_auxiliary_pass": bool(f_crit_lower <= f_stat <= f_crit_upper),
++    }

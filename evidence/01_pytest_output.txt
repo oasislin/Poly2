@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-9.0.3, pluggy-1.5.0 -- /opt/miniconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/ericlin/SynologyDrive/Project/Poly Way2
+plugins: anyio-4.12.1, cov-7.1.0
+collecting ... collected 3 items
+
+tests/test_closure_regression.py::test_regression_kord_third_round_fabrication 
+[FIXTURE 1: KORD Round 3]
+  Inputs: bias=2.89, sigma_f=2.35, sigma_r=4.39, N=365
+  Claimed: mean(U)=0.7565, std(U)=0.2691
+  Theoretical: mean_theo=0.7192, std_theo=0.3333
+[Closure Audit] N=365, bias=2.8900, sigma_r=4.3900, sigma_f=2.3500
+[Closure Audit] Mean: observed=0.7565, theoretical=0.7192, diff=0.0373, tol=0.0400
+[Closure Audit] Std:  observed=0.2691, theoretical=0.3333, diff=0.0642, tol=0.0500
+  Intercepted expected exception: Magnitude closure violated: observed std(U)=0.2691, theoretical std(U)=0.3333, diff=0.0642 > tol_std=0.0500
+PASSED
+tests/test_closure_regression.py::test_regression_kmia_third_round_fabrication 
+[FIXTURE 2: KMIA Round 3]
+  Inputs: bias=0.0, sigma_f=2.18, sigma_r=4.4241, N=365
+  Claimed: std(U)=0.1692
+  Theoretical: mean_theo=0.5000, std_theo=0.3858 (arcsin closed-form)
+[Closure Audit] N=365, bias=0.0000, sigma_r=4.4241, sigma_f=2.1800
+[Closure Audit] Mean: observed=0.5000, theoretical=0.5000, diff=0.0000, tol=0.0400
+[Closure Audit] Std:  observed=0.1692, theoretical=0.3858, diff=0.2166, tol=0.0500
+  Intercepted expected exception: Magnitude closure violated: observed std(U)=0.1692, theoretical std(U)=0.3858, diff=0.2166 > tol_std=0.0500
+PASSED
+tests/test_closure_regression.py::test_regression_round2_green_table_fabrication 
+[FIXTURE 3: Round 2 Green Table]
+  Inputs: bias=2.89, sigma_f=2.35, sigma_r=4.39, N=365
+  Fabricated Claim: std(U)=0.2691
+  Theoretical: mean_theo=0.7192, std_theo=0.3333
+[Closure Audit] N=365, bias=2.8900, sigma_r=4.3900, sigma_f=2.3500
+[Closure Audit] Mean: observed=0.7565, theoretical=0.7192, diff=0.0373, tol=0.0400
+[Closure Audit] Std:  observed=0.2691, theoretical=0.3333, diff=0.0642, tol=0.0500
+  Intercepted expected exception: Magnitude closure violated: observed std(U)=0.2691, theoretical std(U)=0.3333, diff=0.0642 > tol_std=0.0500
+PASSED
+
+============================== 3 passed in 0.89s ===============================
