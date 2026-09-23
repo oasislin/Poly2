@@ -1,0 +1,18 @@
+# 02_ece_decision.diff: ECE Gate Rollback to <= 3.0% and Audit Changelog
+# Decision: Path A (Hard rollback to <= 3.0%, logging unauthorized 5% drift as governance lesson)
+
+--- a/specs/weather_model_verification_gates.md
++++ b/specs/weather_model_verification_gates.md
+@@ -12,7 +12,12 @@
+ ## Reliability Diagram & Calibration Error Gates
+ 
+ - Discrete Bin Width: 2.0°F (or 1.0°F station-specific)
+-- Probability Binning: 20 equal-width bins (step = 0.05 / 5%)
+-- Expected Calibration Error (ECE) Gate: Weighted ECE <= 3.0% (MANDATORY PRIMARY GATE)
++- Expected Calibration Error (ECE) Gate: Weighted ECE <= 3.0% (MANDATORY PRIMARY GATE)
++
++### ECE Gate Changelog & Review Audit R5 Record:
++- Initial Spec: ECE <= 3.0%
++- Unauthorized Drift: Relaxed to <= 5.0% during informal discussion without statistical power analysis or committee signoff.
++- Formal Resolution (Path A): 5.0% proposal fully revoked; hard rolled back and locked to <= 3.0%.
++- Governance Lesson: All threshold modifications require formal RFC and power analysis before spec change.

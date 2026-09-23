@@ -1,5 +1,10 @@
 # 规格书：风控联动贯通、全套注入测试统一验收与纸面盘仿真运行器 (Phase 2 Task 07)
 
+> [!CAUTION]
+> **CRITICAL NOTICE (Review Audit R5)**:
+> Metrics fixed at commit `67d668b`. All pre-existing metric-dependent conclusions, Sharpe claims (>2.0), and 2019 backtest results in this spec are **VOID pending `--recompute`** with verified statistical closure metrics.
+> Furthermore, current paper trading simulator is strictly defined as **Synthetic Opponent Simulation** (using theoretical mathematical pricing). True microsecond order book replay is officially **deferred until genuine L2/L3 order book dataset asset ingestion**.
+
 - **Spec Issue**: [#94](https://github.com/oasislin/Poly2/issues/94) (Spec: Phase 2 Task 07 - 风控联动贯通、全套注入测试统一验收与纸面盘仿真运行器)
 - **Tickets**:
   - `Phase 2 Task 07 - Ticket 01`: [#95](https://github.com/oasislin/Poly2/issues/95) (`feat(simulation): 纸面盘事件模型、时钟推进器与仿真账户基石`)

@@ -1,0 +1,24 @@
+# 03_orderbook_diff.diff: Realignment of Order Book Assets and Simulation Scope (Path B)
+#
+# FORMAL DECLARATION (Review Audit R5 Decision on Asset Ingestion):
+# 1. Nature of Current Simulator: The "SyntheticMarketMaker" in src/simulation/ is 100% a
+#    SYNTHETIC OPPONENT SIMULATION. It computes theoretical pricing and depths dynamically.
+#    It does NOT consume, replay, or depend on any genuine historical L2/L3 order book snapshots.
+# 2. Scope Realignment: All wording claiming "order book replay" or "high-fidelity historical
+#    order book backtest" is officially revoked and corrected to "synthetic opponent simulation".
+# 3. Deferred Sandbox: True offline order book replay and microsecond CLOB matching sandbox
+#    is officially DEFERRED until genuine historical Polymarket L2/L3 order book assets are ingested.
+
+--- a/specs/phase2-task07-paper-trading-and-full-risk-spec.md
++++ b/specs/phase2-task07-paper-trading-and-full-risk-spec.md
+@@ -14,6 +14,10 @@
+- 2. 实战纸面盘（Paper Trading）全生命周期闭环：
+-    系统需要一个轻量、精确、事件驱动的仿真系统（`PaperTradingSimulator`），在 48 小时多站并发运行中，将数据合流、心跳异常检测、两维阶梯风控、EV定价、联合凯利、IOC 限价单发单撮合、非原子残局自愈与真值结算串联成闭环；
++ 2. 合成对手方纸面盘（Synthetic Opponent Simulation）全生命周期闭环：
++    系统使用合成对抗做市商模型评估资金流与两维风控逻辑；正式声明：本项目当前未接入真实微观订单簿快照大资产，真实订单簿回放沙盒正式登记推迟至真实订单簿资产入库后立项建设；
+
+--- a/docs/reports/rfc-phase2-variance-floor-and-task07-realignment.md
++++ b/docs/reports/rfc-phase2-variance-floor-and-task07-realignment.md
+@@ -184,3 +184,3 @@
+- | **§7 实施路线图** | `Task 07: 两维阶梯风控、注入测试 (A~E) 与 48h Paper Trading` | **`Task 07: 物理概率模型有效性度量、离散分桶校准与注入测试`**（彻底剥离伪撮合夏普率） | 任务范式归正，回归物理本质 |
++ | **§7 实施路线图** | `Task 07: 两维阶梯风控、注入测试 (A~E) 与 48h Paper Trading` | **`Task 07: 物理概率模型有效性度量、离散分桶校准与合成对抗做市商注入测试`** | 任务范式归正，回归物理本质，剥离虚假实盘撮合 |

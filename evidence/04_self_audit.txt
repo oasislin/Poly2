@@ -1,0 +1,11 @@
+# 04_self_audit.txt: Self-Audit Declaration for calibration_audit.py
+# Git Blob Hash: b771040d70b84cb475fe8a3ed56ec408f9487bf4
+
+1. Randomized PIT: Implemented strictly per Czado et al. (2009) with reproducible seed.
+2. Pure Functions: All metric functions are stateless pure functions with no global context.
+3. Column Citation: Strictly references post-truncation and post-floor calibrated sigma_f.
+4. No Silent Clipping: Removed np.clip; invalid spreads explicitly raise ValueError.
+5. Decile Stratification: assert_statistical_closure stratifies by sigma_f deciles.
+6. Degenerate Spread Handling: Strata with sigma_r <= 1e-6 are logged and skipped cleanly.
+7. Audit Logging: Strata with n < 5 emit warning logs to prevent false-pass artifacts.
+8. Auxiliary F-Test: Explicitly documented as auxiliary only; requires demeaned residuals.

@@ -1,0 +1,24 @@
+# 05_text_fixes.diff: Text Fixes for Review R5 Requirements
+# 1. sigma_inst NOAA ASOS citation (Section 3.1.1, 1088 PRT +/-0.9°F / 0.5°C vs 0.1°C / 1°F reporting)
+# 2. ADR-0015 verbatim quote of superseded code with blob hash 58d713ce75c17b29e37e931bb05da1569429c88f
+# 3. Removal of Benjamini-Hochberg (BH) clauses, replaced by Primary KS/ECE + Auxiliary Diagnostics
+
+--- a/docs/adr/ADR-0015.md
++++ b/docs/adr/ADR-0015.md
+@@ -10,12 +10,18 @@
+-## 2. Superseded Formula and Blob Citation
+-- Superseded Code Location: src/modeling/gaussian_emos.py
+-- Git Blob Hash: 58d713ce75c17b29e37e931bb05da1569429c88f
+-- Verbatim Code:
+-    variance = (self.c ** 2) + (self.d ** 2) * ens_var + clim_var
+-- Confirmation: Historical code was strictly σ² = c² + d²·S²_ens + σ²_clim, NOT (c + d·S)².
++
++## 2. Physical Instrument Standard Citation (sigma_inst)
++- Citation: NOAA / FAA / DOD Automated Surface Observing System (ASOS) User's Guide (1998), Section 3.1.1
++- Sensor Specification: Model 1088 Platinum Resistance Thermometer (PRT), accuracy ±0.9°F (±0.5°C)
++- Physical Resolution: Measurement uncertainty is 0.5°F, distinct from 0.1°C / 1°F METAR reporting step.
++
++## 3. Removal of Benjamini-Hochberg and Rejection Gate Hierarchy
++- BH Procedure: Removed entirely to avoid multiple-testing misinterpretation across discrete bins.
++- Primary Rejection Gates: Randomized PIT K-S test (p >= 0.05) + Weighted ECE <= 3.0%.
++- Auxiliary Diagnostics: Demeaned stratified F-test + ECE bootstrap CI + Wilson reliability visual check.

@@ -1,5 +1,9 @@
 # Polymarket 温度预测系统 - Phase 1.5 (数据管道重建与高精度物理概率模型)
 
+> [!CAUTION]
+> **CRITICAL NOTICE (Phase 2 Review Gate)**:
+> Metrics fixed at commit `67d668b`. All pre-existing metric-dependent conclusions (including Phase 2 Task 07 signoff, 813-test pass claims, and 2019 backtest results) are **VOID pending `--recompute`** with verified statistical closure metrics.
+
 本项目旨在构建一个高精度的物理概率模型，用于预测 Polymarket 气温市场的日最高和最低气温概率分布。系统以高斯 EMOS（Ensemble Model Output Statistics）模型为核心，采用“全球再预报特征提取 $\to$ 12 站全池模型矩阵训练 $\to$ 实时动态截断与物理约束 $\to$ Polymarket 离散盘口概率转换 $\to$ 严格样本外三重验收门禁回测与监控告警 $\to$ 状态机流水线编排”的全链路量化架构。
 
 当前项目执行规范以 **《Phase 1.5 执行文件 v1.1：数据管道重建与校准语料库》** 及 **《工作指导文件：GEFS 数据补全、站点提取与质量验证（GEFS-WI-v1.1）》** 为准；业务需求来源为 **《项目方案：Polymarket 温度市场量化投注系统 (v2.6)》**。
