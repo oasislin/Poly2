@@ -1,18 +1,22 @@
 {
   "baseline_code_commit": "67d668b77dc58b92c9a939cd2d93c34477224dbf",
   "evidence_archive_commit": "7c933003c78e9bd5604884f4d814ec35f7eafe42",
+  "directive_version": "Review Directive v3 (D-1 through D-6)",
   "randomized_pit_seed": 42,
   "files": {
-    "pilot_parameters.json": "fe69bfdf33713fd202124e1a40818a0dbdc1c79b5c77ec0f133c9a9e2cff0478",
-    "pilot_predictions_2019.parquet": "b4a1d5981d63f743ea91c6c3034bbafbd5e9f919cd20ce33ac64874132b6f12f",
-    "sigma_star_recomputed.json": "9191c3a598064e313912b5b19176d149b12f540749f0180f1014062ac6ed707b",
-    "t1_t2_provenance_audit.txt": "8e7eedce04eee3ac17b12abca5503f769868d2ffe9727539722a964a12a393d2",
-    "r2_speci_all_hourly_yearly_breakdown.csv": "d31d8a527c39114d6ef51d8555ebdf1d75dee5326a72b3059f75e3012cee390a",
-    "r2_target_switch_budget.csv": "6022faf2d2672659bcedf0b03287161ae786ef2252706ef9c0637118878b76ca",
-    "r2_r3_diagnosis_and_budget_report.md": "2c32bedb84f6b95dbb81ea4e19624b55299e9a681c22cd392695fb8cd99654e5",
-    "r4_gate_calibration_protocol.md": "164e9ac77e20f3afaed12a941ce292e98f058cce0b783b8885f06d7b24e037e5",
-    "recompute_settlement_report.md": "5cd34fc9b1c950fcce254dfed98b106b17ef286a112663780a873cfdcf089938",
-    "pit_histograms.svg": "1a84ff443165c00d5f69822e904bea9fc480578cf0567aac706a6098dc28be84",
-    "reliability_diagrams.svg": "a5377cbf52562bf8f486dec7784637d02ec4bcfb5eeb95e142b077132e2ea5e8"
+    "pilot_parameters.json": "461ffd35b4a52206e2c1769adbf95901e4b2dff2c38336dcc9842a34e1b24da0",
+    "pilot_predictions_2019.parquet": "f7b528c8f507d8da2a1f4bd28d4a7a9379e4307afb9b635ada98fb6f800e3042",
+    "sigma_star_recomputed.json": "4535291361b4add1a32787a373a5c7fecd841c2849967266ed456c3bd0447c7b",
+    "training_variance_factors.json": "8548a4d527554e04d18dbba0e23082d61b29da1f7be0d52b2ec58566071c6094",
+    "recomputed_statistics.csv": "1fb0de27ea222dcc208b4f783b9d38d7db47dfd20d2b2d4e75e0ae251a82e470",
+    "r2_speci_all_hourly_yearly_breakdown.csv": "745c1621db8b7c1f53f1da0444ae39546e6b8370a8c8fb74ba84a85724b7f3d1",
+    "r2_speci_yearly_pivot.csv": "7244cd07591e0a3a71acf7710bf75aec88986b006417e807f3bb6be023b42679",
+    "r2_target_switch_budget.csv": "94bcc463c07688965a8eaf69083a77e22cb2bf7dac7353b260f4d56bded20ee3",
+    "d3_conflict_reconciliation.md": "fbe24aef4602208935bb228ad0837107cba1b9cec64a4d8a791dc985f0f5c01e",
+    "d6_code_change_audit_trail.md": "8c8cd7e70f87693a0999df0d695d18db121a8c9c92e28edffadf1e46323dc50d",
+    "recompute_settlement_report.md": "ccc6d684e804d8c7f423c5424e486d812728ae1ac8872c138e82163e98eb2495",
+    "r2_r3_diagnosis_and_budget_report.md": "079968f61b4556438d14e46f554ac7e96b18a365c04afc80a85649f0685b7e81",
+    "data/processed/audit_arrays/2000_2018_training_arrays.parquet": "c81f21309d053ad3eb69b6f068ccf31409bf42edabca9a5735d85dec1b5f6342",
+    "data/processed/audit_arrays/2019_oos_evaluation_arrays.parquet": "0da539ebfa1b3f1bdfac715d183af1bd943430975eeb123da635b8bf09843311"
   }
 }

@@ -1,212 +1,219 @@
 {
-  "KORD": {
-    "Winter": {
-      "station": "KORD",
-      "season": "Winter",
-      "params": {
-        "a": 4.769460163263147,
-        "b": 0.9891860413565373,
-        "c": 3.1287530710853257,
-        "d": 0.9014429183230643
+  "models": {
+    "KORD": {
+      "Winter": {
+        "station": "KORD",
+        "season": "Winter",
+        "params": {
+          "a": 4.769460163263147,
+          "b": 0.9891860413565373,
+          "c": 3.1287530710853257,
+          "d": 0.9014429183230643
+        },
+        "crps_loss": 1.9273098998401894,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 25,
+        "nfev": 165,
+        "sample_count": 1715
       },
-      "crps_loss": 1.9273098998401894,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 25,
-      "nfev": 165,
-      "sample_count": 1715
+      "Spring": {
+        "station": "KORD",
+        "season": "Spring",
+        "params": {
+          "a": 4.724599923858609,
+          "b": 0.9925184268059775,
+          "c": 3.230318814592232,
+          "d": 1.0773130601852052
+        },
+        "crps_loss": 2.131259051874884,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 29,
+        "nfev": 175,
+        "sample_count": 1748
+      },
+      "Summer": {
+        "station": "KORD",
+        "season": "Summer",
+        "params": {
+          "a": 8.156103014115716,
+          "b": 0.9300706986504031,
+          "c": 2.351968472606443,
+          "d": 0.9511510902631316
+        },
+        "crps_loss": 1.5761663382047897,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 47,
+        "nfev": 265,
+        "sample_count": 1748
+      },
+      "Autumn": {
+        "station": "KORD",
+        "season": "Autumn",
+        "params": {
+          "a": 3.709335255618685,
+          "b": 0.9935821091681879,
+          "c": 2.4877058859239165,
+          "d": 0.9349023335283755
+        },
+        "crps_loss": 1.591241359922725,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 32,
+        "nfev": 205,
+        "sample_count": 1729
+      }
     },
-    "Spring": {
-      "station": "KORD",
-      "season": "Spring",
-      "params": {
-        "a": 4.724599923858609,
-        "b": 0.9925184268059775,
-        "c": 3.230318814592232,
-        "d": 1.0773130601852052
+    "KMIA": {
+      "Winter": {
+        "station": "KMIA",
+        "season": "Winter",
+        "params": {
+          "a": 8.163147943563692,
+          "b": 0.9386815651891172,
+          "c": 1.5032530192932496,
+          "d": 0.9600371861166953
+        },
+        "crps_loss": 1.0675778852633384,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 37,
+        "nfev": 245,
+        "sample_count": 1715
       },
-      "crps_loss": 2.131259051874884,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 29,
-      "nfev": 175,
-      "sample_count": 1748
+      "Spring": {
+        "station": "KMIA",
+        "season": "Spring",
+        "params": {
+          "a": 10.757089521322388,
+          "b": 0.913946344409694,
+          "c": 1.3042253275195008,
+          "d": 0.7822315336524612
+        },
+        "crps_loss": 0.9215528465026501,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 49,
+        "nfev": 315,
+        "sample_count": 1748
+      },
+      "Summer": {
+        "station": "KMIA",
+        "season": "Summer",
+        "params": {
+          "a": 7.837074021530775,
+          "b": 0.9402422465279655,
+          "c": 1.3141826904573821,
+          "d": 0.8948172353021532
+        },
+        "crps_loss": 0.9095016530069281,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 50,
+        "nfev": 320,
+        "sample_count": 1748
+      },
+      "Autumn": {
+        "station": "KMIA",
+        "season": "Autumn",
+        "params": {
+          "a": 10.706914455712804,
+          "b": 0.9040638229047102,
+          "c": 1.2771456125334557,
+          "d": 0.9176252673128363
+        },
+        "crps_loss": 0.899490267076113,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 37,
+        "nfev": 235,
+        "sample_count": 1729
+      }
     },
-    "Summer": {
-      "station": "KORD",
-      "season": "Summer",
-      "params": {
-        "a": 8.156103014115716,
-        "b": 0.9300706986504031,
-        "c": 2.351968472606443,
-        "d": 0.9511510902631316
+    "KSFO": {
+      "Winter": {
+        "station": "KSFO",
+        "season": "Winter",
+        "params": {
+          "a": 17.794317109851132,
+          "b": 0.7697601905186536,
+          "c": 3.1569823622866897,
+          "d": 0.0
+        },
+        "crps_loss": 1.859350840189117,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 31,
+        "nfev": 185,
+        "sample_count": 1715
       },
-      "crps_loss": 1.5761663382047897,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 47,
-      "nfev": 265,
-      "sample_count": 1748
-    },
-    "Autumn": {
-      "station": "KORD",
-      "season": "Autumn",
-      "params": {
-        "a": 3.709335255618685,
-        "b": 0.9935821091681879,
-        "c": 2.4877058859239165,
-        "d": 0.9349023335283755
+      "Spring": {
+        "station": "KSFO",
+        "season": "Spring",
+        "params": {
+          "a": 15.059216216349345,
+          "b": 0.8237600247742681,
+          "c": 3.393280122590905,
+          "d": 1.0511686241976552
+        },
+        "crps_loss": 2.143733799905235,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "nit": 46,
+        "nfev": 255,
+        "sample_count": 1748
       },
-      "crps_loss": 1.591241359922725,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 32,
-      "nfev": 205,
-      "sample_count": 1729
+      "Summer": {
+        "station": "KSFO",
+        "season": "Summer",
+        "params": {
+          "a": 25.781303502932605,
+          "b": 0.6335453048411618,
+          "c": 3.7836630469610073,
+          "d": 0.7562689748020955
+        },
+        "crps_loss": 2.308804464243215,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 45,
+        "nfev": 260,
+        "sample_count": 1728
+      },
+      "Autumn": {
+        "station": "KSFO",
+        "season": "Autumn",
+        "params": {
+          "a": 14.429841195096456,
+          "b": 0.8422478231139494,
+          "c": 4.099691872612915,
+          "d": 1.7980339148979692
+        },
+        "crps_loss": 2.5311267658180263,
+        "converged": true,
+        "status_code": 0,
+        "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        "nit": 36,
+        "nfev": 210,
+        "sample_count": 1729
+      }
     }
   },
-  "KMIA": {
-    "Winter": {
-      "station": "KMIA",
-      "season": "Winter",
-      "params": {
-        "a": 8.163147943563692,
-        "b": 0.9386815651891172,
-        "c": 1.5032530192932496,
-        "d": 0.9600371861166953
-      },
-      "crps_loss": 1.0675778852633384,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 37,
-      "nfev": 245,
-      "sample_count": 1715
-    },
-    "Spring": {
-      "station": "KMIA",
-      "season": "Spring",
-      "params": {
-        "a": 10.757089521322388,
-        "b": 0.913946344409694,
-        "c": 1.3042253275195008,
-        "d": 0.7822315336524612
-      },
-      "crps_loss": 0.9215528465026501,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 49,
-      "nfev": 315,
-      "sample_count": 1748
-    },
-    "Summer": {
-      "station": "KMIA",
-      "season": "Summer",
-      "params": {
-        "a": 7.837074021530775,
-        "b": 0.9402422465279655,
-        "c": 1.3141826904573821,
-        "d": 0.8948172353021532
-      },
-      "crps_loss": 0.9095016530069281,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 50,
-      "nfev": 320,
-      "sample_count": 1748
-    },
-    "Autumn": {
-      "station": "KMIA",
-      "season": "Autumn",
-      "params": {
-        "a": 10.706914455712804,
-        "b": 0.9040638229047102,
-        "c": 1.2771456125334557,
-        "d": 0.9176252673128363
-      },
-      "crps_loss": 0.899490267076113,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 37,
-      "nfev": 235,
-      "sample_count": 1729
-    }
-  },
-  "KSFO": {
-    "Winter": {
-      "station": "KSFO",
-      "season": "Winter",
-      "params": {
-        "a": 17.794317109851132,
-        "b": 0.7697601905186536,
-        "c": 3.1569823622866897,
-        "d": 0.0
-      },
-      "crps_loss": 1.859350840189117,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 31,
-      "nfev": 185,
-      "sample_count": 1715
-    },
-    "Spring": {
-      "station": "KSFO",
-      "season": "Spring",
-      "params": {
-        "a": 15.059216216349345,
-        "b": 0.8237600247742681,
-        "c": 3.393280122590905,
-        "d": 1.0511686241976552
-      },
-      "crps_loss": 2.143733799905235,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
-      "nit": 46,
-      "nfev": 255,
-      "sample_count": 1748
-    },
-    "Summer": {
-      "station": "KSFO",
-      "season": "Summer",
-      "params": {
-        "a": 25.781303502932605,
-        "b": 0.6335453048411618,
-        "c": 3.7836630469610073,
-        "d": 0.7562689748020955
-      },
-      "crps_loss": 2.308804464243215,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 45,
-      "nfev": 260,
-      "sample_count": 1728
-    },
-    "Autumn": {
-      "station": "KSFO",
-      "season": "Autumn",
-      "params": {
-        "a": 14.429841195096456,
-        "b": 0.8422478231139494,
-        "c": 4.099691872612915,
-        "d": 1.7980339148979692
-      },
-      "crps_loss": 2.5311267658180263,
-      "converged": true,
-      "status_code": 0,
-      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
-      "nit": 36,
-      "nfev": 210,
-      "sample_count": 1729
-    }
+  "frozen_c_train": {
+    "KORD": 1.0678138456280364,
+    "KMIA": 1.1090366278659622,
+    "KSFO": 1.0664195819547584
   }
 }
