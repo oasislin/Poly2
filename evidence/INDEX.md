@@ -43,3 +43,12 @@
   - [`../scripts/fit_training_variance_factors.py`](../scripts/fit_training_variance_factors.py): 训练窗方差拟合脚本。
   - [`training_variance_factors.json`](training_variance_factors.json): 2000–2018 拟合并冻结的 $c_{\text{train}}$。
   - [`d6_code_change_audit_trail.md`](d6_code_change_audit_trail.md): 变更留痕、代码 Diff 与 SHA256 清单。
+
+### 五、Round 3：R-6 迈阿密专项冷偏差修复与 R-7 EVT 极值尾部校准 (终局结算)
+- **唯一法定终局凭据**: [`round3_settlement_report.md`](round3_settlement_report.md)
+- **机器可读统计表**: [`round3_recomputed_statistics.csv`](round3_recomputed_statistics.csv)
+- **R-6 KMIA 对流校正参数**: [`r6_kmia_parameters.json`](r6_kmia_parameters.json)（基于 2000–2018 纯训练窗拟合 Johnson SU）
+- **R-7 EVT 尾部校准参数**: [`r7_tail_parameters.json`](r7_tail_parameters.json)（基于 2000–2018 纯训练窗拟合 GPD 尾部，5%~95% 边界锁定）
+- **KSFO 2019 海雾月份方差分解**: [`round3_ksfo_monthly_breakdown.csv`](round3_ksfo_monthly_breakdown.csv)（实证证实 6/8/9 月海雾侵入假说）
+- **终局审计数组**: `data/processed/audit_arrays/2019_oos_round3_evaluation_arrays.parquet`（包含有效方差与 R-6/R-7 复合 PIT）
+- **单次盲测结算脚本**: [`../scripts/evaluate_round3_oos.py`](../scripts/evaluate_round3_oos.py)

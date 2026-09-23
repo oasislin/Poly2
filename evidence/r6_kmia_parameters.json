@@ -1,0 +1,34 @@
+{
+  "station": "KMIA",
+  "training_window": "2000-2018",
+  "sample_count": 6940,
+  "raw_residual_moments": {
+    "mean": -0.0011472810248432564,
+    "std": 1.7508940071090622,
+    "skewness": -1.028470716021118,
+    "kurtosis": 3.1533948973856214
+  },
+  "selected_distribution": "johnsonsu",
+  "johnsonsu_parameters": {
+    "gamma": 0.7645691412470903,
+    "delta": 1.668232534241755,
+    "xi": 0.7016806459852685,
+    "lambda": 1.2322473920735264,
+    "train_ks_stat": 0.007424367221360972,
+    "train_ks_p_value": 0.8360522731329023
+  },
+  "split_normal_parameters": {
+    "sigma_L": 1.0711931462729898,
+    "sigma_R": 0.9176965959729586,
+    "train_ks_stat": 0.10705564833090614,
+    "train_ks_p_value": 1.0201136049617384e-69
+  },
+  "skew_normal_parameters": {
+    "a": -2.294710527992623,
+    "loc": 1.039058644802639,
+    "scale": 1.4437253316574057,
+    "train_ks_stat": 0.04387313887122618,
+    "train_ks_p_value": 4.7940158992821715e-12
+  },
+  "training_data_sha256": "8f2a84d26aaeaeaaf7050424df6f7d19891d752fb01b89f49d3add79bbaf3a5c"
+}
