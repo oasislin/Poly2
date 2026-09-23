@@ -147,7 +147,7 @@
 | 工件路径 | 工件类型 | SHA-256 校验码 | 登记状态 |
 | :--- | :--- | :--- | :---: |
 | [`evidence/model_inventory_and_execution_audit_report.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/model_inventory_and_execution_audit_report.md) | Markdown (本报告) | *待落盘生成* | 已就绪 |
-| [`evidence/model_inventory_audit.csv`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/model_inventory_audit.csv) | CSV (802 条全量明细) | `eca0d960d17e933c8a981ee6c705234f89d225faed524c7268ad2700ef2daa3d` | 已登记 |
+| [`evidence/model_inventory_audit.csv`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/model_inventory_audit.csv) | CSV (802 条全量明细，含归档路径 `archived_path` 与 `SUPERSEDED_LEGACY_DEFECTIVE` 状态) | `0fbfbf17d64867e017e5242d55ebad3ad4090e4ba98441aac858f454e415da9d` | 2026-09-24 归档同步更新 |
 | [`evidence/active10_training_variance_factors.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/active10_training_variance_factors.json) | JSON (训练窗参数) | `e355befdd2fe2fdd643dc2b9d669dd3f5296df645d27016c6196df13115f703d` | 已登记 |
 | [`evidence/active10_climate_calibration.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/active10_climate_calibration.json) | JSON (局地校准参数) | `ee13c77ef82d294a7044a8c460e266391d752df06e5b55f2c42317a2704fd389` | 已登记 |
 | [`data/processed/audit_arrays/2019_oos_active10_arrays.parquet`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/data/processed/audit_arrays/2019_oos_active10_arrays.parquet) | Parquet (2019 评估底账) | `889bab3e9f39111f826bb5603e827ce495d6fc893158252e2fbab2dffa2e13ce` | 已登记 |
