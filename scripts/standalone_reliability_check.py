@@ -5,23 +5,12 @@ Specification: SPEC-RELIABILITY-001 (ADR-0017 Gate 2 Diagnostic View).
 
 Zero internal project dependencies. Standard library + numpy, pandas, scipy.
 Third-party verifiable.
-
-Reads:
-  - data/processed/audit_arrays/2000_2018_training_arrays.parquet
-  - evidence/r6_kmia_parameters.json
-  - evidence/r7_tail_parameters.json
-
-Outputs:
-  - evidence/reliability_check_main_global.csv (20 strata global pooling)
-  - evidence/reliability_check_stratified_station_season.csv (12 station x season slices)
-  - evidence/reliability_check_brier_skill.csv (Model vs. Climate Brier Skill Score)
 """
 
 import argparse
 import json
 import math
 from pathlib import Path
-import sys
 from typing import Dict, Any, Tuple, List, Optional
 
 import numpy as np
@@ -38,6 +27,46 @@ DEFAULT_OUT_BRIER = PROJECT_ROOT / "evidence" / "reliability_check_brier_skill.c
 
 
 # ==============================================================================
+# Helper Utilities: Math, Intervals & Persistence
+# ==============================================================================
+
+def _integrate_gpd_tail(u: float, beta: float, xi: float, is_right_tail: bool) -> float:
+    """Helper to integrate tail variance component under Generalized Pareto Distribution."""
+    sign = 1.0 if is_right_tail else -1.0
+
+    def integrand(x):
+        val = u + sign * x
+        return (val**2) * 0.05 * (1.0 / beta) * (1.0 + xi * x / beta)**(-1.0 / xi - 1.0)
+
+    x_max = -beta / xi if xi < 0 else 50.0
+    integral_val, _ = integrate.quad(integrand, 0, x_max * 0.9999)
+    return float(integral_val)
+
+
+def compute_binomial_ci_half_width(empirical_freq: float, n_count: int, z: float = 1.96) -> float:
+    """
+    Compute binomial 95% confidence half-width.
+    Uses standard Wald interval when 0 < f < 1, and Wilson score interval when f in {0, 1}.
+    """
+    if n_count <= 0:
+        return float(np.nan)
+    variance_term = empirical_freq * (1.0 - empirical_freq)
+    if variance_term > 0:
+        return float(z * math.sqrt(variance_term / n_count))
+    # Wilson score interval boundary distance for boundary empirical frequencies
+    # Plausible interval width from boundary: z^2 / (n + z^2)
+    return float((z**2) / (n_count + z**2))
+
+
+def _save_dataframe(df: pd.DataFrame, out_path: Optional[Path]) -> None:
+    """Helper to persist DataFrame to disk if path is provided."""
+    if out_path is not None:
+        path = Path(out_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False)
+
+
+# ==============================================================================
 # Ticket 01: EVT Variance, Station CDFs & Record Expansion
 # ==============================================================================
 
@@ -45,30 +74,32 @@ def compute_evt_variance(station_params: Dict[str, Any]) -> float:
     """Compute theoretical variance factor of hybrid core + EVT GPD tail model."""
     u_l = station_params["u_left"]
     u_r = station_params["u_right"]
-    xi_l = station_params["gpd_left"]["shape_xi"]
-    beta_l = station_params["gpd_left"]["scale_beta"]
-    xi_r = station_params["gpd_right"]["shape_xi"]
-    beta_r = station_params["gpd_right"]["scale_beta"]
+    gpd_l = station_params["gpd_left"]
+    gpd_r = station_params["gpd_right"]
 
-    # 1. Left tail integral
-    def f_left(x):
-        return (u_l - x)**2 * 0.05 * (1.0 / beta_l) * (1.0 + xi_l * x / beta_l)**(-1.0 / xi_l - 1.0)
-    x_max_l = -beta_l / xi_l if xi_l < 0 else 50.0
-    m2_l, _ = integrate.quad(f_left, 0, x_max_l * 0.9999)
+    m2_left = _integrate_gpd_tail(u_l, gpd_l["scale_beta"], gpd_l["shape_xi"], is_right_tail=False)
+    m2_right = _integrate_gpd_tail(u_r, gpd_r["scale_beta"], gpd_r["shape_xi"], is_right_tail=True)
 
-    # 2. Right tail integral
-    def f_right(x):
-        return (u_r + x)**2 * 0.05 * (1.0 / beta_r) * (1.0 + xi_r * x / beta_r)**(-1.0 / xi_r - 1.0)
-    x_max_r = -beta_r / xi_r if xi_r < 0 else 50.0
-    m2_r, _ = integrate.quad(f_right, 0, x_max_r * 0.9999)
-
-    # 3. Core (Gaussian baseline)
     def f_core(z):
         return z**2 * stats.norm.pdf(z)
-    m2_core, _ = integrate.quad(f_core, u_l, u_r)
 
-    var_evt = float(m2_l + m2_core + m2_r)
-    return var_evt
+    m2_core, _ = integrate.quad(f_core, u_l, u_r)
+    return float(m2_left + m2_core + m2_right)
+
+
+def _evaluate_evt_tail_cdf(z: float, st_params: Dict[str, Any]) -> float:
+    """Evaluate hybrid core Gaussian + EVT GPD tail cumulative distribution function."""
+    u_l, u_r = st_params["u_left"], st_params["u_right"]
+    xi_l, beta_l = st_params["gpd_left"]["shape_xi"], st_params["gpd_left"]["scale_beta"]
+    xi_r, beta_r = st_params["gpd_right"]["shape_xi"], st_params["gpd_right"]["scale_beta"]
+
+    if z < u_l:
+        val = 1.0 + xi_l * (u_l - z) / beta_l
+        return 0.0 if val <= 0 else float(0.05 * (val ** (-1.0 / xi_l)))
+    elif z > u_r:
+        val = 1.0 + xi_r * (z - u_r) / beta_r
+        return 1.0 if val <= 0 else float(1.0 - 0.05 * (val ** (-1.0 / xi_r)))
+    return float(stats.norm.cdf(z))
 
 
 def evaluate_station_cdf(
@@ -82,128 +113,112 @@ def evaluate_station_cdf(
     """Evaluate cumulative distribution function F(y) for a given station."""
     if math.isinf(y):
         return 1.0 if y > 0 else 0.0
-
     z = (y - mu) / sigma_eff
 
     if station == "KMIA":
-        # R-6 Johnson SU transformation
-        jsu_p = r6_params["johnsonsu_parameters"]
-        gamma = jsu_p["gamma"]
-        delta = jsu_p["delta"]
-        xi = jsu_p["xi"]
-        lam = jsu_p["lambda"]
-        z_norm = gamma + delta * np.arcsinh((z - xi) / lam)
+        p = r6_params["johnsonsu_parameters"]
+        z_norm = p["gamma"] + p["delta"] * np.arcsinh((z - p["xi"]) / p["lambda"])
         return float(stats.norm.cdf(z_norm))
     elif station == "KSFO":
-        # R-7 EVT GPD Hybrid CDF
-        st_p = r7_params["stations"]["KSFO"]
-        u_l = st_p["u_left"]
-        u_r = st_p["u_right"]
-        xi_l = st_p["gpd_left"]["shape_xi"]
-        beta_l = st_p["gpd_left"]["scale_beta"]
-        xi_r = st_p["gpd_right"]["shape_xi"]
-        beta_r = st_p["gpd_right"]["scale_beta"]
+        return _evaluate_evt_tail_cdf(z, r7_params["stations"]["KSFO"])
+    return float(stats.norm.cdf(z))
 
-        if z < u_l:
-            excess = u_l - z
-            val = 1.0 + xi_l * excess / beta_l
-            if val <= 0:
-                return 0.0
-            return float(0.05 * (val ** (-1.0 / xi_l)))
-        elif z > u_r:
-            excess = z - u_r
-            val = 1.0 + xi_r * excess / beta_r
-            if val <= 0:
-                return 1.0
-            return float(1.0 - 0.05 * (val ** (-1.0 / xi_r)))
-        else:
-            return float(stats.norm.cdf(z))
-    else:
-        # KORD (and standard default): Standard Gaussian Normal
-        return float(stats.norm.cdf(z))
+
+def _compute_bracket_bounds(station: str, mu: float, scheme: str = "statutory_7bin") -> List[Tuple[float, float]]:
+    """Generate bracket boundaries for statutory 7-bin or 2°F climate grid."""
+    if scheme == "climate_2deg":
+        ranges = {
+            "KORD": (-20.0, 110.0),
+            "KMIA": (30.0, 105.0),
+            "KSFO": (30.0, 110.0),
+        }
+        low, high = ranges.get(station, (-20.0, 110.0))
+        edges = list(np.arange(low, high + 2.0, 2.0))
+        bounds = [(-np.inf, edges[0])]
+        for i in range(len(edges) - 1):
+            bounds.append((edges[i], edges[i + 1]))
+        bounds.append((edges[-1], np.inf))
+        return bounds
+
+    # Default statutory 7-bin centered on round(mu)
+    c0 = int(round(mu))
+    return [
+        (-np.inf, c0 - 5.5),
+        (c0 - 5.5, c0 - 3.5),
+        (c0 - 3.5, c0 - 1.5),
+        (c0 - 1.5, c0 + 1.5),
+        (c0 + 1.5, c0 + 3.5),
+        (c0 + 3.5, c0 + 5.5),
+        (c0 + 5.5, np.inf),
+    ]
+
+
+def _expand_day_records(
+    row: pd.Series,
+    kappa_evt_map: Dict[str, float],
+    r6_params: Dict[str, Any],
+    r7_params: Dict[str, Any],
+    binning_scheme: str = "statutory_7bin",
+) -> List[Dict[str, Any]]:
+    """Expand a single station-day into (p_pred, hit) bracket records."""
+    st = row["station"]
+    obs_y = float(row["obs_tmax_f"])
+    mu = float(row["mu_forecast"])
+    sig_eff = float(row["sigma_forecast"]) * kappa_evt_map.get(st, 1.0)
+
+    bounds = _compute_bracket_bounds(st, mu, scheme=binning_scheme)
+    num_bins = len(bounds)
+
+    cdfs = [evaluate_station_cdf(st, b[1], mu, sig_eff, r6_params, r7_params) for b in bounds]
+    p_bins = np.zeros(num_bins, dtype=np.float64)
+    p_bins[0] = cdfs[0]
+    for k in range(1, num_bins - 1):
+        p_bins[k] = cdfs[k] - cdfs[k - 1]
+    p_bins[num_bins - 1] = 1.0 - cdfs[num_bins - 2]
+
+    p_bins = np.clip(p_bins, 0.0, 1.0)
+    total_p = np.sum(p_bins)
+    p_bins = p_bins / total_p if total_p > 0 else np.full(num_bins, 1.0 / num_bins)
+
+    records = []
+    for k in range(num_bins):
+        lb, ub = bounds[k]
+        hit = 1 if (obs_y >= lb and obs_y < ub) else 0
+        records.append({
+            "date": str(row["date"]),
+            "station": st,
+            "year": int(row["year"]),
+            "month": int(row["month"]),
+            "season": str(row["season"]),
+            "bin_idx": k,
+            "bin_lower": lb,
+            "bin_upper": ub,
+            "p_pred": float(p_bins[k]),
+            "hit": hit,
+        })
+    return records
 
 
 def expand_prediction_records(
     df: pd.DataFrame,
     r6_params: Dict[str, Any],
     r7_params: Dict[str, Any],
+    binning_scheme: str = "statutory_7bin",
 ) -> pd.DataFrame:
-    """
-    Expand training window station-day records into (p_pred, hit) pairs across 7 discrete bins.
-    """
+    """Expand training window station-day records into (p_pred, hit) pairs."""
     valid = df[~df["is_nan_obs"]].copy()
 
-    # Precompute kappa_evt for each station
     kappa_evt_map = {}
     for st in ["KORD", "KMIA", "KSFO"]:
         if st in r7_params["stations"]:
-            var_f = compute_evt_variance(r7_params["stations"][st])
-            kappa_evt_map[st] = float(np.sqrt(var_f))
+            kappa_evt_map[st] = float(np.sqrt(compute_evt_variance(r7_params["stations"][st])))
         else:
             kappa_evt_map[st] = 1.0
 
-    records = []
+    all_records = []
     for _, row in valid.iterrows():
-        st = row["station"]
-        date_str = str(row["date"])
-        year = int(row["year"])
-        month = int(row["month"])
-        season = str(row["season"])
-        obs_y = float(row["obs_tmax_f"])
-        mu = float(row["mu_forecast"])
-        sig_base = float(row["sigma_forecast"])
-
-        kappa_evt = kappa_evt_map.get(st, 1.0)
-        sig_eff = sig_base * kappa_evt
-
-        c0 = int(round(mu))
-        bin_bounds = [
-            (-np.inf, c0 - 5.5),
-            (c0 - 5.5, c0 - 3.5),
-            (c0 - 3.5, c0 - 1.5),
-            (c0 - 1.5, c0 + 1.5),
-            (c0 + 1.5, c0 + 3.5),
-            (c0 + 3.5, c0 + 5.5),
-            (c0 + 5.5, np.inf),
-        ]
-
-        # Calculate CDF at each boundary
-        cdfs = [evaluate_station_cdf(st, b[1], mu, sig_eff, r6_params, r7_params) for b in bin_bounds]
-
-        # Calculate interval probabilities
-        p_bins = np.zeros(7, dtype=np.float64)
-        p_bins[0] = cdfs[0]
-        for k in range(1, 6):
-            p_bins[k] = cdfs[k] - cdfs[k - 1]
-        p_bins[6] = 1.0 - cdfs[5]
-
-        # Simplex projection & normalization
-        p_bins = np.clip(p_bins, 0.0, 1.0)
-        sum_p = np.sum(p_bins)
-        if sum_p > 0:
-            p_bins /= sum_p
-        else:
-            p_bins = np.full(7, 1.0 / 7.0)
-
-        # Hit determination with discrete interval [lb, ub)
-        # Observational resolution is preserved; interval half-open
-        for k in range(7):
-            lb, ub = bin_bounds[k]
-            hit = 1 if (obs_y >= lb and obs_y < ub) else 0
-            records.append({
-                "date": date_str,
-                "station": st,
-                "year": year,
-                "month": month,
-                "season": season,
-                "bin_idx": k,
-                "bin_lower": lb,
-                "bin_upper": ub,
-                "p_pred": float(p_bins[k]),
-                "hit": hit,
-            })
-
-    return pd.DataFrame(records)
+        all_records.extend(_expand_day_records(row, kappa_evt_map, r6_params, r7_params, binning_scheme))
+    return pd.DataFrame(all_records)
 
 
 # ==============================================================================
@@ -214,9 +229,7 @@ def build_global_reliability_table(
     df_expanded: pd.DataFrame,
     num_bins: int = 20,
 ) -> Tuple[pd.DataFrame, float]:
-    """
-    Build global reliability table pooling all (p_pred, hit) records into equal-width strata.
-    """
+    """Build global reliability table pooling all (p_pred, hit) records into equal-width strata."""
     p_arr = df_expanded["p_pred"].to_numpy(dtype=np.float64)
     h_arr = df_expanded["hit"].to_numpy(dtype=np.float64)
     n_total = len(p_arr)
@@ -228,34 +241,32 @@ def build_global_reliability_table(
     weighted_err_sum = 0.0
 
     for b in range(num_bins):
-        low_e = edges[b]
-        high_e = edges[b + 1]
+        low_e, high_e = edges[b], edges[b + 1]
         range_str = f"[{low_e:.2f}, {high_e:.2f}{']' if b == num_bins - 1 else ')'}"
 
         mask = bin_idx == b
-        cnt = int(np.sum(mask))
+        stratum_count = int(np.sum(mask))
 
-        if cnt > 0:
-            m_p = float(np.mean(p_arr[mask]))
-            m_h = float(np.mean(h_arr[mask]))
-            abs_bias = float(abs(m_p - m_h))
-            # Standard binomial 95% confidence half-width
-            ci_half = float(1.96 * math.sqrt(max(0.0, m_h * (1.0 - m_h)) / cnt))
+        if stratum_count > 0:
+            mean_pred_prob = float(np.mean(p_arr[mask]))
+            empirical_hit_freq = float(np.mean(h_arr[mask]))
+            abs_bias = float(abs(mean_pred_prob - empirical_hit_freq))
+            ci_half = compute_binomial_ci_half_width(empirical_hit_freq, stratum_count, z=1.96)
             is_outside = bool(abs_bias > ci_half)
-            weighted_err_sum += abs_bias * cnt
+            weighted_err_sum += abs_bias * stratum_count
         else:
-            m_p = float((low_e + high_e) / 2.0)
-            m_h = 0.0
-            abs_bias = 0.0
-            ci_half = 0.0
+            mean_pred_prob = float(np.nan)
+            empirical_hit_freq = float(np.nan)
+            abs_bias = float(np.nan)
+            ci_half = float(np.nan)
             is_outside = False
 
         rows.append({
             "stratum_id": b + 1,
             "stratum_range": range_str,
-            "sample_count_n": cnt,
-            "mean_pred_prob": m_p,
-            "empirical_hit_freq": m_h,
+            "sample_count_n": stratum_count,
+            "mean_pred_prob": mean_pred_prob,
+            "empirical_hit_freq": empirical_hit_freq,
             "abs_bias": abs_bias,
             "ci_95_half_width": ci_half,
             "is_outside_ci": is_outside,
@@ -269,15 +280,11 @@ def build_stratified_warning_table(
     df_expanded: pd.DataFrame,
     num_bins: int = 10,
 ) -> pd.DataFrame:
-    """
-    Build 12-cell stratified warning table (3 stations x 4 seasons).
-    Focuses on detecting local sub-group bias dilution (e.g. KSFO Summer).
-    """
+    """Build 12-cell stratified warning table (3 stations x 4 seasons)."""
     stations = ["KORD", "KMIA", "KSFO"]
     seasons = ["Winter", "Spring", "Summer", "Autumn"]
 
     all_stratified_rows = []
-
     for st in stations:
         for se in seasons:
             sub = df_expanded[(df_expanded["station"] == st) & (df_expanded["season"] == se)]
@@ -286,27 +293,15 @@ def build_stratified_warning_table(
             table_df.insert(1, "season", se)
             all_stratified_rows.append(table_df)
 
-    if all_stratified_rows:
-        return pd.concat(all_stratified_rows, ignore_index=True)
-    return pd.DataFrame()
+    return pd.concat(all_stratified_rows, ignore_index=True) if all_stratified_rows else pd.DataFrame()
 
 
 # ==============================================================================
 # Ticket 03: Climatology Baseline & Brier Skill Score Calculation
 # ==============================================================================
 
-def compute_brier_skill_scores(
-    df_expanded: pd.DataFrame,
-    df_train_raw: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    Compute Brier Scores for Model and LOYO Climatological Baseline, and Brier Skill Score (BSS).
-    BSS = 1 - BS_model / BS_clim.
-    """
-    # 1. Precompute LOYO climatological pools by (station, month, year)
-    valid_raw = df_train_raw[~df_train_raw["is_nan_obs"]].copy()
-    
-    # Map: (station, month) -> {year: array of observations}
+def _build_loyo_climatology_cache(valid_raw: pd.DataFrame) -> Tuple[Dict[Tuple[str, int, int], np.ndarray], Dict[Tuple[str, int], np.ndarray]]:
+    """Precompute Leave-One-Year-Out sorted observations cache."""
     clim_lookup: Dict[Tuple[str, int], Dict[int, np.ndarray]] = {}
     all_by_st_mo: Dict[Tuple[str, int], np.ndarray] = {}
 
@@ -320,18 +315,44 @@ def compute_brier_skill_scores(
         if all_obs:
             all_by_st_mo[(st, mo)] = np.sort(np.concatenate(all_obs))
 
-    # Pre-build LOYO pools: (station, month, year) -> sorted array of obs
     loyo_pool_cache: Dict[Tuple[str, int, int], np.ndarray] = {}
     for (st, mo), yr_dict in clim_lookup.items():
         all_yrs = list(yr_dict.keys())
         for yr in all_yrs:
             other_arrs = [yr_dict[y] for y in all_yrs if y != yr]
-            if other_arrs:
-                loyo_pool_cache[(st, mo, yr)] = np.sort(np.concatenate(other_arrs))
-            else:
-                loyo_pool_cache[(st, mo, yr)] = yr_dict[yr]
+            loyo_pool_cache[(st, mo, yr)] = np.sort(np.concatenate(other_arrs)) if other_arrs else yr_dict[yr]
 
-    # 2. Compute p_clim for each expanded record
+    return loyo_pool_cache, all_by_st_mo
+
+
+def _compute_record_climatological_prob(
+    st: str,
+    mo: int,
+    yr: int,
+    lb: float,
+    ub: float,
+    loyo_pool_cache: Dict[Tuple[str, int, int], np.ndarray],
+    all_by_st_mo: Dict[Tuple[str, int], np.ndarray],
+) -> float:
+    """Compute leave-one-year-out climatological probability for a single bracket."""
+    pool = loyo_pool_cache.get((st, mo, yr))
+    if pool is None or len(pool) == 0:
+        pool = all_by_st_mo.get((st, mo), np.array([]))
+    if len(pool) > 0:
+        i_low = np.searchsorted(pool, lb, side="left")
+        i_high = np.searchsorted(pool, ub, side="left")
+        return float((i_high - i_low) / len(pool))
+    return 1.0 / 7.0
+
+
+def compute_brier_skill_scores(
+    df_expanded: pd.DataFrame,
+    df_train_raw: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compute Brier Scores for Model and LOYO Climatology, and Brier Skill Score (BSS)."""
+    valid_raw = df_train_raw[~df_train_raw["is_nan_obs"]].copy()
+    loyo_pool_cache, all_by_st_mo = _build_loyo_climatology_cache(valid_raw)
+
     p_preds = df_expanded["p_pred"].to_numpy(dtype=np.float64)
     hits = df_expanded["hit"].to_numpy(dtype=np.float64)
     stations = df_expanded["station"].to_numpy()
@@ -345,38 +366,18 @@ def compute_brier_skill_scores(
     p_clims = np.zeros(n_records, dtype=np.float64)
 
     for i in range(n_records):
-        st = stations[i]
-        mo = months[i]
-        yr = years[i]
-        lb = lbs[i]
-        ub = ubs[i]
-
-        pool = loyo_pool_cache.get((st, mo, yr))
-        if pool is None or len(pool) == 0:
-            pool = all_by_st_mo.get((st, mo), np.array([]))
-
-        if len(pool) > 0:
-            # Count elements in [lb, ub) using binary search
-            i_low = np.searchsorted(pool, lb, side="left")
-            i_high = np.searchsorted(pool, ub, side="left")
-            cnt = i_high - i_low
-            p_clims[i] = cnt / len(pool)
-        else:
-            p_clims[i] = 1.0 / 7.0
+        p_clims[i] = _compute_record_climatological_prob(
+            stations[i], months[i], years[i], lbs[i], ubs[i], loyo_pool_cache, all_by_st_mo
+        )
 
     sq_err_model = (p_preds - hits) ** 2
     sq_err_clim = (p_clims - hits) ** 2
 
-    # 3. Aggregate across scopes: Global, Stations, Seasons
-    scopes = []
-    # Global
-    scopes.append(("Global", "Global", np.ones(n_records, dtype=bool)))
-    # By Station
+    scopes = [("Global", "Global", np.ones(n_records, dtype=bool))]
     for st in ["KORD", "KMIA", "KSFO"]:
         scopes.append(("Station", st, stations == st))
-    # By Season
     for se in ["Winter", "Spring", "Summer", "Autumn"]:
-        scopes.append(("Season", se, seasons == se))
+        scopes.append(("Season (Auxiliary)", se, seasons == se))
 
     bss_rows = []
     for scope_type, scope_name, mask in scopes:
@@ -398,7 +399,6 @@ def compute_brier_skill_scores(
             "brier_skill_score": bss,
             "is_skillful": is_skill,
         })
-
     return pd.DataFrame(bss_rows)
 
 
@@ -413,35 +413,17 @@ def run_reliability_pipeline(
     out_global_path: Optional[Path] = None,
     out_stratified_path: Optional[Path] = None,
     out_brier_path: Optional[Path] = None,
+    binning_scheme: str = "statutory_7bin",
 ) -> Dict[str, Any]:
     """Execute the complete reliability check pipeline."""
-    # 1. Expand records into (p_pred, hit) pairs
-    df_expanded = expand_prediction_records(df_train, r6_params, r7_params)
-
-    # 2. Build global 20-strata reliability table
+    df_expanded = expand_prediction_records(df_train, r6_params, r7_params, binning_scheme=binning_scheme)
     table_global, weighted_ece = build_global_reliability_table(df_expanded, num_bins=20)
-
-    # 3. Build stratified 12-cell warning table
     table_stratified = build_stratified_warning_table(df_expanded, num_bins=10)
-
-    # 4. Compute Brier Skill Scores
     table_brier = compute_brier_skill_scores(df_expanded, df_train)
 
-    # 5. Save artifacts if paths provided
-    if out_global_path is not None:
-        out_global_path = Path(out_global_path)
-        out_global_path.parent.mkdir(parents=True, exist_ok=True)
-        table_global.to_csv(out_global_path, index=False)
-
-    if out_stratified_path is not None:
-        out_stratified_path = Path(out_stratified_path)
-        out_stratified_path.parent.mkdir(parents=True, exist_ok=True)
-        table_stratified.to_csv(out_stratified_path, index=False)
-
-    if out_brier_path is not None:
-        out_brier_path = Path(out_brier_path)
-        out_brier_path.parent.mkdir(parents=True, exist_ok=True)
-        table_brier.to_csv(out_brier_path, index=False)
+    _save_dataframe(table_global, out_global_path)
+    _save_dataframe(table_stratified, out_stratified_path)
+    _save_dataframe(table_brier, out_brier_path)
 
     return {
         "df_expanded": df_expanded,
@@ -456,61 +438,28 @@ def main():
     parser = argparse.ArgumentParser(
         description="SPEC-RELIABILITY-001: Standalone Reliability Check by Probability Strata."
     )
-    parser.add_argument(
-        "--train-parquet",
-        type=Path,
-        default=DEFAULT_TRAIN_PARQUET,
-        help="Path to 2000-2018 training arrays parquet.",
-    )
-    parser.add_argument(
-        "--r6-json",
-        type=Path,
-        default=DEFAULT_R6_JSON,
-        help="Path to R-6 KMIA parameters JSON.",
-    )
-    parser.add_argument(
-        "--r7-json",
-        type=Path,
-        default=DEFAULT_R7_JSON,
-        help="Path to R-7 tail parameters JSON.",
-    )
-    parser.add_argument(
-        "--out-global",
-        type=Path,
-        default=DEFAULT_OUT_GLOBAL,
-        help="Output path for global 20-strata CSV.",
-    )
-    parser.add_argument(
-        "--out-stratified",
-        type=Path,
-        default=DEFAULT_OUT_STRATIFIED,
-        help="Output path for stratified 12-cell CSV.",
-    )
-    parser.add_argument(
-        "--out-brier",
-        type=Path,
-        default=DEFAULT_OUT_BRIER,
-        help="Output path for Brier Skill Score CSV.",
-    )
+    parser.add_argument("--train-parquet", type=Path, default=DEFAULT_TRAIN_PARQUET, help="Path to 2000-2018 parquet.")
+    parser.add_argument("--r6-json", type=Path, default=DEFAULT_R6_JSON, help="Path to R-6 KMIA parameters.")
+    parser.add_argument("--r7-json", type=Path, default=DEFAULT_R7_JSON, help="Path to R-7 tail parameters.")
+    parser.add_argument("--binning-scheme", type=str, default="statutory_7bin", choices=["statutory_7bin", "climate_2deg"], help="Binning scheme.")
+    parser.add_argument("--out-global", type=Path, default=DEFAULT_OUT_GLOBAL, help="Output path for global CSV.")
+    parser.add_argument("--out-stratified", type=Path, default=DEFAULT_OUT_STRATIFIED, help="Output path for stratified CSV.")
+    parser.add_argument("--out-brier", type=Path, default=DEFAULT_OUT_BRIER, help="Output path for Brier CSV.")
 
     args = parser.parse_args()
 
     print("================================================================================")
     print("      SPEC-RELIABILITY-001: RELIABILITY CHECK BY PROBABILITY STRATA            ")
     print("================================================================================")
-    print(f"Loading training data: {args.train_parquet}")
     if not args.train_parquet.exists():
         raise FileNotFoundError(f"{args.train_parquet} not found.")
 
     df_train = pd.read_parquet(args.train_parquet)
-    print(f"Loaded {len(df_train)} rows across stations: {df_train['station'].unique().tolist()}")
-
     with open(args.r6_json, "r", encoding="utf-8") as f:
         r6_params = json.load(f)
     with open(args.r7_json, "r", encoding="utf-8") as f:
         r7_params = json.load(f)
 
-    print("Executing full reliability pipeline...")
     res = run_reliability_pipeline(
         df_train=df_train,
         r6_params=r6_params,
@@ -518,6 +467,7 @@ def main():
         out_global_path=args.out_global,
         out_stratified_path=args.out_stratified,
         out_brier_path=args.out_brier,
+        binning_scheme=args.binning_scheme,
     )
 
     print(f"\n[Artifact 1] Global Reliability Table (20 Strata): {args.out_global}")
@@ -525,7 +475,6 @@ def main():
     print(res["table_global"].to_string(index=False))
 
     print(f"\n[Artifact 2] Stratified Warning Table (12 Cells): {args.out_stratified}")
-    # Print KSFO Summer as priority highlight
     ksfo_summer = res["table_stratified"][
         (res["table_stratified"]["station"] == "KSFO") & (res["table_stratified"]["season"] == "Summer")
     ]

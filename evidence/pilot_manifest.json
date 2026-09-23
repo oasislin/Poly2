@@ -24,10 +24,10 @@
     "data/processed/audit_arrays/2000_2018_training_arrays.parquet": "8f2a84d26aaeaeaaf7050424df6f7d19891d752fb01b89f49d3add79bbaf3a5c",
     "data/processed/audit_arrays/2019_oos_evaluation_arrays.parquet": "75c3a056c0ab504788ad3205e70d8479467e2336cd3e9e73f9e4859dbd808bb8",
     "data/processed/audit_arrays/2019_oos_round3_evaluation_arrays.parquet": "19f00551e279b5201eee1abb17c984a82ec194e4307c941afb739447cab5cc46",
-    "reliability_check_main_global.csv": "d9dbc96e1de15b2a54278384511c44f07cd0c55c569ff754b871dea8dba62edb",
-    "reliability_check_stratified_station_season.csv": "ddb7aa73499d9f94a2e5f9bfc8a9067171f2c359c23bee4a35b2426db97a227b",
-    "reliability_check_brier_skill.csv": "c8b17b6d38c5bdd9127a7baaf934cda327e2027e3a0991c1014eddbf39c7c48c",
-    "reliability_check_spec_notes.md": "41aa76f1f10ed41f628af73fe02c0a425b08c3a81b09a3bc9468b1796d09a672",
-    "scripts/standalone_reliability_check.py": "b986bde2650f120d48041ac3e0412dbf46c14b4008e0770902dceac999082a2c"
+    "reliability_check_main_global.csv": "293f06b42dddfa26f06e635453f9d1304753cc25a319503ee37f5581e4038ee9",
+    "reliability_check_stratified_station_season.csv": "b0082d34f2e6c8a08bc85914ca2f5869f560e1ff632b21abe141ba607a4bc793",
+    "reliability_check_brier_skill.csv": "9c06c3958fa5eb6e9fa0dea0b47f736c08a409f7cd3580161dffddba215a1518",
+    "reliability_check_spec_notes.md": "136b94779288b5eaea2beadd12b3af16557e8a428168e9297899f3a72843c8e6",
+    "scripts/standalone_reliability_check.py": "fc8130d6bb906653971008172b67a188f0f5489f7b075d429ce5ebd8e3eb876b"
   }
 }

@@ -26,7 +26,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.metrics.calibration_audit import SIGMA_INST_PHYSICAL_FLOOR
 
-STATIONS = ["KORD", "KMIA", "KSFO"]
+STATIONS = [
+    "KORD", "KLGA", "KATL", "KDAL", "KSEA",
+    "KLAX", "KHOU", "KMIA", "KSFO", "KAUS"
+]
 DATA_DIR = PROJECT_ROOT / "data" / "processed" / "calib-dataset-v2.0"
 GHCN_DIR = PROJECT_ROOT / "data" / "processed" / "truth_ghcn_daily"
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
@@ -240,10 +243,16 @@ def main():
             "ghcn_truth_sha256": training_hashes[f"{station}_ghcn_sha256"],
         }
 
-    out_file = EVIDENCE_DIR / "training_variance_factors.json"
+    out_file = EVIDENCE_DIR / "active10_training_variance_factors.json"
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
-    print(f"\nSaved training variance factors and window audit to {out_file}")
+    print(f"\nSaved Active 10 training variance factors and window audit to {out_file}")
+
+    # Backward compatibility for legacy pipeline scripts
+    legacy_file = EVIDENCE_DIR / "training_variance_factors.json"
+    with open(legacy_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
+    print(f"Mirrored copy to {legacy_file}")
 
 
 if __name__ == "__main__":

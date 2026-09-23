@@ -142,6 +142,23 @@ def test_expand_prediction_records_properties(sample_training_df, mock_station_p
 # Ticket 02 Tests: Global 20-Strata Table & Stratified Warning Matrix
 # ==============================================================================
 
+def test_compute_binomial_ci_half_width_wilson():
+    from scripts.standalone_reliability_check import compute_binomial_ci_half_width
+    # Wald case
+    w_wald = compute_binomial_ci_half_width(0.5, 100, z=1.96)
+    assert math.isclose(w_wald, 1.96 * math.sqrt(0.25 / 100), abs_tol=1e-6)
+
+    # Boundary case: f = 0, n = 1 (Wilson score correction)
+    w_wilson = compute_binomial_ci_half_width(0.0, 1, z=1.96)
+    expected_wilson = (1.96**2) / (1 + 1.96**2)
+    assert math.isclose(w_wilson, expected_wilson, abs_tol=1e-6)
+    assert w_wilson > 0.79  # Large width for n=1 prevents false positive alarm!
+
+    # f = 1
+    w_wilson_1 = compute_binomial_ci_half_width(1.0, 10, z=1.96)
+    assert w_wilson_1 > 0.0
+
+
 def test_build_global_reliability_table():
     # Synthetic expanded records
     np.random.seed(42)
@@ -172,9 +189,23 @@ def test_build_global_reliability_table():
         assert col in table_df.columns
 
     # 3. Weighted ECE consistency
-    manual_ece = (table_df["sample_count_n"] * table_df["abs_bias"]).sum() / n
+    manual_ece = (table_df["sample_count_n"] * table_df["abs_bias"].fillna(0)).sum() / n
     assert math.isclose(weighted_ece, manual_ece, abs_tol=1e-7)
     assert weighted_ece >= 0.0
+
+
+def test_build_global_reliability_table_empty_strata():
+    # Test dataset with predictions only in [0.1, 0.2]
+    df_exp = pd.DataFrame({"p_pred": [0.15, 0.16], "hit": [0, 1]})
+    table_df, weighted_ece = build_global_reliability_table(df_exp, num_bins=20)
+
+    # Strata with 0 samples must have NaN for metrics
+    empty_strata = table_df[table_df["sample_count_n"] == 0]
+    assert len(empty_strata) > 0
+    assert empty_strata["mean_pred_prob"].isna().all()
+    assert empty_strata["empirical_hit_freq"].isna().all()
+    assert empty_strata["abs_bias"].isna().all()
+    assert (empty_strata["is_outside_ci"] == False).all()
 
 
 def test_build_stratified_warning_table():

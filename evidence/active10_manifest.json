@@ -1,0 +1,42 @@
+{
+  "task": "Phase 2 Task 01 Fix - Active 10 Stations Physical Model Calibration & Statutory Acceptance",
+  "statutory_spec": "specs/phase2-task01-fix-active10-calibration-spec.md",
+  "settlement_report": "evidence/active10_settlement_report.md",
+  "model_inventory_and_audit_report": "evidence/model_inventory_and_execution_audit_report.md",
+  "timestamp": "2026-09-23T23:19:00+08:00",
+  "evaluation_scope": {
+    "stations": [
+      "KORD", "KLGA", "KATL", "KDAL", "KSEA",
+      "KLAX", "KHOU", "KMIA", "KSFO", "KAUS"
+    ],
+    "training_window": "2000-01-01 to 2018-12-31",
+    "evaluation_window": "2019-01-01 to 2019-12-31",
+    "evaluation_station_days": 3650,
+    "randomized_pit_seed": 42,
+    "instrument_physical_floor_deg_f": 0.90
+  },
+  "statutory_gates_status": {
+    "gate_1_randomized_pit_ks_test": "ALL PASS (p in [0.2141, 0.9747] >= 0.05)",
+    "gate_2_7bin_weighted_ece": "ALL PASS (ECE in [0.23%, 1.52%] <= 3.0%)",
+    "gate_3_variance_ratio_s_oos": "ALL PASS (s_oos in [0.9030, 1.1089] in [0.85, 1.15])",
+    "gate_4_pit_mean": "ALL PASS (Mean in [0.4926, 0.5130] in [0.46, 0.54])",
+    "gate_5_90pct_nominal_coverage": "ALL PASS (Cov in [88.5%, 91.8%] in [83%, 95%])",
+    "gate_6_mean_layer_purity_mae": "ALL PASS (Bitwise invariant across versions)"
+  },
+  "files": {
+    "evidence/active10_training_variance_factors.json": "e355befdd2fe2fdd643dc2b9d669dd3f5296df645d27016c6196df13115f703d",
+    "evidence/active10_climate_calibration.json": "ee13c77ef82d294a7044a8c460e266391d752df06e5b55f2c42317a2704fd389",
+    "data/processed/audit_arrays/2019_oos_active10_arrays.parquet": "889bab3e9f39111f826bb5603e827ce495d6fc893158252e2fbab2dffa2e13ce",
+    "data/processed/audit_arrays/2019_oos_active10_arrays_head20.csv": "2f17c079e43f58b6d371a5ff445ae0dea0614952fef3f7ec5b121089fb7e9534",
+    "evidence/active10_recomputed_statistics.csv": "140097ab18bb9d2562e42614fbd73251495491ea51b943586d331b1d3d2b9f81",
+    "evidence/active10_settlement_report.md": "3583b0f4cc8366a3effa81b99c4028f0b99340c094c89ef4c9805635537046d5",
+    "evidence/model_inventory_and_execution_audit_report.md": "257c89ffb832fdae67fd408ce11016247eab86c06e714546db2d5929ff556a76",
+    "evidence/model_inventory_audit.csv": "eca0d960d17e933c8a981ee6c705234f89d225faed524c7268ad2700ef2daa3d",
+    "scripts/fit_training_variance_factors.py": "6322c4cfb43cdc161ddd7dc7ff8e7daadd90ffc38fa9b4c3e09eef2ac8100e15",
+    "scripts/fit_active10_climate_calibration.py": "eccb0c4aa1a7d4e92cd73939ba864d455629a66eef2efa24ac4fb05155bf1a48",
+    "scripts/evaluate_active10_oos.py": "bc526b379841dbaef28b3289ce57beef5bcdaebdfa6dcff0883007f7332a04c7",
+    "scripts/standalone_recompute_active10.py": "57d44274c4f094e1ae7c13b441cbbd7c87203248a0988a783e387221e7aea2bb",
+    "scripts/generate_model_inventory_audit_csv.py": "6917e828d009fa5a4325a778e5f1b13d2946c10b0d6118d22744ad14f9d454fa",
+    "tests/unit/modeling/test_active10_statutory_settlement.py": "8137da08c9055998f8f2db98f98e6329baf0ade5feb5b709936af2b01239ad26"
+  }
+}

@@ -81,15 +81,26 @@ Brier 技能分产出于 `evidence/reliability_check_brier_skill.csv`，对照�
 
 ---
 
-## 五、 工件哈希汇总 (Artifact Checksums)
+## 五、 统计学稳健性与代码异味彻底消除 (Statistical Robustness & Code Hygiene)
+
+经代码审查（Code Review），落实了以下核心统计与架构改进：
+1. **边界 Wilson 评分区间修正**: 当经验命中频率 $\hat{f} \in \{0, 1\}$ 时，Wald 半宽退化为 0 的问题彻底消除，采用 Wilson 评分区间（$\frac{z^2}{n + z^2}$）保障小样本边界置信度，消除了 $n=1, \hat{f}=0$ 时的假阳性报警；
+2. **空分桶段位 NaN 规约**: 对样本量 $n=0$ 的概率段，指标统一赋值为 `NaN`（`abs_bias=NaN`, `is_outside_ci=False`），杜绝了均值与绝对偏差定义自相矛盾；
+3. **函数长度与去重优化**: 拆分子函数，全量函数体均控制在 50 行内，消除了 GPD 尾部积分与文件保存的重复逻辑；
+4. **气候 2°F 网格切换支持**: 脚本正式支持 `--binning-scheme {statutory_7bin, climate_2deg}`，全量覆盖历史温标网格核验。
+
+---
+
+## 六、 工件哈希汇总 (Artifact Checksums)
 
 以下工件均已完成生成，且由独立复算脚本 `scripts/standalone_reliability_check.py` 验证逐位可重现：
 
 ```json
 {
-  "evidence/reliability_check_main_global.csv": "d9dbc96e1de15b2a54278384511c44f07cd0c55c569ff754b871dea8dba62edb",
-  "evidence/reliability_check_stratified_station_season.csv": "ddb7aa73499d9f94a2e5f9bfc8a9067171f2c359c23bee4a35b2426db97a227b",
-  "evidence/reliability_check_brier_skill.csv": "c8b17b6d38c5bdd9127a7baaf934cda327e2027e3a0991c1014eddbf39c7c48c",
-  "scripts/standalone_reliability_check.py": "b986bde2650f120d48041ac3e0412dbf46c14b4008e0770902dceac999082a2c"
+  "evidence/reliability_check_main_global.csv": "293f06b42dddfa26f06e635453f9d1304753cc25a319503ee37f5581e4038ee9",
+  "evidence/reliability_check_stratified_station_season.csv": "b0082d34f2e6c8a08bc85914ca2f5869f560e1ff632b21abe141ba607a4bc793",
+  "evidence/reliability_check_brier_skill.csv": "9c06c3958fa5eb6e9fa0dea0b47f736c08a409f7cd3580161dffddba215a1518",
+  "scripts/standalone_reliability_check.py": "fc8130d6bb906653971008172b67a188f0f5489f7b075d429ce5ebd8e3eb876b"
 }
 ```
+
