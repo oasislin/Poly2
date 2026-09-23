@@ -1,0 +1,54 @@
+================================================================================
+  R-1 EXCLUSION CHECK: METAR BODY ROUNDED VS RMK T-GROUP FULL PRECISION (2019)  
+================================================================================
+
+--- Station: KORD ---
+Total RAW METAR Records Evaluated: 114664
+Paired (Body & T-Group) Records: 114388 (99.76%)
+Record-Level Difference (Body - High-Res):
+  Mean Difference (°C): 0.000014
+  Mean Difference (°F): 0.000025
+  Mean Absolute Difference (°F): 0.037215
+  Std Difference (°F): 0.141582
+Daily Tmax Difference (Max Body - Max High-Res):
+  Mean Daily Difference (°F): -0.102857
+  Mean Absolute Daily Difference (°F): 0.107802
+Daily Dataset Comparison (All-Reports vs Hourly-Only):
+  Mean Difference (All-Reports - Hourly-Only) (°F): 0.405863
+Raw GEFS Uncalibrated Cold Bias (2019 OOS):
+  Raw Cold Bias using All-Reports (°F): 3.913567
+  Raw Cold Bias using Hourly-Only (°F): 3.507704
+
+--- Station: KMIA ---
+Total RAW METAR Records Evaluated: 113460
+Paired (Body & T-Group) Records: 112989 (99.58%)
+Record-Level Difference (Body - High-Res):
+  Mean Difference (°C): -0.000181
+  Mean Difference (°F): -0.000327
+  Mean Absolute Difference (°F): 0.035333
+  Std Difference (°F): 0.173479
+Daily Tmax Difference (Max Body - Max High-Res):
+  Mean Daily Difference (°F): -0.172088
+  Mean Absolute Daily Difference (°F): 0.174066
+Daily Dataset Comparison (All-Reports vs Hourly-Only):
+  Mean Difference (All-Reports - Hourly-Only) (°F): 0.432493
+Raw GEFS Uncalibrated Cold Bias (2019 OOS):
+  Raw Cold Bias using All-Reports (°F): 3.365164
+  Raw Cold Bias using Hourly-Only (°F): 2.932671
+
+--- Station: KSFO ---
+Total RAW METAR Records Evaluated: 113489
+Paired (Body & T-Group) Records: 113058 (99.62%)
+Record-Level Difference (Body - High-Res):
+  Mean Difference (°C): -0.002658
+  Mean Difference (°F): -0.004784
+  Mean Absolute Difference (°F): 0.032245
+  Std Difference (°F): 0.131289
+Daily Tmax Difference (Max Body - Max High-Res):
+  Mean Daily Difference (°F): -0.094945
+  Mean Absolute Daily Difference (°F): 0.120659
+Daily Dataset Comparison (All-Reports vs Hourly-Only):
+  Mean Difference (All-Reports - Hourly-Only) (°F): 0.495616
+Raw GEFS Uncalibrated Cold Bias (2019 OOS):
+  Raw Cold Bias using All-Reports (°F): 4.576648
+  Raw Cold Bias using Hourly-Only (°F): 4.081031
