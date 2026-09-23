@@ -1,26 +1,26 @@
 === T-1 & T-2 PROVENANCE AUDIT SUMMARY ===
-Ground Truth Source: Iowa Environmental Mesonet (IEM) ASOS Ground Truth (RMK T-Group 0.1°C)
+Ground Truth Source: NOAA NWS Official Climatological Record (GHCN-Daily TMAX, truth_ghcn_daily/)
 GEFS Source: NOAA GEFS Reforecast Version 12 (Subsets, 0.25° grid, 5 ensemble members)
 Physical Sensor Instrument Floor: sigma_inst = 0.9°F (NOAA ASOS 1088 PRT ±0.9°F)
 ---------------------------------------------------------------------------
 GEFS Inventory Years Available: 2000 to 2019 (Total 20 years)
 Station: KORD
-  2019 Obs File: 2019.parquet | SHA256: 49fdb62eea518c050097b2affbb839c8890fce4dc9f2bac8671b1a0a414267ce
-  2019 Obs Day Count: 365 (365 days complete, no missing dates)
+  GHCN Truth File: KORD.parquet | SHA256: 67bff35bec03d95202ca289ebe2268070d9525e5d7a35a7fe7203b2bc7bc2dd6
+  2019 Obs Day Count: 365 (365 days complete, no missing dates in 2019 OOS)
   2019 GEFS File: 2019.parquet | SHA256: 2be0533adf8122dc448129bbdb998d1e68a69c60a60ee60140189c75a14d3f38
   GEFS Members: ['p01', 'p03', 'p02', 'p04', 'c00'] (Total 5 members)
   Obs Head 20 Exported: t1_kord_obs_truth_2019_head20.csv
 ---------------------------------------------------------------------------
 Station: KMIA
-  2019 Obs File: 2019.parquet | SHA256: 48f747c61471b68da1be5bacf0398b4c9b6c757011fee4b7ecc82f2aeaea4625
-  2019 Obs Day Count: 365 (365 days complete, no missing dates)
+  GHCN Truth File: KMIA.parquet | SHA256: 25393e3d495f734338b61b330a503691cce1cee8012f27263a70cb0fdf8ef1d3
+  2019 Obs Day Count: 365 (365 days complete, no missing dates in 2019 OOS)
   2019 GEFS File: 2019.parquet | SHA256: d6054e6e7afa373c1b25434e36aa8ad7bfa7676d275abd1ab783b5cd29cce252
   GEFS Members: ['p01', 'p03', 'p02', 'p04', 'c00'] (Total 5 members)
   Obs Head 20 Exported: t1_kmia_obs_truth_2019_head20.csv
 ---------------------------------------------------------------------------
 Station: KSFO
-  2019 Obs File: 2019.parquet | SHA256: effc8806d08e743feb2520b8611e4a2dae28fcf31df28dcd4b6aa06f7ddd8201
-  2019 Obs Day Count: 365 (365 days complete, no missing dates)
+  GHCN Truth File: KSFO.parquet | SHA256: 632c7f901653f5b95d2a1ad9dc30c981a5bd6241d86df364b3572bfcc6ff2b7b
+  2019 Obs Day Count: 365 (365 days complete, no missing dates in 2019 OOS)
   2019 GEFS File: 2019.parquet | SHA256: 70c1104b33fced69f918851535f22088d484e394ae50932b48311e9dd70a1e37
   GEFS Members: ['p01', 'p03', 'p02', 'p04', 'c00'] (Total 5 members)
   Obs Head 20 Exported: t1_ksfo_obs_truth_2019_head20.csv
