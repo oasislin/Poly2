@@ -12,7 +12,9 @@ from src.utils.airgap import (
     REQUIRED_GATE_FIELDS,
     AirgapViolationError,
     filter_safe_years,
+    get_sanitization_audit_log,
     is_2019_authorized,
+    reset_sanitization_audit_log,
     sanitize_dataframe,
     verify_file_path,
     verify_year_whitelist,
@@ -86,6 +88,28 @@ def test_airgap_sanitizes_unauthorized_dataframe(tmp_path, monkeypatch):
     })
     with pytest.raises(AirgapViolationError, match="AIRGAP VIOLATION: Entire dataframe"):
         sanitize_dataframe(df_pure_2019, year_col="year")
+
+
+def test_airgap_sanitizes_with_audit_trail_and_logging(caplog):
+    """Verify that sanitize_dataframe explicitly logs and records all stripped 2019 rows."""
+    reset_sanitization_audit_log()
+    df = pd.DataFrame({
+        "year": [2016, 2017, 2018, 2019, 2019],
+        "tmax_f": [70.0, 72.0, 75.0, 80.0, 81.0],
+    })
+
+    with caplog.at_level("WARNING"):
+        cleaned = sanitize_dataframe(df, year_col="year", source_description="ghcn_multi_year_load")
+
+    assert len(cleaned) == 3
+    audit = get_sanitization_audit_log()
+    assert audit["total_sanitized_rows"] == 2
+    assert len(audit["events"]) == 1
+    assert audit["events"][0]["rows_sanitized"] == 2
+    assert audit["events"][0]["source_description"] == "ghcn_multi_year_load"
+
+    # Verify log entry is captured
+    assert "AIRGAP SANITIZATION: Stripped 2 rows belonging to sealed year 2019" in caplog.text
 
 
 def test_airgap_requires_embedded_gate_thresholds_in_flag(tmp_path, monkeypatch):
