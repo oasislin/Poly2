@@ -18,9 +18,9 @@
     "r2_r3_diagnosis_and_budget_report.md": "079968f61b4556438d14e46f554ac7e96b18a365c04afc80a85649f0685b7e81",
     "r6_kmia_parameters.json": "c77ec42778de45f284d055bbef89ce35dfdbc51842963bbd853a67cff91a4cac",
     "r7_tail_parameters.json": "6903677898ca8649ba97df7b7d67ab017940503c6b6d8cc03380a794df00d4d2",
-    "round3_ksfo_monthly_breakdown.csv": "182ec5b0923cf5dbbe678101907e639a5939ad23e6dc5da4e8580e2f52e829be",
+    "round3_ksfo_monthly_breakdown.csv": "4cefd0c57e34cb1db987bee9f3571bf943aecf783ac87f17e1ea7de2829be872",
     "round3_recomputed_statistics.csv": "2fe8b6ab11a9f3018d50915409ed83ae3ad98d3eddb46bc2f83223d909b21c42",
-    "round3_settlement_report.md": "6af2950693f10cccd8cba5b835c134874f80855ad069bfa7e50eaced00837445",
+    "round3_settlement_report.md": "862cbd90a455d58d12fa3952078637a47ed2466de7ed3b8261d38aa12bf7fb42",
     "data/processed/audit_arrays/2000_2018_training_arrays.parquet": "8f2a84d26aaeaeaaf7050424df6f7d19891d752fb01b89f49d3add79bbaf3a5c",
     "data/processed/audit_arrays/2019_oos_evaluation_arrays.parquet": "75c3a056c0ab504788ad3205e70d8479467e2336cd3e9e73f9e4859dbd808bb8",
     "data/processed/audit_arrays/2019_oos_round3_evaluation_arrays.parquet": "19f00551e279b5201eee1abb17c984a82ec194e4307c941afb739447cab5cc46"
