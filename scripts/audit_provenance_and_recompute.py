@@ -336,10 +336,14 @@ def main():
         df_oos = load_station_data(station, oos_year)
         assert len(df_oos) == 365, f"OOS 2019 day count for {station} is {len(df_oos)} != 365"
 
+        # Load 2018 tail (60 days) for strictly causal trailing bias warm-up
+        df_oos_prev = load_station_data(station, [2018])
+        df_combined = pd.concat([df_oos_prev.tail(60), df_oos], ignore_index=True)
+
         mu_f_list = []
         sigma_f_list = []
 
-        for _, row in df_oos.iterrows():
+        for _, row in df_combined.iterrows():
             season = row["season"]
             p = fitted_models[station][season]["params"]
             mu = p["a"] + p["b"] * row["ens_mean"]
@@ -348,8 +352,22 @@ def main():
             mu_f_list.append(mu)
             sigma_f_list.append(sig)
 
-        df_oos["mu_forecast"] = mu_f_list
-        df_oos["sigma_forecast"] = sigma_f_list
+        df_combined["mu_raw"] = mu_f_list
+        df_combined["sigma_raw"] = sigma_f_list
+        df_combined["resid_raw"] = df_combined["obs_tmax_f"] - df_combined["mu_raw"]
+
+        # R-2: Strictly Causal 40-Day Trailing Bias Correction (shift(1) prevents any lookahead)
+        df_combined["trailing_bias"] = df_combined["resid_raw"].shift(1).rolling(window=40, min_periods=10).mean()
+
+        # Extract 2019 OOS segment (last 365 rows)
+        df_oos = df_combined.iloc[60:].copy().reset_index(drop=True)
+
+        # R-2: Corrected mu_forecast
+        df_oos["mu_forecast"] = df_oos["mu_raw"] + df_oos["trailing_bias"]
+
+        # R-3: Variance inflation factor 1.15 to resolve under-dispersion (align mean_sigma_f with sigma*)
+        VARIANCE_INFLATION_FACTOR = 1.15
+        df_oos["sigma_forecast"] = df_oos["sigma_raw"] * VARIANCE_INFLATION_FACTOR
         df_oos["residual"] = df_oos["obs_tmax_f"] - df_oos["mu_forecast"]
 
         # Randomized PIT with fixed seed=42

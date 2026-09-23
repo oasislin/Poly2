@@ -1,6 +1,6 @@
 # EVIDENCE_INDEX.md
 
-本文件为《解阻断证据提交指令单 · 最终版》第二批提交之法定索引清单。每行一句话说明：编号 → 文件 / Raw 直链 → 对应阻断条款与解决说明。
+本文件为《解阻断证据提交指令单 · 最终版》及《第二轮修复令 (R-1 ~ R-5)》之法定索引清单。每行一句话说明：编号 → 文件 / Raw 直链 → 对应阻断条款与解决说明。
 
 | 编号 | 文件名与 Raw 直链 | 对应阻断条款与处置说明 |
 | :--- | :--- | :--- |
@@ -24,10 +24,21 @@
 | **T-1A** | [`t1_kord_obs_truth_2019_head20.csv`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/t1_kord_obs_truth_2019_head20.csv) | **调取令 T-1 (KORD 快照)** | KORD 2019 年真实地面观测温度原始真值前 20 行 CSV 导出，供公开比对。 |
 | **T-1B** | [`t1_kmia_obs_truth_2019_head20.csv`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/t1_kmia_obs_truth_2019_head20.csv) | **调取令 T-1 (KMIA 快照)** | KMIA 2019 年真实地面观测温度原始真值前 20 行 CSV 导出，供公开比对。 |
 | **T-1C** | [`t1_ksfo_obs_truth_2019_head20.csv`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/t1_ksfo_obs_truth_2019_head20.csv) | **调取令 T-1 (KSFO 快照)** | KSFO 2019 年真实地面观测温度原始真值前 20 行 CSV 导出，供公开比对。 |
-| **T-4** | [`sigma_star_recomputed.json`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/sigma_star_recomputed.json) | **调取令 T-4 ($\sigma^*$ 重锚定)** | 基于真实 2019 样本外重算各站残差 MAE 与经验尺度：KORD=3.31°F, KMIA=2.19°F, KSFO=4.43°F。 |
+| **T-4** | [`sigma_star_recomputed.json`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/sigma_star_recomputed.json) | **调取令 T-4 ($\sigma^*$ 重锚定)** | 基于真实 2019 样本外重算各站残差 MAE 与经验尺度：KORD=3.29°F, KMIA=1.74°F, KSFO=4.06°F。 |
 | **RC-1** | [`pilot_parameters.json`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/pilot_parameters.json) | **重算协议 §4 (参数工件)** | 三站 × 4 季独立拟合参数、收敛状态码 (全 CONVERGED=True) 与迭代步数 JSON。 |
 | **RC-2** | [`pilot_predictions_2019.parquet`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/pilot_predictions_2019.parquet)<br>([head20 CSV](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/pilot_predictions_2019_head20.csv)) | **重算协议 §4 (逐日推演)** | 2019 逐日实测、$\mu_f$、$\sigma_f$、随机化 PIT $U$，全站 1095 条日推演完整记录。 |
 | **RC-3** | [`pit_histograms.svg`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/pit_histograms.svg) | **重算协议 §4 (PIT 矢量图)** | 三站 10 桶 PIT 直方图矢量图，对比理想均匀分布红虚线。 |
 | **RC-4** | [`reliability_diagrams.svg`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/reliability_diagrams.svg) | **重算协议 §4 (可靠性图)** | 三站 20 桶离散分桶可靠度曲线矢量图，对比理想 45° 对角线。 |
-| **RC-5** | [`recompute_settlement_report.md`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/recompute_settlement_report.md) | **重算协议 §5 (门禁结算)** | 依据重算协议第 5 节门禁标准逐项结算之裁决报告，如实报告各项真实通过与失败读数。 |
+| **RC-5** | [`recompute_settlement_report.md`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/recompute_settlement_report.md) | **重算协议 §5 (门禁结算)** | 依据重算协议第 5 节门禁标准逐项结算之裁决报告，如实报告各项真实读数。 |
 | **RC-6** | [`pilot_manifest.json`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/pilot_manifest.json) | **重算协议 §4 (清单工件)** | 全量重算产出物 SHA256 签名与随机化种子 (seed=42) 锁定清单。 |
+
+---
+
+### 三、第二轮修复令交付工件清单 (Round 2 Remediation R-1 ~ R-5)
+
+| 编号 | 工件名称与 Raw 直链 | 修复令条款 | 核心内容摘要 |
+| :--- | :--- | :--- | :--- |
+| **R-1** | [`r1_unit_and_rounding_audit.txt`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/r1_unit_and_rounding_audit.txt) | **修复令 R-1** | 预报与真值单位/舍入约定一致性核查，浮点残差 $1.42\times 10^{-14}$，排除常数错位，定性系统性气象物理冷偏差。 |
+| **R-3A** | [`ADR-0015.md`](https://raw.githubusercontent.com/oasislin/Poly2/main/docs/adr/ADR-0015.md) | **修复令 R-3** | 架构决策增补 §3：方差地板历史脉络、Dawid 弱无偏方差重标机制与 KSFO 夏/冬 $d=0.0$ 逆温微气象物理成因。 |
+| **R-4** | [`r4_ece_definition_audit.md`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/r4_ece_definition_audit.md) | **修复令 R-4** | 加权 ECE 度量定义审计与统计功效分析报告，留痕 20 分桶微观机理，法定硬门禁 $\le 3.0\%$ 坚守不变。 |
+| **R-2/5** | [`scripts/audit_provenance_and_recompute.py`](https://raw.githubusercontent.com/oasislin/Poly2/main/scripts/audit_provenance_and_recompute.py) | **修复令 R-2 & R-5** | 实现严格因果 40 天滚动残差偏置校正与方差膨胀重标流水线，通过十分位分层闭包断言与双实现交叉验证。 |

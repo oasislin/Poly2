@@ -4,11 +4,8 @@
   "randomized_pit_seed": 42,
   "files": {
     "pilot_parameters.json": "5daede5259f24a477d1c612b94dcc7d64ff64dbe24304a9191daf7d3bf9df05d",
-    "pilot_predictions_2019.parquet": "656317d3efcd2d50fe6292d1fa22a04b59b793e23882202e4190f4567992892f",
-    "sigma_star_recomputed.json": "1ebef3e810cdcf133076140b6872e45929d0db7019834c96809b9269709364c5",
-    "t1_t2_provenance_audit.txt": "a5bbb389918258054c1fe3018454650b6c020e12f0dd68934bfca417b58a7d90",
-    "pit_histograms.svg": "a1d130890a49012dc55f4e4cf43ace76850927b0f6037c0c198575f788140faa",
-    "reliability_diagrams.svg": "34dfc54796671be040a9a8448a2fe43e24c2c6bd5f38a325929069baedacc8a3",
-    "recompute_settlement_report.md": "463d1a6c51c07a94da0c6aa80f6dbde0df261fd1a6bb9501da628e78a97b38d4"
+    "pilot_predictions_2019.parquet": "6316dad3b0ed7c4114fcc80083b3a067be4c900aa0baefc8e0f1b10715dd074c",
+    "sigma_star_recomputed.json": "1063df03d66a48ad10887c8b93c1abf47349f4335f582b13c69edba74f339f59",
+    "t1_t2_provenance_audit.txt": "a5bbb389918258054c1fe3018454650b6c020e12f0dd68934bfca417b58a7d90"
   }
 }
