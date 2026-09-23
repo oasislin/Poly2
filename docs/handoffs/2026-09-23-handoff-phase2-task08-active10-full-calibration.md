@@ -75,34 +75,14 @@
 
 ---
 
-## 四、 GitHub Issue 创建命令（请提供给用户在终端执行）
+## 四、 GitHub Issue 索引矩阵（已全部创建并在线生效）
 
-为遵循《AGENTS.md》的显式全拼命名规范与“agent 不代跑 gh”铁律，请将以下命令提交给用户在终端中直接运行：
+全量 Issue 已遵照《AGENTS.md》显式全拼命名规范正式在 GitHub 上立项：
 
-```bash
-# 1. 创建 Spec 主 Issue
-gh issue create \
-  --title "Spec: Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收" \
-  --body "详见规格书：specs/phase2-task08-active10-full-calibration-spec.md。将先导站已闭环的防泄漏物理升级体系全量推广至全部 Active 10 交易台站，并在 2019 样本外完成终极法定验收。"
+- **Spec 主 Issue**: [#114](https://github.com/oasislin/Poly2/issues/114) `Spec: Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收`
+- **Ticket 01**: [#115](https://github.com/oasislin/Poly2/issues/115) `Phase 2 Task 08 - Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`
+- **Ticket 02**: [#116](https://github.com/oasislin/Poly2/issues/116) `Phase 2 Task 08 - Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`
+- **Ticket 03**: [#117](https://github.com/oasislin/Poly2/issues/117) `Phase 2 Task 08 - Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`
+- **Ticket 04**: [#119](https://github.com/oasislin/Poly2/issues/119) `Phase 2 Task 08 - Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`
+- **Ticket 05**: [#123](https://github.com/oasislin/Poly2/issues/123) `Phase 2 Task 08 - Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`
 
-# 2. 创建 5 个垂直切片 Tickets
-gh issue create \
-  --title "Phase 2 Task 08 - Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window" \
-  --body "关联主 Issue。在 2000-2018 训练窗全量拟合 Active 10 站的 c_train 与滑动去偏参数，产出 evidence/active10_training_variance_factors.json。"
-
-gh issue create \
-  --title "Phase 2 Task 08 - Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化" \
-  --body "关联主 Issue。针对南部对流站(KHOU, KAUS, KATL)与高温站诊断偏态与 EVT 尾部，产出 evidence/active10_climate_calibration.json。"
-
-gh issue create \
-  --title "Phase 2 Task 08 - Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账" \
-  --body "关联主 Issue。推演 10 站 2019 样本外 3650 站·日预测分布，落盘 data/processed/audit_arrays/2019_oos_active10_arrays.parquet。"
-
-gh issue create \
-  --title "Phase 2 Task 08 - Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验" \
-  --body "关联主 Issue。执行随机化 PIT (p>=0.05)、7 档加权 ECE (<=3%)、方差比 ([0.85, 1.15]) 等六大门禁断言，产出 evidence/active10_recomputed_statistics.csv。"
-
-gh issue create \
-  --title "Phase 2 Task 08 - Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单" \
-  --body "关联主 Issue。交付 evidence/active10_settlement_report.md、scripts/standalone_recompute_active10.py 与 evidence/active10_manifest.json。"
-```

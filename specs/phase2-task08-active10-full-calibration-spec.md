@@ -77,15 +77,15 @@
 
 ## 四、 任务垂直切片与工件规划 (Tickets & Deliverables)
 
-- **Spec 主 Issue**: `Spec: Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收`
+- **Spec 主 Issue**: [#114](https://github.com/oasislin/Poly2/issues/114) (`Spec: Phase 2 Task 08 - Active 10 站全量物理概率模型升级、方差校准与 2019 样本外终极验收`)
 - **切片 Tickets**:
-  1. **Ticket 01**: `Phase 2 Task 08 - Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`
+  1. **Ticket 01**: [#115](https://github.com/oasislin/Poly2/issues/115) (`Phase 2 Task 08 - Ticket 01: feat(modeling): 扩展训练窗拟合引擎至 Active 10 站并冻结 c_train 与 window`)
      - 扩展 `scripts/fit_training_variance_factors.py`，全量计算 Active 10 站并产出 `evidence/active10_training_variance_factors.json`。
-  2. **Ticket 02**: `Phase 2 Task 08 - Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`
+  2. **Ticket 02**: [#116](https://github.com/oasislin/Poly2/issues/116) (`Phase 2 Task 08 - Ticket 02: feat(calibration): 推进 10 站局地气候偏态(R-6)与极值理论厚尾(R-7)参数化`)
      - 产出针对其余 7 站的局地气候校准参数 `evidence/active10_climate_calibration.json`。
-  3. **Ticket 03**: `Phase 2 Task 08 - Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`
+  3. **Ticket 03**: [#117](https://github.com/oasislin/Poly2/issues/117) (`Phase 2 Task 08 - Ticket 03: feat(evaluation): 实施 10 站 2019 样本外盲测推演并生成 Parquet 审计底账`)
      - 运行 10 站 2019 年推演，生成只读底账 `data/processed/audit_arrays/2019_oos_active10_arrays.parquet`。
-  4. **Ticket 04**: `Phase 2 Task 08 - Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`
+  4. **Ticket 04**: [#119](https://github.com/oasislin/Poly2/issues/119) (`Phase 2 Task 08 - Ticket 04: test(gates): 全量落实现代 ADR-0017 离散化门禁与六重统计指标核验`)
      - 产出机器可读的统计表 `evidence/active10_recomputed_statistics.csv`，断言六大门禁全绿。
-  5. **Ticket 05**: `Phase 2 Task 08 - Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`
+  5. **Ticket 05**: [#123](https://github.com/oasislin/Poly2/issues/123) (`Phase 2 Task 08 - Ticket 05: docs(settlement): 交付 Active 10 站唯一法定结算表、独立复算脚本与哈希清单`)
      - 产出法定报告 `evidence/active10_settlement_report.md`、零依赖复算脚本 `scripts/standalone_recompute_active10.py`，并刷新 `evidence/active10_manifest.json`。
