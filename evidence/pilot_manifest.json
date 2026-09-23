@@ -20,7 +20,7 @@
     "r7_tail_parameters.json": "6903677898ca8649ba97df7b7d67ab017940503c6b6d8cc03380a794df00d4d2",
     "round3_ksfo_monthly_breakdown.csv": "4cefd0c57e34cb1db987bee9f3571bf943aecf783ac87f17e1ea7de2829be872",
     "round3_recomputed_statistics.csv": "2fe8b6ab11a9f3018d50915409ed83ae3ad98d3eddb46bc2f83223d909b21c42",
-    "round3_settlement_report.md": "862cbd90a455d58d12fa3952078637a47ed2466de7ed3b8261d38aa12bf7fb42",
+    "round3_settlement_report.md": "60e2cfac90028921b43ae550613a0d0f3aaa62916bbf87c93ce9753d2fefc7ba",
     "data/processed/audit_arrays/2000_2018_training_arrays.parquet": "8f2a84d26aaeaeaaf7050424df6f7d19891d752fb01b89f49d3add79bbaf3a5c",
     "data/processed/audit_arrays/2019_oos_evaluation_arrays.parquet": "75c3a056c0ab504788ad3205e70d8479467e2336cd3e9e73f9e4859dbd808bb8",
     "data/processed/audit_arrays/2019_oos_round3_evaluation_arrays.parquet": "19f00551e279b5201eee1abb17c984a82ec194e4307c941afb739447cab5cc46"
