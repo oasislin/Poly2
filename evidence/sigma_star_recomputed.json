@@ -1,0 +1,20 @@
+{
+  "KORD": {
+    "calibrated_mae": 2.6383070045076806,
+    "sigma_star": 3.3065634847821537,
+    "mean_sigma_f": 3.071781950752212,
+    "ratio_sigma_f_to_sigma_star": 0.928995304305972
+  },
+  "KMIA": {
+    "calibrated_mae": 1.7435909551293576,
+    "sigma_star": 2.1852249092986056,
+    "mean_sigma_f": 1.591544360971042,
+    "ratio_sigma_f_to_sigma_star": 0.7283206200875141
+  },
+  "KSFO": {
+    "calibrated_mae": 3.5324604716181507,
+    "sigma_star": 4.427196981599386,
+    "mean_sigma_f": 3.6457492066277717,
+    "ratio_sigma_f_to_sigma_star": 0.8234892691200504
+  }
+}

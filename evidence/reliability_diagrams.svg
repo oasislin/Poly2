@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320" style="background-color:#ffffff; font-family:sans-serif;">
+<text x="450.0" y="28" font-size="16" font-weight="bold" text-anchor="middle" fill="#111827">2019 Reliability Calibration Curves (20 Probability Bins vs Observed Frequency)</text>
+<g transform="translate(40, 50)">
+<rect x="0" y="0" width="260" height="220" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+<text x="130.0" y="-10" font-size="13" font-weight="bold" text-anchor="middle" fill="#374151">KORD Calibration</text>
+<line x1="35" y1="190" x2="245" y2="20" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4,4"/>
+<polyline points="39.0,30.0 51.4,25.9 61.0,22.9 72.4,27.1 82.3,28.3 92.7,28.5 100.0,20.0" fill="none" stroke="#2563eb" stroke-width="2"/>
+<circle cx="39.0" cy="30.0" r="3.5" fill="#1d4ed8"/>
+<circle cx="51.4" cy="25.9" r="3.5" fill="#1d4ed8"/>
+<circle cx="61.0" cy="22.9" r="3.5" fill="#1d4ed8"/>
+<circle cx="72.4" cy="27.1" r="3.5" fill="#1d4ed8"/>
+<circle cx="82.3" cy="28.3" r="3.5" fill="#1d4ed8"/>
+<circle cx="92.7" cy="28.5" r="3.5" fill="#1d4ed8"/>
+<circle cx="100.0" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<text x="35.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">0.0</text>
+<text x="30" y="193.0" font-size="9" text-anchor="end" fill="#6b7280">0.0</text>
+<text x="140.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">0.5</text>
+<text x="30" y="108.0" font-size="9" text-anchor="end" fill="#6b7280">0.5</text>
+<text x="245.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">1.0</text>
+<text x="30" y="23.0" font-size="9" text-anchor="end" fill="#6b7280">1.0</text>
+<text x="140.0" y="218" font-size="10" text-anchor="middle" fill="#6b7280">Forecast Probability</text>
+</g>
+<g transform="translate(330, 50)">
+<rect x="0" y="0" width="260" height="220" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+<text x="130.0" y="-10" font-size="13" font-weight="bold" text-anchor="middle" fill="#374151">KMIA Calibration</text>
+<line x1="35" y1="190" x2="245" y2="20" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4,4"/>
+<polyline points="39.4,20.0 50.8,20.0 60.8,25.2 72.0,28.1 83.2,20.0 93.3,27.1 103.7,28.7 114.0,23.6 124.3,23.7 136.4,20.0 143.8,20.0" fill="none" stroke="#2563eb" stroke-width="2"/>
+<circle cx="39.4" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<circle cx="50.8" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<circle cx="60.8" cy="25.2" r="3.5" fill="#1d4ed8"/>
+<circle cx="72.0" cy="28.1" r="3.5" fill="#1d4ed8"/>
+<circle cx="83.2" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<circle cx="93.3" cy="27.1" r="3.5" fill="#1d4ed8"/>
+<circle cx="103.7" cy="28.7" r="3.5" fill="#1d4ed8"/>
+<circle cx="114.0" cy="23.6" r="3.5" fill="#1d4ed8"/>
+<circle cx="124.3" cy="23.7" r="3.5" fill="#1d4ed8"/>
+<circle cx="136.4" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<circle cx="143.8" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<text x="35.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">0.0</text>
+<text x="30" y="193.0" font-size="9" text-anchor="end" fill="#6b7280">0.0</text>
+<text x="140.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">0.5</text>
+<text x="30" y="108.0" font-size="9" text-anchor="end" fill="#6b7280">0.5</text>
+<text x="245.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">1.0</text>
+<text x="30" y="23.0" font-size="9" text-anchor="end" fill="#6b7280">1.0</text>
+<text x="140.0" y="218" font-size="10" text-anchor="middle" fill="#6b7280">Forecast Probability</text>
+</g>
+<g transform="translate(620, 50)">
+<rect x="0" y="0" width="260" height="220" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+<text x="130.0" y="-10" font-size="13" font-weight="bold" text-anchor="middle" fill="#374151">KSFO Calibration</text>
+<line x1="35" y1="190" x2="245" y2="20" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4,4"/>
+<polyline points="39.5,25.8 51.3,31.3 61.4,26.3 72.7,23.1 81.9,20.0 88.4,20.0" fill="none" stroke="#2563eb" stroke-width="2"/>
+<circle cx="39.5" cy="25.8" r="3.5" fill="#1d4ed8"/>
+<circle cx="51.3" cy="31.3" r="3.5" fill="#1d4ed8"/>
+<circle cx="61.4" cy="26.3" r="3.5" fill="#1d4ed8"/>
+<circle cx="72.7" cy="23.1" r="3.5" fill="#1d4ed8"/>
+<circle cx="81.9" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<circle cx="88.4" cy="20.0" r="3.5" fill="#1d4ed8"/>
+<text x="35.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">0.0</text>
+<text x="30" y="193.0" font-size="9" text-anchor="end" fill="#6b7280">0.0</text>
+<text x="140.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">0.5</text>
+<text x="30" y="108.0" font-size="9" text-anchor="end" fill="#6b7280">0.5</text>
+<text x="245.0" y="206" font-size="10" text-anchor="middle" fill="#6b7280">1.0</text>
+<text x="30" y="23.0" font-size="9" text-anchor="end" fill="#6b7280">1.0</text>
+<text x="140.0" y="218" font-size="10" text-anchor="middle" fill="#6b7280">Forecast Probability</text>
+</g>
+</svg>

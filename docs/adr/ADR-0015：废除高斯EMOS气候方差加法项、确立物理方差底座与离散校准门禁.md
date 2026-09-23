@@ -36,10 +36,10 @@ $$\mathbb{E}[\sigma_f^2] \le \text{Var}(T) = \sigma_{\text{clim}}^2$$
 ### 2.3 物理方差底座 $\sigma_{\text{inst}}$ 权威引用与物理尺度
 - **权威文献引用**: *NOAA / FAA / DOD Automated Surface Observing System (ASOS) User's Guide (1998)*, Section 3.1.1 "Temperature Sensor".
 - **传感器出厂物理规格**: 全美 ASOS 气象台站标准配置 1088 型三线白金电阻温度计（Platinum Resistance Thermometer, PRT），在 $-50^\circ\text{C} \sim +50^\circ\text{C}$ 量程内的仪器精度规格为 $\pm 0.9^\circ\text{F} \ (\pm 0.5^\circ\text{C})$。
-- **物理尺度与报告粒度可区分性**:
-  - 传感器固有物理极限: $\sigma_{\text{inst}} = 0.5^\circ\text{F}$；
+- **物理尺度与报告粒度统一性**:
+  - 传感器仪器精度极限: **$\sigma_{\text{inst}} = 0.9^\circ\text{F}$**（严格对齐引文 $\pm 0.9^\circ\text{F}$，彻底消除 $0.5^\circ\text{C} \leftrightarrow 0.5^\circ\text{F}$ 单位混淆错位）；
   - METAR 报文发布的量化舍入步长: 整度 $1^\circ\text{F}$ 或 $0.1^\circ\text{C}$；
-  - 确立以数据驱动的 $\min(\hat{c})$ 或 $\sigma_{\text{inst}} = 0.5^\circ\text{F}$ 作为方差参数下限，绝不再人工拍脑袋设定无物理依据的宏观大底座。
+  - 确立以数据驱动的 $\min(\hat{c})$ 或 $\sigma_{\text{inst}} = 0.9^\circ\text{F}$ 作为方差参数下限，绝不再人工拍脑袋设定无物理依据的宏观大底座。
 
 ### 2.4 法定门禁层级规范与废除 BH 条款
 - **废除条款**: 彻底移除 Benjamini-Hochberg (BH) 假发现率多重假设检验条款（避免在离散分桶下的多重假设检验谬误）；
@@ -50,3 +50,7 @@ $$\mathbb{E}[\sigma_f^2] \le \text{Var}(T) = \sigma_{\text{clim}}^2$$
   1. 去偏分层方差比 F 检验: 必须按 $\sigma_f$ 十分位数分层调用，禁止全年池化；
   2. 加权 ECE bootstrap 95% 置信区间；
   3. 20 分桶 Wilson 95% 置信区间可靠度图目视诊断。
+
+### 2.5 夹具参数本源注记 (T-3 调取令合规)
+- **参数来源定性**: 测试夹具 `tests/test_closure_regression.py` 中采用的历史输入数值（$\text{bias}=2.89, \sigma_f=2.35, \sigma_r=4.39, \text{MAE}=3.53$ 等）**derive from a provenance-invalidated log; retained for closure-testing only, not as empirical reference**。
+- **门禁保护**: 夹具作为检验度量代码内部数理闭包的逆向对抗测试永久保留；若重算后需用真实 2019 统计值替换夹具输入，必须走正式门禁变更留痕流程，严禁静默替换。

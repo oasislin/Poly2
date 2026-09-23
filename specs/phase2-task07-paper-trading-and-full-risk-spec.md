@@ -112,6 +112,6 @@ Polymarket 温度市场量化预测系统在完成数据源单调合流（Task 0
 
 ### 3. 修复 Tickets 归档
 - **Issue #101 (Fix-01)**: `feat(simulation): 实现对抗性合成做市商模块 (SyntheticMarketMaker)` [CLOSED]
-- **Issue #102 (Fix-02)**: `feat(simulation): 实现 2019 高保真历史回测引擎 (HistoricalBacktestEngine)` [CLOSED]
+- **Issue #102 (Fix-02)**: `feat(simulation): 实现 2019 合成对抗做市商回测引擎 (HistoricalBacktestEngine, 原高保真称号作废)` [CLOSED]
 - **Issue #103 (Fix-03)**: `feat(simulation): 开发全新量化回测 CLI 并完成 2019 全年日结算金融夏普核算` [CLOSED]
 - **Issue #104 (Fix-04)**: `refactor(simulation): 重构 48h 纸面盘工程冒烟与更新规范留痕 (Addendum 1 & STATUS)` [CLOSED]
