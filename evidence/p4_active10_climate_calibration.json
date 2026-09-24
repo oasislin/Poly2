@@ -1,0 +1,585 @@
+{
+  "KORD": {
+    "station": "KORD",
+    "seasons": {
+      "Winter": {
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": -1.3909275294298153,
+          "delta": 2.2767762416557145,
+          "xi": -3.028275726866937,
+          "lambda": 4.235483437626737
+        },
+        "delta_bic": -5923.702647356918
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.7792887255189402,
+          "u_right": 3.1855736212368764,
+          "gpd_left": {
+            "shape_xi": -0.0668937423119608,
+            "scale_beta": 0.9515531797297998
+          },
+          "gpd_right": {
+            "shape_xi": -0.0077341603990123435,
+            "scale_beta": 1.718716115625933
+          }
+        },
+        "delta_bic": -3475.7566645953902
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -1.9603158482546328,
+          "u_right": 1.9990986351218207,
+          "gpd_left": {
+            "shape_xi": 0.16763219044448807,
+            "scale_beta": 0.735270763982142
+          },
+          "gpd_right": {
+            "shape_xi": 0.016080010394881786,
+            "scale_beta": 0.6466410468934133
+          }
+        },
+        "delta_bic": -1489.9218479116416
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.1492652518723894,
+          "u_right": 2.3334547034204496,
+          "gpd_left": {
+            "shape_xi": -0.07175728513649063,
+            "scale_beta": 0.7231447165460533
+          },
+          "gpd_right": {
+            "shape_xi": 0.2233819488179579,
+            "scale_beta": 0.7631466753162843
+          }
+        },
+        "delta_bic": -1881.2974463584987
+      }
+    }
+  },
+  "KLGA": {
+    "station": "KLGA",
+    "seasons": {
+      "Winter": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.9344855006101165,
+          "u_right": 3.6652582372596503,
+          "gpd_left": {
+            "shape_xi": 0.10943788703804802,
+            "scale_beta": 0.719619818574081
+          },
+          "gpd_right": {
+            "shape_xi": -0.01872516098238885,
+            "scale_beta": 1.8278269968774794
+          }
+        },
+        "delta_bic": -3990.619783128447
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.519782475638874,
+          "u_right": 3.888146835779043,
+          "gpd_left": {
+            "shape_xi": 0.2047906762734757,
+            "scale_beta": 0.9357617143124112
+          },
+          "gpd_right": {
+            "shape_xi": -0.2527815725471135,
+            "scale_beta": 2.053407306790416
+          }
+        },
+        "delta_bic": -4823.843036568084
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.8798213242146105,
+          "u_right": 2.648895231976269,
+          "gpd_left": {
+            "shape_xi": -0.05562568578785976,
+            "scale_beta": 1.255770784868922
+          },
+          "gpd_right": {
+            "shape_xi": -0.044281422877017265,
+            "scale_beta": 1.036726816327719
+          }
+        },
+        "delta_bic": -2726.499711080296
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.8488647960400337,
+          "u_right": 3.06981612000831,
+          "gpd_left": {
+            "shape_xi": -0.006633725181868,
+            "scale_beta": 0.9673195723114688
+          },
+          "gpd_right": {
+            "shape_xi": 0.2496311075213247,
+            "scale_beta": 0.986089140163926
+          }
+        },
+        "delta_bic": -3107.9112801074352
+      }
+    }
+  },
+  "KATL": {
+    "station": "KATL",
+    "seasons": {
+      "Winter": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.928610008770489,
+          "u_right": 3.698544738911697,
+          "gpd_left": {
+            "shape_xi": -0.19028894473221528,
+            "scale_beta": 1.5223163315096895
+          },
+          "gpd_right": {
+            "shape_xi": 0.11523026683323737,
+            "scale_beta": 1.314973868344746
+          }
+        },
+        "delta_bic": -4796.20384484823
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.263995642928045,
+          "u_right": 3.5464251011015144,
+          "gpd_left": {
+            "shape_xi": 0.10804720809282774,
+            "scale_beta": 1.1680579474461392
+          },
+          "gpd_right": {
+            "shape_xi": -0.0368514210662589,
+            "scale_beta": 1.3880862615594933
+          }
+        },
+        "delta_bic": -4110.968028087549
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.189013390630932,
+          "u_right": 1.8736335607499661,
+          "gpd_left": {
+            "shape_xi": -0.006353960041569632,
+            "scale_beta": 0.8957748345057018
+          },
+          "gpd_right": {
+            "shape_xi": 0.18355332321654716,
+            "scale_beta": 0.7444152791577354
+          }
+        },
+        "delta_bic": -1649.3719843656872
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.119382323260058,
+          "u_right": 2.9049779554757995,
+          "gpd_left": {
+            "shape_xi": -0.014226357768825604,
+            "scale_beta": 1.2651696154877525
+          },
+          "gpd_right": {
+            "shape_xi": -0.10010059606272972,
+            "scale_beta": 1.6149556255237076
+          }
+        },
+        "delta_bic": -3456.960426446718
+      }
+    }
+  },
+  "KDAL": {
+    "station": "KDAL",
+    "seasons": {
+      "Winter": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.276121904070104,
+          "u_right": 2.3048104507593505,
+          "gpd_left": {
+            "shape_xi": -0.05494890880408149,
+            "scale_beta": 0.9103179803827891
+          },
+          "gpd_right": {
+            "shape_xi": 0.07180690309584126,
+            "scale_beta": 0.7995142339566308
+          }
+        },
+        "delta_bic": -1837.4271259926272
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.6010554856040944,
+          "u_right": 2.470542833455714,
+          "gpd_left": {
+            "shape_xi": -0.23967481058469658,
+            "scale_beta": 1.3074149641267392
+          },
+          "gpd_right": {
+            "shape_xi": 0.024651314250851954,
+            "scale_beta": 1.0595709683552865
+          }
+        },
+        "delta_bic": -2386.7793622279805
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.5518011056734444,
+          "u_right": 2.4727195307068257,
+          "gpd_left": {
+            "shape_xi": 0.09492727023398155,
+            "scale_beta": 1.21580830826599
+          },
+          "gpd_right": {
+            "shape_xi": -0.018941879819066983,
+            "scale_beta": 0.7923037585864291
+          }
+        },
+        "delta_bic": -2433.5170258120097
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.0435430690596084,
+          "u_right": 2.685813078405856,
+          "gpd_left": {
+            "shape_xi": -0.08488502362581803,
+            "scale_beta": 1.3153261021292608
+          },
+          "gpd_right": {
+            "shape_xi": 0.28293993844514154,
+            "scale_beta": 0.7654797707737786
+          }
+        },
+        "delta_bic": -2956.1879802479434
+      }
+    }
+  },
+  "KSEA": {
+    "station": "KSEA",
+    "seasons": {
+      "Winter": {
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": -1.261294802637071,
+          "delta": 2.6737731774415865,
+          "xi": -2.699144374526536,
+          "lambda": 5.254197289127599
+        },
+        "delta_bic": -4959.536144811972
+      },
+      "Spring": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.631212984120571,
+          "u_right": 2.7766842059121783,
+          "gpd_left": {
+            "shape_xi": -0.27127460341493903,
+            "scale_beta": 1.1547087001411254
+          },
+          "gpd_right": {
+            "shape_xi": -0.18116195313611222,
+            "scale_beta": 1.2936683070233326
+          }
+        },
+        "delta_bic": -2501.3588485619766
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.707853269411406,
+          "u_right": 3.7695725645160723,
+          "gpd_left": {
+            "shape_xi": 0.03019794686568443,
+            "scale_beta": 1.3951290322232424
+          },
+          "gpd_right": {
+            "shape_xi": 0.12410516399686213,
+            "scale_beta": 1.1670569703539493
+          }
+        },
+        "delta_bic": -4754.281276277876
+      }
+    }
+  },
+  "KLAX": {
+    "station": "KLAX",
+    "seasons": {
+      "Winter": {
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": -0.9067607085806124,
+          "delta": 1.914493296822585,
+          "xi": -2.899764219797767,
+          "lambda": 5.245117807488553
+        },
+        "delta_bic": -14710.626382985994
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -5.189912372894235,
+          "u_right": 4.798237489138101,
+          "gpd_left": {
+            "shape_xi": -0.39503961869467497,
+            "scale_beta": 2.591369271297855
+          },
+          "gpd_right": {
+            "shape_xi": -0.29407874650696697,
+            "scale_beta": 2.4998685471864377
+          }
+        },
+        "delta_bic": -8457.724585651746
+      },
+      "Summer": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      },
+      "Autumn": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      }
+    }
+  },
+  "KHOU": {
+    "station": "KHOU",
+    "seasons": {
+      "Winter": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      },
+      "Spring": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.580283103637055,
+          "u_right": 2.186810159382535,
+          "gpd_left": {
+            "shape_xi": 0.07989281790050407,
+            "scale_beta": 0.967583682584679
+          },
+          "gpd_right": {
+            "shape_xi": 0.0731776907476086,
+            "scale_beta": 0.7817566342349751
+          }
+        },
+        "delta_bic": -2113.748398853356
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -3.127672917961507,
+          "u_right": 2.4815382192881685,
+          "gpd_left": {
+            "shape_xi": -0.05229954720661288,
+            "scale_beta": 1.2424372795900476
+          },
+          "gpd_right": {
+            "shape_xi": 0.20054240702705906,
+            "scale_beta": 0.7454549113471556
+          }
+        },
+        "delta_bic": -2770.438767669605
+      }
+    }
+  },
+  "KMIA": {
+    "station": "KMIA",
+    "seasons": {
+      "Winter": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.3798333389015998,
+          "u_right": 2.007568740542838,
+          "gpd_left": {
+            "shape_xi": -0.28945850386613703,
+            "scale_beta": 1.7288301752458584
+          },
+          "gpd_right": {
+            "shape_xi": -0.0598614133149221,
+            "scale_beta": 0.5961433526928188
+          }
+        },
+        "delta_bic": -1875.562458395857
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -1.8477255406492965,
+          "u_right": 1.535992592339741,
+          "gpd_left": {
+            "shape_xi": 0.012702998274094376,
+            "scale_beta": 1.0051463143692696
+          },
+          "gpd_right": {
+            "shape_xi": -0.09215587148461449,
+            "scale_beta": 0.5098453609467128
+          }
+        },
+        "delta_bic": -1258.2175842190072
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.1063130486069523,
+          "u_right": 1.5791698193766295,
+          "gpd_left": {
+            "shape_xi": -0.20307675206279252,
+            "scale_beta": 1.1649625739440772
+          },
+          "gpd_right": {
+            "shape_xi": -0.015093104772482487,
+            "scale_beta": 0.5297390039847003
+          }
+        },
+        "delta_bic": -1369.2592843629382
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.221029142616302,
+          "u_right": 1.726389489146197,
+          "gpd_left": {
+            "shape_xi": -0.10852344605640032,
+            "scale_beta": 1.103318241771776
+          },
+          "gpd_right": {
+            "shape_xi": 0.14437331810463455,
+            "scale_beta": 0.4025698514847384
+          }
+        },
+        "delta_bic": -1490.2432430743074
+      }
+    }
+  },
+  "KSFO": {
+    "station": "KSFO",
+    "seasons": {
+      "Winter": {
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": -1.0822123972441842,
+          "delta": 2.29315943565019,
+          "xi": -2.256227750967095,
+          "lambda": 4.32350602302842
+        },
+        "delta_bic": -4760.372364253589
+      },
+      "Spring": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      },
+      "Summer": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.7858212737427457,
+          "u_right": 3.42478326457898,
+          "gpd_left": {
+            "shape_xi": 5.7253527955587454e-05,
+            "scale_beta": 1.3998171477286712
+          },
+          "gpd_right": {
+            "shape_xi": -0.10739388569460717,
+            "scale_beta": 1.4777340204393985
+          }
+        },
+        "delta_bic": -3628.2795727559014
+      }
+    }
+  },
+  "KAUS": {
+    "station": "KAUS",
+    "seasons": {
+      "Winter": {
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": 0.7422563761626733,
+          "delta": 1.9160845126986883,
+          "xi": 1.999435640925118,
+          "lambda": 4.288198554755143
+        },
+        "delta_bic": -8096.36442904039
+      },
+      "Spring": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.0955352925141195,
+          "u_right": 1.9756796484702415,
+          "gpd_left": {
+            "shape_xi": 0.16106948842876329,
+            "scale_beta": 0.9283697738447116
+          },
+          "gpd_right": {
+            "shape_xi": -0.07984897175289574,
+            "scale_beta": 1.0688481498307243
+          }
+        },
+        "delta_bic": -1825.878435131709
+      },
+      "Summer": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.354662894186067,
+          "u_right": 2.3412661078637984,
+          "gpd_left": {
+            "shape_xi": 0.034745668369491625,
+            "scale_beta": 1.2054534227130334
+          },
+          "gpd_right": {
+            "shape_xi": 0.2735731351551076,
+            "scale_beta": 0.6987536264697152
+          }
+        },
+        "delta_bic": -2259.4445975850904
+      },
+      "Autumn": {
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -2.12707725268193,
+          "u_right": 2.1100011235256484,
+          "gpd_left": {
+            "shape_xi": 0.13310537267025385,
+            "scale_beta": 0.9172842666583314
+          },
+          "gpd_right": {
+            "shape_xi": 0.1232184990427124,
+            "scale_beta": 0.6852243751090077
+          }
+        },
+        "delta_bic": -1762.3081832574944
+      }
+    }
+  }
+}

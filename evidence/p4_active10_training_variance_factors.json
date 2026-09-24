@@ -1,0 +1,102 @@
+{
+  "KORD": {
+    "station": "KORD",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.2315902063863342,
+      "Autumn": 1.35
+    }
+  },
+  "KLGA": {
+    "station": "KLGA",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KATL": {
+    "station": "KATL",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 0.9592043710226955,
+      "Autumn": 1.35
+    }
+  },
+  "KDAL": {
+    "station": "KDAL",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.2854558124548403,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KSEA": {
+    "station": "KSEA",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KLAX": {
+    "station": "KLAX",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KHOU": {
+    "station": "KHOU",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KMIA": {
+    "station": "KMIA",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.1756598568520544,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KSFO": {
+    "station": "KSFO",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  },
+  "KAUS": {
+    "station": "KAUS",
+    "training_years": "2000-2018",
+    "seasonal_c_train": {
+      "Winter": 1.35,
+      "Spring": 1.35,
+      "Summer": 1.35,
+      "Autumn": 1.35
+    }
+  }
+}

@@ -1,0 +1,41 @@
+station,season,variable,n_samples,skewness,kurtosis_fisher,jsu_triggered,evt_triggered,bic_gaussian,bic_jsu,bic_evt,delta_bic_winner,cv_pit_p_mean,final_selected_family,fallback_reason
+KORD,Winter,Max,1715,0.8989,2.4323,True,True,13781.54,7857.84,8471.25,-5923.7,0.5,johnsonsu,JSU won BIC competition
+KORD,Spring,Max,1748,0.8072,3.2172,True,True,9392.45,6993.53,5916.69,-3475.76,0.5,evt_hybrid,EVT won BIC competition
+KORD,Summer,Max,1748,-0.2523,1.8475,False,True,5926.35,N/A,4436.43,-1489.92,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KORD,Autumn,Max,1729,0.7291,4.5991,True,True,6691.87,6039.82,4810.57,-1881.3,0.5,evt_hybrid,EVT won BIC competition
+KLGA,Winter,Max,1715,0.865,2.6974,True,True,10698.08,7244.1,6707.46,-3990.62,0.5,evt_hybrid,EVT won BIC competition
+KLGA,Spring,Max,1748,0.2219,2.1689,False,True,12314.27,N/A,7490.43,-4823.84,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KLGA,Summer,Max,1748,-0.2472,1.5409,False,True,8548.19,N/A,5821.69,-2726.5,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KLGA,Autumn,Max,1729,0.406,2.3161,True,True,9028.97,6926.29,5921.06,-3107.91,0.5,evt_hybrid,EVT won BIC competition
+KATL,Winter,Max,1715,0.0574,1.1995,False,True,12829.26,N/A,8033.06,-4796.2,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KATL,Spring,Max,1748,0.1337,2.0003,False,True,11000.71,N/A,6889.74,-4110.97,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KATL,Summer,Max,1748,-0.0974,2.689,False,True,6134.02,N/A,4484.64,-1649.37,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KATL,Autumn,Max,1729,-0.0251,1.9099,False,True,9773.56,N/A,6316.59,-3456.96,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KDAL,Winter,Max,1715,0.0065,1.9178,False,True,6552.04,N/A,4714.61,-1837.43,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KDAL,Spring,Max,1748,-0.0345,1.9389,False,True,7576.07,N/A,5189.29,-2386.78,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KDAL,Summer,Max,1748,-0.5948,3.0217,True,True,7625.89,6443.97,5192.38,-2433.52,0.5,evt_hybrid,EVT won BIC competition
+KDAL,Autumn,Max,1729,-0.2208,2.6134,False,True,8607.11,N/A,5650.92,-2956.19,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KSEA,Winter,Max,1715,0.5285,0.8163,True,False,12729.38,7769.84,N/A,-4959.54,0.5,johnsonsu,JSU passed Delta_BIC < -10
+KSEA,Spring,Max,1748,0.1975,0.954,False,False,11930.2,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KSEA,Summer,Max,1748,0.0968,1.1625,False,True,8031.98,N/A,5530.63,-2501.36,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KSEA,Autumn,Max,1729,-0.0535,1.4858,False,True,12512.14,N/A,7757.86,-4754.28,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KLAX,Winter,Max,1715,0.4325,0.3602,True,False,23792.18,9081.55,N/A,-14710.63,0.5,johnsonsu,JSU passed Delta_BIC < -10
+KLAX,Spring,Max,1748,-0.1124,1.0703,False,True,19494.89,N/A,11037.16,-8457.72,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KLAX,Summer,Max,1748,0.0343,0.0246,False,False,12340.51,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KLAX,Autumn,Max,1729,-0.0568,0.4215,False,False,23632.68,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KHOU,Winter,Max,1715,-0.1333,0.8793,False,False,11882.92,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KHOU,Spring,Max,1748,0.217,0.6044,False,False,11669.38,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KHOU,Summer,Max,1748,-0.426,2.0166,True,True,7276.83,6357.66,5163.08,-2113.75,0.5,evt_hybrid,EVT won BIC competition
+KHOU,Autumn,Max,1729,-0.4597,1.8844,True,True,8521.79,6757.94,5751.35,-2770.44,0.5,evt_hybrid,EVT won BIC competition
+KMIA,Winter,Max,1715,-0.8502,2.23,True,True,6527.68,5872.29,4652.12,-1875.56,0.5,evt_hybrid,EVT won BIC competition
+KMIA,Spring,Max,1748,-1.0186,3.8474,True,True,5222.22,4982.47,3964.0,-1258.22,0.5,evt_hybrid,EVT won BIC competition
+KMIA,Summer,Max,1748,-0.8829,2.2055,True,True,5578.0,5290.17,4208.74,-1369.26,0.5,evt_hybrid,EVT won BIC competition
+KMIA,Autumn,Max,1729,-0.8957,2.3851,True,True,5738.83,5395.59,4248.58,-1490.24,0.5,evt_hybrid,EVT won BIC competition
+KSFO,Winter,Max,1715,0.6361,1.4492,True,True,12453.28,7692.91,8004.12,-4760.37,0.5,johnsonsu,JSU won BIC competition
+KSFO,Spring,Max,1748,-0.1089,0.8987,False,False,17937.53,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KSFO,Summer,Max,1728,-0.0941,0.2361,False,False,17545.76,N/A,N/A,0.0,0.5,gaussian,No high-order non-normality triggered
+KSFO,Autumn,Max,1729,0.063,2.1346,False,True,9879.11,N/A,6250.83,-3628.28,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KAUS,Winter,Max,1715,-0.5937,2.1794,True,True,16382.6,8286.24,9920.14,-8096.36,0.5,johnsonsu,JSU won BIC competition
+KAUS,Spring,Max,1748,-0.4159,4.2133,True,True,6362.53,5782.65,4536.65,-1825.88,0.5,evt_hybrid,EVT won BIC competition
+KAUS,Summer,Max,1748,-0.3375,3.4717,False,True,7264.54,N/A,5005.1,-2259.44,0.5,evt_hybrid,EVT passed Delta_BIC < -10
+KAUS,Autumn,Max,1729,-0.3921,3.0408,False,True,6250.01,N/A,4487.7,-1762.31,0.5,evt_hybrid,EVT passed Delta_BIC < -10
