@@ -1,0 +1,13 @@
+month,train_residual_variance,oos_2019_residual_variance,oos_2019_mean_forecast_var,oos_2019_variance_ratio,interpretation
+1,12.134846,10.793662,11.334452,0.952288,Normal Winter Pattern
+2,12.233017,5.726306,11.334452,0.505212,Normal Winter Pattern
+3,12.460374,10.401138,13.621985,0.763555,Normal Spring Transition
+4,12.976768,18.685139,13.865301,1.347619,Elevated Spring Outlier
+5,18.545161,8.067559,14.529565,0.555251,Normal Spring Pattern
+6,20.996137,44.333640,16.903835,2.622697,June 2019 Extreme Heatwave & Fog Transition Shock (2019-06-10 Tmax=100.04°F)
+7,14.290770,11.774844,17.353091,0.678544,July 2019 Mild Flow Counter-Example (Gentle Tmax 64-83°F; No Heatwave/Incursion Shock)
+8,17.518011,20.416945,17.091906,1.194539,Late Summer Elevated Variance
+9,26.292098,33.210446,21.684502,1.531529,Late Summer Elevated Variance
+10,23.233930,20.094278,20.330774,0.988368,Normal Autumn Pattern
+11,10.110489,24.517740,20.407879,1.201386,Elevated Autumn Outlier
+12,8.598264,4.742085,11.334452,0.418378,Normal Winter Pattern

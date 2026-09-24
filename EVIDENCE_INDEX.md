@@ -1,6 +1,6 @@
 # EVIDENCE_INDEX.md
 
-本文件为《解阻断证据提交指令单 · 最终版》及《第二轮修复令 (R-1 ~ R-5)》之法定索引清单。每行一句话说明：编号 → 文件 / Raw 直链 → 对应阻断条款与解决说明。
+本文件为《解阻断证据提交指令单 · 最终版》、《第二轮修复令 (R-1 ~ R-5)》及《P 系列数据工程令 (P-0 ~ P-3)》之法定索引清单。每行一句话说明：编号 → 文件 / Raw 直链 → 对应阻断条款与解决说明。
 
 | 编号 | 文件名与 Raw 直链 | 对应阻断条款与处置说明 |
 | :--- | :--- | :--- |
@@ -34,11 +34,27 @@
 
 ---
 
-### 三、第二轮修复令交付工件清单 (Round 2 Remediation R-1 ~ R-5)
+### 三、P 系列官方真值工程令工件清单 (P-0 ~ P-3 GHCN-Daily Truth Layer)
 
-| 编号 | 工件名称与 Raw 直链 | 修复令条款 | 核心内容摘要 |
+| 编号 | 工件名称与 Raw 直链 | 协议条款 | 核心内容摘要 |
 | :--- | :--- | :--- | :--- |
-| **R-1** | [`r1_unit_and_rounding_audit.txt`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/r1_unit_and_rounding_audit.txt) | **修复令 R-1** | 预报与真值单位/舍入约定一致性核查，浮点残差 $1.42\times 10^{-14}$，排除常数错位，定性系统性气象物理冷偏差。 |
-| **R-3A** | [`ADR-0015.md`](https://raw.githubusercontent.com/oasislin/Poly2/main/docs/adr/ADR-0015.md) | **修复令 R-3** | 架构决策增补 §3：方差地板历史脉络、Dawid 弱无偏方差重标机制与 KSFO 夏/冬 $d=0.0$ 逆温微气象物理成因。 |
-| **R-4** | [`r4_ece_definition_audit.md`](https://raw.githubusercontent.com/oasislin/Poly2/main/evidence/r4_ece_definition_audit.md) | **修复令 R-4** | 加权 ECE 度量定义审计与统计功效分析报告，留痕 20 分桶微观机理，法定硬门禁 $\le 3.0\%$ 坚守不变。 |
-| **R-2/5** | [`scripts/audit_provenance_and_recompute.py`](https://raw.githubusercontent.com/oasislin/Poly2/main/scripts/audit_provenance_and_recompute.py) | **修复令 R-2 & R-5** | 实现严格因果 40 天滚动残差偏置校正与方差膨胀重标流水线，通过十分位分层闭包断言与双实现交叉验证。 |
+| **P-1A** | [`p1_download_metrics.csv`](https://raw.githubusercontent.com/oasislin/Poly2/feat/p-series-ghcn-truth-layer/evidence/p1_download_metrics.csv) | **工程令 P-1** | 10 站 × 30 样本抽样实测指标：实际字节数、墙钟时间、p95 耗时、成功率 (100%) 与网络时间戳。 |
+| **P-1B** | [`p1_decision_summary.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/p-series-ghcn-truth-layer/evidence/p1_decision_summary.md) | **工程令 P-1** | 下载模式量化判定总表：全量 10 站归档单站平均 15s 落地，总耗时 ~150s << 1 小时，裁定为交互式直接下载。 |
+| **P-2** | [`p2_qc_summary.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/p-series-ghcn-truth-layer/evidence/p2_qc_summary.md) | **工程令 P-2** | 2000–2019 全 20 年质控报告：各站 7305 记录、缺失率核验、与 METAR All/Hourly 双轨逐年均值差比对。 |
+| **P-3** | [`p3_truth_manifest.json`](https://raw.githubusercontent.com/oasislin/Poly2/feat/p-series-ghcn-truth-layer/evidence/p3_truth_manifest.json) | **工程令 P-3** | 10 站独立落库 Parquet 文件 SHA256 签名清单，锁定真值源版本，保证 100% 离线可复现。 |
+
+---
+
+### 四、第二轮修复令 R-1 ~ R-5 与澄清工件清单 (R-1 ~ R-5 Remediation & Clarifications)
+
+| 编号 | 工件名称与 Raw 直链 | 协议条款 | 核心内容摘要 |
+| :--- | :--- | :--- | :--- |
+| **R-1** | [`r1_unit_convention_audit.md`](https://raw.githubusercontent.com/oasislin/Poly2/fix/r1-unit-convention-audit/evidence/r1_unit_convention_audit.md) | **修复令 R-1** | 单位约定与舍入审计对照表，排除真值与预报单位错位假设，定性冷偏差为模型偏差（PR #111 已闭环）。 |
+| **R-1B** | [`r1_exclusion_check_stdout.txt`](https://raw.githubusercontent.com/oasislin/Poly2/fix/r1-unit-convention-audit/evidence/r1_exclusion_check_stdout.txt) | **修复令 R-1** | 排除性验证脚本纯数字凭据，逐项证明 0.1°C 秒组与 1°F 整度报文一致性。 |
+| **CLR-1** | [`p1_bulk_download_log.csv`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/p1_bulk_download_log.csv) | **澄清 ①** | 10 站实际批量归档文件下载耗时（总耗时 304s / 5.1min）与字节数日志，澄清 300 样本探针口径。 |
+| **CLR-2** | [`r2_speci_all_hourly_yearly_breakdown.csv`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r2_speci_all_hourly_yearly_breakdown.csv) | **澄清 ②** | 2000–2019 全 20 年 × 10 站 All−Hourly 逐年差值表，证实 2016+ 高频 SPECI 升级导致 4~6 倍阶跃放大。 |
+| **CLR-3** | [`r2_target_switch_budget.csv`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r2_target_switch_budget.csv) | **澄清 ③** | 切靶预算实测表：量化切靶消解比例（KORD 83.4%, KMIA 69.2%, KSFO 30.2%），如实记录残余真模型偏差。 |
+| **R-2/3** | [`r2_r3_diagnosis_and_budget_report.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r2_r3_diagnosis_and_budget_report.md) | **修复令 R-2 / R-3** | R-2 诊断附页：包含澄清 ②③ 专项答复、台站地形与下垫面气象分型诊断（KSFO 圣克鲁兹山/海洋平流，KMIA 对流云）。 |
+| **R-4A** | [`r4_ece_definition_audit.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r4_ece_definition_audit.md) | **修复令 R-4** | 离散 7 档位加权 ECE 功效审计报告，维持硬门禁 $\le 3.0\%$，论证多档位分布与第一轮中心档位假象病灶。 |
+| **R-4B** | [`r4_gate_calibration_protocol.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r4_gate_calibration_protocol.md) | **修复令 R-4** | 《门禁标定与变更管理协议》：解析推导外生变量（$\sigma_{\text{inst}}$, $\sigma^*$, 方差比），确立预注册与防篡改规则。 |
+| **R-5** | [`recompute_settlement_report.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/recompute_settlement_report.md) | **修复令 R-5** | 基于 GHCN-Daily 官方气候真值重算结算报告：加权 ECE 全绿（0.46%~2.39% $\le 3.0\%$），十分位闭包全绿，如实记录 KMIA KS-test。 |

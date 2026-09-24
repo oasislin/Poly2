@@ -1,0 +1,433 @@
+{
+  "metadata": {
+    "title": "Active 10 Stations Local Climate Skewness (R-6) and EVT Tail (R-7) Parameterization",
+    "training_window": "2000-2018",
+    "training_variance_factors_sha256": "e355befdd2fe2fdd643dc2b9d669dd3f5296df645d27016c6196df13115f703d",
+    "tail_percentiles": {
+      "left": 5.0,
+      "right": 95.0
+    }
+  },
+  "stations": {
+    "KORD": {
+      "station": "KORD",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "67bff35bec03d95202ca289ebe2268070d9525e5d7a35a7fe7203b2bc7bc2dd6",
+      "residual_moments": {
+        "mean": 0.003492929615109262,
+        "std": 1.000262179880122,
+        "skewness": 0.4664614027614171,
+        "kurtosis": 1.8614124839880732,
+        "gaussian_ks_p_value": 2.4393401584563284e-05
+      },
+      "johnsonsu_parameters": {
+        "gamma": -0.5386672900006366,
+        "delta": 2.2555631195908576,
+        "xi": -0.5208495853629418,
+        "lambda": 1.9696166389789203,
+        "train_ks_statistic": 0.008447547153161317,
+        "train_ks_p_value": 0.7016834985024465
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.5339186343350018,
+        "u_right": 1.6649099944470096,
+        "gpd_left": {
+          "shape_xi": -0.006153044319758064,
+          "scale_beta": 0.43847054333735114,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": 0.07906777227772152,
+          "scale_beta": 0.6241404490276079,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 8.249634885565964,
+          "loc": -0.02207019829360441,
+          "scale": 0.8682076644390092
+        },
+        "theoretical_var_evt": 1.0397426701591719,
+        "kappa_evt": 1.0196777285785799
+      }
+    },
+    "KLGA": {
+      "station": "KLGA",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "86e63d91caa7d9f6298ed031995f357e6e3c33e469f2182cd55cc6d2cbf06e17",
+      "residual_moments": {
+        "mean": 0.009102217898286804,
+        "std": 0.9962018395077807,
+        "skewness": 0.2697996729331917,
+        "kurtosis": 1.9386074205064316,
+        "gaussian_ks_p_value": 1.2443259318075341e-06
+      },
+      "johnsonsu_parameters": {
+        "gamma": -0.26174521486745284,
+        "delta": 1.843875746232066,
+        "xi": -0.24727427552132397,
+        "lambda": 1.5551831963163885,
+        "train_ks_statistic": 0.006301232779783061,
+        "train_ks_p_value": 0.9440806280182533
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.4942296717735146,
+        "u_right": 1.6389383875553032,
+        "gpd_left": {
+          "shape_xi": 0.030900149509493675,
+          "scale_beta": 0.5526296362915205,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": 0.024356144846587147,
+          "scale_beta": 0.6766866300264531,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 6.247032101510863,
+          "loc": -0.012440375651429927,
+          "scale": 0.822720838500606
+        },
+        "theoretical_var_evt": 1.0436888593234737,
+        "kappa_evt": 1.0216109138627454
+      }
+    },
+    "KATL": {
+      "station": "KATL",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "54127a06b539654af85f585b62c1682dd4af03c93c0128eca09db7eb9018b10e",
+      "residual_moments": {
+        "mean": -0.003194042095250938,
+        "std": 0.9906047979428135,
+        "skewness": -0.14111540633318334,
+        "kurtosis": 1.8383510984875793,
+        "gaussian_ks_p_value": 2.2832992590934892e-09
+      },
+      "johnsonsu_parameters": {
+        "gamma": 0.19680480178896959,
+        "delta": 1.678952716428812,
+        "xi": 0.18765900548429262,
+        "lambda": 1.3741632572137517,
+        "train_ks_statistic": 0.010839775151497866,
+        "train_ks_p_value": 0.3858363632596834
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.6305499922737536,
+        "u_right": 1.5046777104039557,
+        "gpd_left": {
+          "shape_xi": -0.038218018556848525,
+          "scale_beta": 0.6829578803337649,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": -0.007093405919420082,
+          "scale_beta": 0.6510152637817282,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 5.521955900926391,
+          "loc": 0.015080863174592635,
+          "scale": 0.79732149784396
+        },
+        "theoretical_var_evt": 1.05052830366917,
+        "kappa_evt": 1.0249528299727602
+      }
+    },
+    "KDAL": {
+      "station": "KDAL",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "eca34aed5682a59cb1924ef433fb80b54626b9c0ad024ad0a0eff1cd70173f3c",
+      "residual_moments": {
+        "mean": 0.0034814438566981853,
+        "std": 1.0072969069079118,
+        "skewness": -0.5182697967349564,
+        "kurtosis": 2.441848832563662,
+        "gaussian_ks_p_value": 8.204772790120216e-19
+      },
+      "johnsonsu_parameters": {
+        "gamma": 0.45847404576471007,
+        "delta": 1.6757605360524073,
+        "xi": 0.44752223258999124,
+        "lambda": 1.345467782234533,
+        "train_ks_statistic": 0.006746604285568003,
+        "train_ks_p_value": 0.9080487156630188
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.776686165263133,
+        "u_right": 1.4732708435089077,
+        "gpd_left": {
+          "shape_xi": 0.04403438750312434,
+          "scale_beta": 0.6655390780549882,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": 0.17159058676577865,
+          "scale_beta": 0.4275842861621109,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 5.194681381384775,
+          "loc": 0.05296298295689528,
+          "scale": 0.7966400983595572
+        },
+        "theoretical_var_evt": 1.0975585425957886,
+        "kappa_evt": 1.0476442824717693
+      }
+    },
+    "KSEA": {
+      "station": "KSEA",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "f55054b94f4b4763b67d2efc0dde9cfc6f03e3e2c0a645e06360d025fd91c7c8",
+      "residual_moments": {
+        "mean": 0.0023726228904704283,
+        "std": 1.0000254826149957,
+        "skewness": 0.07519565589579821,
+        "kurtosis": 0.8623162143586276,
+        "gaussian_ks_p_value": 0.03745718079541949
+      },
+      "johnsonsu_parameters": {
+        "gamma": -0.13490793172546509,
+        "delta": 2.4167562794555155,
+        "xi": -0.13204206158788367,
+        "lambda": 2.2093143169823644,
+        "train_ks_statistic": 0.004714448737638821,
+        "train_ks_p_value": 0.9976882140712596
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.5975767629270285,
+        "u_right": 1.6049074426735892,
+        "gpd_left": {
+          "shape_xi": -0.025886972073841025,
+          "scale_beta": 0.5327013656641133,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": -0.06238754493325972,
+          "scale_beta": 0.6203652928595677,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 10.085049460485848,
+          "loc": -0.0025971827898196085,
+          "scale": 0.8957789775391527
+        },
+        "theoretical_var_evt": 1.027735554073694,
+        "kappa_evt": 1.013772930233242
+      }
+    },
+    "KLAX": {
+      "station": "KLAX",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "69287cb14bd08c9eafc8f62176ea3868d28e2c88e60058d7736149053e0e8d17",
+      "residual_moments": {
+        "mean": 0.007574924758670977,
+        "std": 1.0014782032738794,
+        "skewness": 0.5239534163512369,
+        "kurtosis": 1.5604475704695036,
+        "gaussian_ks_p_value": 1.6314178267361984e-15
+      },
+      "johnsonsu_parameters": {
+        "gamma": -0.44279041851741163,
+        "delta": 1.6746304724525414,
+        "xi": -0.4228339651334926,
+        "lambda": 1.3475203056256444,
+        "train_ks_statistic": 0.008829788904099245,
+        "train_ks_p_value": 0.6481180220194063
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.5108089751439984,
+        "u_right": 1.8163755120003091,
+        "gpd_left": {
+          "shape_xi": -0.06949250074972141,
+          "scale_beta": 0.5088835842421134,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": -0.12836409056928805,
+          "scale_beta": 0.7817918461655574,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 5.1360854161450264,
+          "loc": -0.04255748964367815,
+          "scale": 0.7953416371500737
+        },
+        "theoretical_var_evt": 1.1093716002696965,
+        "kappa_evt": 1.0532671077507816
+      }
+    },
+    "KHOU": {
+      "station": "KHOU",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "ff94cf62abb504c12749e13cc2f0a7e4b77e6b7d9008816ee95bc92031077fba",
+      "residual_moments": {
+        "mean": -0.003936618203937106,
+        "std": 1.0110928945491888,
+        "skewness": -0.48254446085949443,
+        "kurtosis": 1.9873280294756759,
+        "gaussian_ks_p_value": 1.410852453180942e-11
+      },
+      "johnsonsu_parameters": {
+        "gamma": 0.47809232904185633,
+        "delta": 1.7555223735017245,
+        "xi": 0.46197300759253757,
+        "lambda": 1.4406569617533806,
+        "train_ks_statistic": 0.00604226028483254,
+        "train_ks_p_value": 0.9604249454094691
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.753697913313325,
+        "u_right": 1.479671089939153,
+        "gpd_left": {
+          "shape_xi": -0.0355376590112107,
+          "scale_beta": 0.7544380117777832,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": 0.07408938044055235,
+          "scale_beta": 0.4870830004236679,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 5.65348371329863,
+          "loc": 0.04074292872956551,
+          "scale": 0.8174828313085426
+        },
+        "theoretical_var_evt": 1.093160872245548,
+        "kappa_evt": 1.045543338291411
+      }
+    },
+    "KMIA": {
+      "station": "KMIA",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "25393e3d495f734338b61b330a503691cce1cee8012f27263a70cb0fdf8ef1d3",
+      "residual_moments": {
+        "mean": 0.0009174956572472059,
+        "std": 1.0033623519797499,
+        "skewness": -1.0249654696329682,
+        "kurtosis": 2.8855699770158276,
+        "gaussian_ks_p_value": 7.78642369836321e-30
+      },
+      "johnsonsu_parameters": {
+        "gamma": 0.7645691412470903,
+        "delta": 1.668232534241755,
+        "xi": 0.7016806459852685,
+        "lambda": 1.2322473920735264,
+        "train_ks_statistic": 0.007424367221360972,
+        "train_ks_p_value": 0.8360522731329023
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.8047582334928545,
+        "u_right": 1.400021037249104,
+        "gpd_left": {
+          "shape_xi": -0.0738489648198734,
+          "scale_beta": 0.9554602115883518,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": -0.07503418525011302,
+          "scale_beta": 0.40773184545978103,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 4.406246986183403,
+          "loc": 0.09021806300283296,
+          "scale": 0.7532269686187203
+        },
+        "theoretical_var_evt": 1.0948624961057725,
+        "kappa_evt": 1.046356772857983
+      }
+    },
+    "KSFO": {
+      "station": "KSFO",
+      "training_samples": 6920,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "632c7f901653f5b95d2a1ad9dc30c981a5bd6241d86df364b3572bfcc6ff2b7b",
+      "residual_moments": {
+        "mean": 0.008581834852153672,
+        "std": 1.0051886368274037,
+        "skewness": 0.39441912178804234,
+        "kurtosis": 1.0414287053980704,
+        "gaussian_ks_p_value": 9.316203824673878e-08
+      },
+      "johnsonsu_parameters": {
+        "gamma": -0.5038056405121398,
+        "delta": 2.084854398297721,
+        "xi": -0.4861621281752945,
+        "lambda": 1.8072236104718202,
+        "train_ks_statistic": 0.008870205744829995,
+        "train_ks_p_value": 0.6442313107664415
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.5646635371684208,
+        "u_right": 1.7363677989708575,
+        "gpd_left": {
+          "shape_xi": -0.10814114300134857,
+          "scale_beta": 0.4827439971281419,
+          "n_excess": 346
+        },
+        "gpd_right": {
+          "shape_xi": -0.10685336111210571,
+          "scale_beta": 0.7301493494777447,
+          "n_excess": 346
+        },
+        "student_t": {
+          "df": 7.437224358074882,
+          "loc": -0.021952492921861168,
+          "scale": 0.8633522753868814
+        },
+        "theoretical_var_evt": 1.0758093016567025,
+        "kappa_evt": 1.0372122741544774
+      }
+    },
+    "KAUS": {
+      "station": "KAUS",
+      "training_samples": 6940,
+      "training_window": "2000-2018",
+      "ghcn_truth_sha256": "2f74c5a1acfc8366cab12802d3ea2485e11ed39af61aa329fef4cfabe2e17166",
+      "residual_moments": {
+        "mean": 0.006617675834597317,
+        "std": 0.9913330926152211,
+        "skewness": -0.6751687055639126,
+        "kurtosis": 2.9333486913139026,
+        "gaussian_ks_p_value": 6.741312952101509e-25
+      },
+      "johnsonsu_parameters": {
+        "gamma": 0.5234381558632732,
+        "delta": 1.6122465362160197,
+        "xi": 0.49870154803227784,
+        "lambda": 1.2328792007137341,
+        "train_ks_statistic": 0.006224226179499914,
+        "train_ks_p_value": 0.9492987902017057
+      },
+      "evt_tail_parameters": {
+        "u_left": -1.7146698623581522,
+        "u_right": 1.4138268950685227,
+        "gpd_left": {
+          "shape_xi": 0.0714166212481957,
+          "scale_beta": 0.708271087269737,
+          "n_excess": 347
+        },
+        "gpd_right": {
+          "shape_xi": 0.13028079878507748,
+          "scale_beta": 0.4413410127017302,
+          "n_excess": 347
+        },
+        "student_t": {
+          "df": 4.854730650129303,
+          "loc": 0.06710322990877003,
+          "scale": 0.767011410841608
+        },
+        "theoretical_var_evt": 1.0559989890831656,
+        "kappa_evt": 1.0276181144195375
+      }
+    }
+  }
+}

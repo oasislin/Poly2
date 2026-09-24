@@ -1,0 +1,76 @@
+{
+  "directive": "Round 3 R-7 Tail Calibration",
+  "training_window": "2000-2018",
+  "training_data_sha256": "8f2a84d26aaeaeaaf7050424df6f7d19891d752fb01b89f49d3add79bbaf3a5c",
+  "stations": {
+    "KORD": {
+      "station": "KORD",
+      "training_samples": 6940,
+      "left_tail_percentile": 5.0,
+      "right_tail_percentile": 95.0,
+      "u_left": -1.5339186343350018,
+      "u_right": 1.6649099944470096,
+      "gpd_left": {
+        "shape_xi": -0.006153044319758064,
+        "scale_beta": 0.43847054333735114,
+        "n_excess": 347
+      },
+      "gpd_right": {
+        "shape_xi": 0.07906777227772152,
+        "scale_beta": 0.6241404490276079,
+        "n_excess": 347
+      },
+      "student_t": {
+        "df": 8.249634885565964,
+        "loc": -0.02207019829360441,
+        "scale": 0.8682076644390092
+      }
+    },
+    "KMIA": {
+      "station": "KMIA",
+      "training_samples": 6940,
+      "left_tail_percentile": 5.0,
+      "right_tail_percentile": 95.0,
+      "u_left": -1.8047582334928545,
+      "u_right": 1.400021037249104,
+      "gpd_left": {
+        "shape_xi": -0.0738489648198734,
+        "scale_beta": 0.9554602115883518,
+        "n_excess": 347
+      },
+      "gpd_right": {
+        "shape_xi": -0.07503418525011302,
+        "scale_beta": 0.40773184545978103,
+        "n_excess": 347
+      },
+      "student_t": {
+        "df": 4.406246986183403,
+        "loc": 0.09021806300283296,
+        "scale": 0.7532269686187203
+      }
+    },
+    "KSFO": {
+      "station": "KSFO",
+      "training_samples": 6920,
+      "left_tail_percentile": 5.0,
+      "right_tail_percentile": 95.0,
+      "u_left": -1.5639721477171529,
+      "u_right": 1.7363677989708575,
+      "gpd_left": {
+        "shape_xi": -0.10403629751198618,
+        "scale_beta": 0.4795343597554249,
+        "n_excess": 346
+      },
+      "gpd_right": {
+        "shape_xi": -0.10895374963248212,
+        "scale_beta": 0.7337222199920246,
+        "n_excess": 346
+      },
+      "student_t": {
+        "df": 7.378330045319071,
+        "loc": -0.021014529934990873,
+        "scale": 0.8617592320491618
+      }
+    }
+  }
+}

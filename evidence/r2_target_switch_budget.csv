@@ -1,0 +1,5 @@
+# REFERENCE ONLY — Exploratory Diagnostic Probe Non-Statutory. Refer to recompute_settlement_report.md for Official Settlement
+station,old_metar_bias,old_metar_sig_star,old_metar_pit_m,ghcn_retrained_raw_bias,bias_recovered,pct_bias_recovered,remaining_model_bias,probe_calib_bias,probe_calib_mae,probe_sig_star,probe_mean_sig_f,probe_pit_mean,probe_pit_std,probe_ks_p,probe_ece_center,probe_cov90
+KORD,0.739,3.31,0.5532,0.123,0.616,83.4,0.123,0.020,2.571,3.222,3.519,0.4949,0.2710,0.2617,3.84,93.4
+KMIA,1.038,2.19,0.6886,0.320,0.718,69.2,0.320,-0.007,1.352,1.695,1.621,0.5203,0.2852,0.1003,1.73,86.8
+KSFO,2.039,4.43,0.6328,1.423,0.616,30.2,1.423,0.016,3.222,4.039,4.259,0.4964,0.2722,0.3550,3.22,92.6
