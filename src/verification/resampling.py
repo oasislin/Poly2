@@ -1,7 +1,13 @@
 """
 Block Resampling & Cross-Validation Splitter for Time Series Calibration Verification.
 
-Specifications (ADR / P3 alignment):
+RESPONSIBILITY BOUNDARY NOTICE:
+- src/verification/resampling.py is EXCLUSIVELY responsible for verification-domain
+  date-block splitting, holdout partitioning, and CV split manifest generation.
+- All EVT/GPD probability distribution mathematics (evaluate_evt_tail_cdf, evaluate_evt_tail_pdf)
+  are CANONICALIZED in src/modeling/resampling.py. No duplicate distribution math is maintained here.
+
+Specifications (ADR / P3 / P5 alignment):
 - 30-day contiguous chronological blocks
 - 10% blocks held out per evaluation round (without replacement)
 - 20 evaluation rounds

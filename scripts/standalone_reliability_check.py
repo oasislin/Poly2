@@ -39,6 +39,7 @@ DEFAULT_CV_MANIFEST = PROJECT_ROOT / "evidence" / "cv_split_blocks_20rounds.json
 DEFAULT_OUT_GLOBAL = PROJECT_ROOT / "evidence" / "reliability_check_main_global.csv"
 DEFAULT_OUT_STRATIFIED = PROJECT_ROOT / "evidence" / "reliability_check_stratified_station_season.csv"
 DEFAULT_OUT_BRIER = PROJECT_ROOT / "evidence" / "reliability_check_brier_skill.csv"
+DEFAULT_OUT_DECISION = PROJECT_ROOT / "evidence" / "reliability_check_decision_track.csv"
 AUTH_FLAG_PATH = PROJECT_ROOT / "evidence" / "preregistered_2019_authorization.flag"
 
 # R1: Physical Noise Floor
@@ -55,6 +56,91 @@ DEFAULT_MAPPING_CONFIG: Dict[str, str] = {
 class PhysicsViolationError(ValueError):
     """Raised when forecast sigma collapses below physical sensor noise floor."""
     pass
+
+
+class DataAssetError(ValueError):
+    """Raised when input dataset lacks required columns or requested stations."""
+    pass
+
+
+def validate_and_adapt_input_dataset(
+    df: pd.DataFrame,
+    requested_stations: List[str],
+    target_obs_col: str,
+) -> pd.DataFrame:
+    """
+    Validates input dataset columns and stations.
+    Raises DataAssetError with human-readable diagnostic messages on mismatch (Section 2.4).
+    """
+    if target_obs_col not in df.columns:
+        available_cols = sorted(list(df.columns))
+        raise DataAssetError(
+            f"Input arrays missing required column '{target_obs_col}'. Available columns: {available_cols}"
+        )
+
+    mandatory_cols = ["station", "date", "year", "month", "mu_forecast", "sigma_forecast", "is_nan_obs"]
+    for col in mandatory_cols:
+        if col not in df.columns:
+            available_cols = sorted(list(df.columns))
+            raise DataAssetError(
+                f"Input arrays missing required column '{col}'. Available columns: {available_cols}"
+            )
+
+    available_stations = sorted(list(df["station"].unique()))
+    missing_stations = [st for st in requested_stations if st not in available_stations]
+    if missing_stations:
+        raise DataAssetError(
+            f"Requested station '{missing_stations[0]}' not found in input dataset. Available stations: {available_stations}"
+        )
+
+    return df[df["station"].isin(requested_stations)].copy()
+
+
+def apply_benjamini_hochberg_fdr(p_values: np.ndarray) -> np.ndarray:
+    """
+    Compute Benjamini-Hochberg (BH) false discovery rate (FDR) adjusted q-values (Section 2.2).
+    Formula: q_{(i)} = min_{k >= i} (m * p_{(k)} / k)
+    Returns q-values aligned with original input order.
+    """
+    p_arr = np.asarray(p_values, dtype=np.float64)
+    m = len(p_arr)
+    if m == 0:
+        return np.array([], dtype=np.float64)
+
+    order = np.argsort(p_arr)
+    sorted_p = p_arr[order]
+
+    ranks = np.arange(1, m + 1, dtype=np.float64)
+    raw_q = (sorted_p * m) / ranks
+
+    # Monotonicity adjustment backwards: q_(i) = min_{k >= i} raw_q_k
+    adjusted_q = np.minimum.accumulate(raw_q[::-1])[::-1]
+    adjusted_q = np.clip(adjusted_q, 0.0, 1.0)
+
+    # Invert sorting order back to original
+    orig_q = np.empty_like(adjusted_q)
+    orig_q[order] = adjusted_q
+    return orig_q
+
+
+def compute_pit_effect_size(pit_values: np.ndarray) -> Tuple[float, bool]:
+    """
+    Compute PIT effect size D_effect = max_j |F_hat_PIT(u_j) - u_j| against Uniform[0, 1] (Section 2.2).
+    Flags EFFECT-SIZE-ALERT if D_effect > 0.08.
+    """
+    clean_pit = np.asarray(pit_values, dtype=np.float64)
+    clean_pit = clean_pit[~np.isnan(clean_pit)]
+    n = len(clean_pit)
+    if n == 0:
+        return 0.0, False
+
+    sorted_pit = np.sort(np.clip(clean_pit, 0.0, 1.0))
+    d_plus = np.max((np.arange(1, n + 1) / n) - sorted_pit)
+    d_minus = np.max(sorted_pit - (np.arange(0, n) / n))
+    d_effect = float(max(d_plus, d_minus))
+    has_alert = bool(d_effect > 0.08)
+    return d_effect, has_alert
+
 
 
 def compute_file_sha256(path: Path) -> str:
@@ -422,7 +508,7 @@ def build_stratified_warning_table(
     stations: Optional[List[str]] = None,
     seasons: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Build stratified warning table across station x season cells."""
+    """Build stratified warning table across station x season cells with power warnings (Section 3.2)."""
     target_stations = stations or ["KORD", "KMIA", "KSFO"]
     target_seasons = seasons or ["Winter", "Spring", "Summer", "Autumn"]
 
@@ -433,61 +519,256 @@ def build_stratified_warning_table(
             table_df, _ = build_global_reliability_table(sub, num_bins=num_bins)
             table_df.insert(0, "station", st)
             table_df.insert(1, "season", se)
+
+            # Section 3.2: Statistical Power Warning
+            n_cell = len(sub)
+            is_low_power = bool(n_cell < 500)
+            delta_mds = float(2.8 / math.sqrt(n_cell)) if n_cell > 0 else np.nan
+            table_df["low_power"] = is_low_power
+            table_df["delta_mds"] = delta_mds
+
             all_stratified_rows.append(table_df)
 
     return pd.concat(all_stratified_rows, ignore_index=True) if all_stratified_rows else pd.DataFrame()
 
 
+def build_dual_track_reliability_table(
+    df_expanded: pd.DataFrame,
+    num_bins: int = 20,
+    min_n_per_bin: int = 30,
+    bootstrap_samples: int = 1000,
+    seed: int = 20260923,
+) -> Dict[str, Any]:
+    """
+    Dual-Track Hybrid Binning Engine (Specification Section 2.1 & 3.3):
+    1. Decision Track (主轨): Merges bins with n < 30 into nearest p_bar neighbor.
+       Flags WIDE-BIN if merged delta_p > 0.15. Wilson score CI for coverage.
+    2. Benchmark Track (辅轨): Fixed 20 equal-width bins for global ECE.
+       1,000 deterministic bootstrap CI for weighted ECE.
+    """
+    table_benchmark, weighted_ece = build_global_reliability_table(df_expanded, num_bins=num_bins)
+
+    # 1. Benchmark Track: 1,000 deterministic bootstrap resamples for ECE 95% CI (Section 3.3)
+    if not df_expanded.empty and len(df_expanded) >= 30:
+        p_all = df_expanded["p_pred"].to_numpy(dtype=np.float64)
+        h_all = df_expanded["hit"].to_numpy(dtype=np.float64)
+        n_tot = len(p_all)
+        edges = np.linspace(0.0, 1.0, num_bins + 1)
+        bin_ids = np.clip(np.digitize(p_all, edges) - 1, 0, num_bins - 1)
+
+        rng = np.random.default_rng(seed)
+        boot_eces = np.empty(bootstrap_samples, dtype=np.float64)
+        for b_i in range(bootstrap_samples):
+            idx = rng.integers(0, n_tot, size=n_tot)
+            b_bins = bin_ids[idx]
+            b_p = p_all[idx]
+            b_h = h_all[idx]
+            counts = np.bincount(b_bins, minlength=num_bins)
+            sum_p = np.bincount(b_bins, weights=b_p, minlength=num_bins)
+            sum_h = np.bincount(b_bins, weights=b_h, minlength=num_bins)
+            m = counts > 0
+            err = np.abs(sum_p[m] / counts[m] - sum_h[m] / counts[m])
+            boot_eces[b_i] = np.sum(err * counts[m]) / n_tot
+
+        ece_ci_lower = float(np.percentile(boot_eces, 2.5))
+        ece_ci_upper = float(np.percentile(boot_eces, 97.5))
+    else:
+        ece_ci_lower = float(weighted_ece)
+        ece_ci_upper = float(weighted_ece)
+
+    # 2. Decision Track (自适应合并迭代)
+    if df_expanded.empty or len(df_expanded) < min_n_per_bin:
+        decision_df = table_benchmark.copy()
+        decision_df["track"] = "decision"
+        decision_df["bin_width"] = 1.0 / num_bins
+        decision_df["merged_sub_bins"] = [str(i + 1) for i in range(len(decision_df))]
+        return {
+            "decision_table": decision_df,
+            "benchmark_table": table_benchmark,
+            "weighted_ece": weighted_ece,
+            "ece_ci_lower": ece_ci_lower,
+            "ece_ci_upper": ece_ci_upper,
+        }
+
+    p_arr = df_expanded["p_pred"].to_numpy(dtype=np.float64)
+    h_arr = df_expanded["hit"].to_numpy(dtype=np.float64)
+    edges = np.linspace(0.0, 1.0, num_bins + 1)
+
+    class CandidateBin:
+        def __init__(self, b_idx: int, low: float, high: float):
+            self.low = low
+            self.high = high
+            self.sub_bins = [b_idx + 1]
+            if b_idx == num_bins - 1:
+                mask = (p_arr >= low) & (p_arr <= high)
+            else:
+                mask = (p_arr >= low) & (p_arr < high)
+            self.p_vals = list(p_arr[mask])
+            self.h_vals = list(h_arr[mask])
+
+        @property
+        def n(self) -> int:
+            return len(self.p_vals)
+
+        @property
+        def mean_p(self) -> float:
+            return float(np.mean(self.p_vals)) if self.n > 0 else (self.low + self.high) / 2.0
+
+        @property
+        def width(self) -> float:
+            return self.high - self.low
+
+        def merge_with(self, other: "CandidateBin"):
+            self.low = min(self.low, other.low)
+            self.high = max(self.high, other.high)
+            self.sub_bins.extend(other.sub_bins)
+            self.p_vals.extend(other.p_vals)
+            self.h_vals.extend(other.h_vals)
+
+    bins: List[CandidateBin] = [CandidateBin(i, edges[i], edges[i + 1]) for i in range(num_bins)]
+
+    while True:
+        low_idx = None
+        for i, b in enumerate(bins):
+            if b.n < min_n_per_bin:
+                low_idx = i
+                break
+
+        if low_idx is None or len(bins) <= 1:
+            break
+
+        target = bins[low_idx]
+        neighbors = []
+        if low_idx > 0:
+            neighbors.append((low_idx - 1, abs(target.mean_p - bins[low_idx - 1].mean_p)))
+        if low_idx < len(bins) - 1:
+            neighbors.append((low_idx + 1, abs(target.mean_p - bins[low_idx + 1].mean_p)))
+
+        neighbors.sort(key=lambda x: x[1])
+        partner_idx = neighbors[0][0]
+
+        i_left = min(low_idx, partner_idx)
+        i_right = max(low_idx, partner_idx)
+        bins[i_left].merge_with(bins[i_right])
+        bins.pop(i_right)
+
+    dec_rows = []
+    for s_idx, b in enumerate(bins):
+        n_c = b.n
+        mean_p = float(np.mean(b.p_vals)) if n_c > 0 else np.nan
+        emp_h = float(np.mean(b.h_vals)) if n_c > 0 else np.nan
+        abs_bias = float(abs(mean_p - emp_h)) if n_c > 0 else np.nan
+        ci_low, ci_high, ci_half = compute_wilson_ci(float(np.sum(b.h_vals)), n_c, confidence=0.95)
+        is_outside = bool(mean_p < ci_low or mean_p > ci_high) if n_c > 0 else False
+        is_wide = bool(b.width > 0.15)
+        label = "WIDE-BIN" if is_wide else "NORMAL"
+
+        dec_rows.append({
+            "track": "decision",
+            "stratum_id": s_idx + 1,
+            "stratum_range": f"[{b.low:.2f}, {b.high:.2f}]",
+            "bin_width": float(b.width),
+            "merged_sub_bins": ",".join(str(x) for x in b.sub_bins),
+            "sample_count_n": n_c,
+            "mean_pred_prob": mean_p,
+            "empirical_hit_freq": emp_h,
+            "abs_bias": abs_bias,
+            "ci_lower": ci_low,
+            "ci_upper": ci_high,
+            "ci_95_half_width": ci_half,
+            "is_outside_ci": is_outside,
+            "warning_low_n": False,
+            "label": label,
+        })
+
+    decision_df = pd.DataFrame(dec_rows)
+    return {
+        "decision_table": decision_df,
+        "benchmark_table": table_benchmark,
+        "weighted_ece": weighted_ece,
+        "ece_ci_lower": ece_ci_lower,
+        "ece_ci_upper": ece_ci_upper,
+    }
+
+
 # ==============================================================================
-# Climatology Baseline & Brier Skill Score Calculation
+# Climatology Baseline & Brier Skill Score Calculation (Section 2.3)
 # ==============================================================================
 
-def _build_loyo_climatology_cache(
+def _vectorized_settlement_hit_probability(pool: np.ndarray, lb: float, ub: float, jitter: float = 0.05) -> float:
+    """Compute empirical settlement hit probability over pool with +/- 0.05°F jitter."""
+    if len(pool) == 0:
+        return 1.0 / 7.0
+    if math.isinf(lb):
+        frac_low = 0.0
+    else:
+        frac_low = float(np.mean(np.clip((lb + jitter - pool) / (2.0 * jitter), 0.0, 1.0)))
+    if math.isinf(ub):
+        frac_high = 0.0
+    else:
+        frac_high = float(np.mean(np.clip((pool - (ub - jitter)) / (2.0 * jitter), 0.0, 1.0)))
+    return float(max(0.0, min(1.0, 1.0 - frac_low - frac_high)))
+
+
+def _build_smoothed_loyo_climatology_cache(
     valid_raw: pd.DataFrame,
     target_obs_col: str = "obs_tmax_f",
-) -> Tuple[Dict[Tuple[str, int, int], np.ndarray], Dict[Tuple[str, int], np.ndarray]]:
-    """Precompute Leave-One-Year-Out sorted observations cache."""
-    clim_lookup: Dict[Tuple[str, int], Dict[int, np.ndarray]] = {}
-    all_by_st_mo: Dict[Tuple[str, int], np.ndarray] = {}
+) -> Dict[Tuple[str, int, int], np.ndarray]:
+    """
+    Build 15-day rolling window (+/- 7 calendar days) LOYO climatology observation pools (Section 2.3).
+    Circular wrap around 365 days.
+    Key: (station, day_of_year, year) -> sorted numpy array of historical observations.
+    """
+    df = valid_raw.copy()
+    if "date" in df.columns:
+        dt = pd.to_datetime(df["date"], errors="coerce")
+        fallback_doy = (df["month"].to_numpy().astype(int) - 1) * 30 + 15
+        doy = np.where(dt.notna(), dt.dt.dayofyear.to_numpy(), fallback_doy)
+        doy = np.clip(doy, 1, 365)
+    else:
+        # Fallback if date is not present (e.g., month-only unit test)
+        doy = np.clip((df["month"].to_numpy().astype(int) - 1) * 30 + 15, 1, 365)
 
-    for (st, mo), grp in valid_raw.groupby(["station", "month"]):
-        clim_lookup[(st, mo)] = {}
-        all_obs = []
-        for yr, y_grp in grp.groupby("year"):
-            arr = np.sort(y_grp[target_obs_col].to_numpy(dtype=np.float64))
-            clim_lookup[(st, mo)][int(yr)] = arr
-            all_obs.append(arr)
-        if all_obs:
-            all_by_st_mo[(st, mo)] = np.sort(np.concatenate(all_obs))
+    df["_doy"] = doy
 
-    loyo_pool_cache: Dict[Tuple[str, int, int], np.ndarray] = {}
-    for (st, mo), yr_dict in clim_lookup.items():
-        all_yrs = list(yr_dict.keys())
-        for yr in all_yrs:
-            other_arrs = [yr_dict[y] for y in all_yrs if y != yr]
-            loyo_pool_cache[(st, mo, yr)] = np.sort(np.concatenate(other_arrs)) if other_arrs else yr_dict[yr]
+    lookup: Dict[Tuple[str, int, int], np.ndarray] = {}
+    for (st, d, yr), grp in df.groupby(["station", "_doy", "year"]):
+        lookup[(st, int(d), int(yr))] = grp[target_obs_col].to_numpy(dtype=np.float64)
 
-    return loyo_pool_cache, all_by_st_mo
+    stations = df["station"].unique()
+    years_by_st = {st: sorted(list(df[df["station"] == st]["year"].unique())) for st in stations}
 
+    smoothed_cache: Dict[Tuple[str, int, int], np.ndarray] = {}
 
-def _compute_record_climatological_prob(
-    st: str,
-    mo: int,
-    yr: int,
-    lb: float,
-    ub: float,
-    loyo_pool_cache: Dict[Tuple[str, int, int], np.ndarray],
-    all_by_st_mo: Dict[Tuple[str, int], np.ndarray],
-) -> float:
-    """Compute leave-one-year-out climatological probability for a single bracket."""
-    pool = loyo_pool_cache.get((st, mo, yr))
-    if pool is None or len(pool) == 0:
-        pool = all_by_st_mo.get((st, mo), np.array([]))
-    if len(pool) > 0:
-        i_low = np.searchsorted(pool, lb, side="left")
-        i_high = np.searchsorted(pool, ub, side="left")
-        return float((i_high - i_low) / len(pool))
-    return 1.0 / 7.0
+    for st in stations:
+        st_years = years_by_st[st]
+        doy_yr_obs = {}
+        for d in range(1, 366):
+            for yr in st_years:
+                arr = lookup.get((st, d, yr))
+                if arr is not None and len(arr) > 0:
+                    doy_yr_obs[(d, yr)] = arr
+
+        for d in range(1, 366):
+            window_days = [((d - 1 + offset) % 365) + 1 for offset in range(-7, 8)]
+            # Pre-collect by year in window
+            yr_window_obs = {}
+            for yr in st_years:
+                arrs = [doy_yr_obs[(wd, yr)] for wd in window_days if (wd, yr) in doy_yr_obs]
+                if arrs:
+                    yr_window_obs[yr] = np.concatenate(arrs)
+
+            for yr in st_years:
+                other_obs = [yr_window_obs[y] for y in st_years if y != yr and y in yr_window_obs]
+                if other_obs:
+                    smoothed_cache[(st, d, yr)] = np.sort(np.concatenate(other_obs))
+                elif yr in yr_window_obs:
+                    # Only self available fallback
+                    smoothed_cache[(st, d, yr)] = np.sort(yr_window_obs[yr])
+                else:
+                    smoothed_cache[(st, d, yr)] = np.array([], dtype=np.float64)
+
+    return smoothed_cache
 
 
 def compute_brier_skill_scores(
@@ -496,14 +777,21 @@ def compute_brier_skill_scores(
     target_obs_col: str = "obs_tmax_f",
     stations_list: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Compute Brier Scores for Model and LOYO Climatology, and Brier Skill Score (BSS)."""
+    """Compute Brier Scores for Model and Smoothed LOYO Climatology, and Brier Skill Score (BSS)."""
     valid_raw = df_train_raw[~df_train_raw["is_nan_obs"]].copy()
-    loyo_pool_cache, all_by_st_mo = _build_loyo_climatology_cache(valid_raw, target_obs_col)
+    loyo_cache = _build_smoothed_loyo_climatology_cache(valid_raw, target_obs_col)
+
+    if "date" in df_expanded.columns:
+        dt_exp = pd.to_datetime(df_expanded["date"], errors="coerce")
+        fallback_doy = (df_expanded["month"].to_numpy().astype(int) - 1) * 30 + 15
+        doy_exp = np.where(dt_exp.notna(), dt_exp.dt.dayofyear.to_numpy(), fallback_doy)
+        doy_exp = np.clip(doy_exp, 1, 365)
+    else:
+        doy_exp = np.clip((df_expanded["month"].to_numpy().astype(int) - 1) * 30 + 15, 1, 365)
 
     p_preds = df_expanded["p_pred"].to_numpy(dtype=np.float64)
     hits = df_expanded["hit"].to_numpy(dtype=np.float64)
     stations = df_expanded["station"].to_numpy()
-    months = df_expanded["month"].to_numpy(dtype=int)
     years = df_expanded["year"].to_numpy(dtype=int)
     seasons = df_expanded["season"].to_numpy()
     lbs = df_expanded["bin_lower"].to_numpy(dtype=np.float64)
@@ -513,9 +801,8 @@ def compute_brier_skill_scores(
     p_clims = np.zeros(n_records, dtype=np.float64)
 
     for i in range(n_records):
-        p_clims[i] = _compute_record_climatological_prob(
-            stations[i], months[i], years[i], lbs[i], ubs[i], loyo_pool_cache, all_by_st_mo
-        )
+        pool = loyo_cache.get((stations[i], doy_exp[i], years[i]), np.array([], dtype=np.float64))
+        p_clims[i] = _vectorized_settlement_hit_probability(pool, lbs[i], ubs[i], jitter=0.05)
 
     sq_err_model = (p_preds - hits) ** 2
     sq_err_clim = (p_clims - hits) ** 2
@@ -554,6 +841,81 @@ def compute_brier_skill_scores(
 # R4: Parameter Refitting & Cross-Validation Engine
 # ==============================================================================
 
+def _fit_johnsonsu_multistart(z_data: np.ndarray) -> Tuple[float, float, float, float]:
+    """Fit Johnson SU parameters using 5 deterministic initial guesses to maximize log-likelihood (Section 3.1)."""
+    z_clean = z_data[~np.isnan(z_data)]
+    if len(z_clean) < 10:
+        return 0.0, 1.0, 0.0, 1.0
+
+    std_z = float(np.std(z_clean))
+    if std_z <= 0:
+        std_z = 1.0
+    mean_z = float(np.mean(z_clean))
+    med_z = float(np.median(z_clean))
+
+    candidates = []
+    try:
+        cand1 = stats.johnsonsu.fit(z_clean)
+        candidates.append(cand1)
+    except Exception:
+        pass
+
+    guesses = [
+        (0.0, 1.0, med_z, std_z),
+        (-0.5, 1.2, mean_z, std_z),
+        (0.5, 1.2, mean_z, std_z),
+        (0.0, 0.8, med_z, std_z),
+        (-0.2, 1.5, med_z, std_z * 0.9),
+    ]
+
+    for g, d, x, l in guesses:
+        try:
+            cand = stats.johnsonsu.fit(z_clean, floc=x, fscale=l)
+            candidates.append(cand)
+        except Exception:
+            candidates.append((g, d, x, l))
+
+    best_ll = -np.inf
+    best_params = (0.0, 1.0, 0.0, 1.0)
+    for g, d, x, l in candidates:
+        if d <= 0 or l <= 0:
+            continue
+        try:
+            ll = float(np.sum(stats.johnsonsu.logpdf(z_clean, g, d, loc=x, scale=l)))
+            if np.isfinite(ll) and ll > best_ll:
+                best_ll = ll
+                best_params = (float(g), float(d), float(x), float(l))
+        except Exception:
+            continue
+
+    return best_params
+
+
+def _fit_evt_parameters(z_data: np.ndarray) -> Dict[str, Any]:
+    """Fit EVT generalized Pareto parameters on 5% and 95% tails (Section 3.1)."""
+    z_clean = z_data[~np.isnan(z_data)]
+    if len(z_clean) < 20:
+        return {
+            "u_left": -1.645, "u_right": 1.645,
+            "gpd_left": {"shape_xi": 0.0, "scale_beta": 0.5},
+            "gpd_right": {"shape_xi": 0.0, "scale_beta": 0.5},
+        }
+    u_l = float(np.percentile(z_clean, 5.0))
+    u_r = float(np.percentile(z_clean, 95.0))
+    ex_l = - (z_clean[z_clean < u_l] - u_l)
+    ex_r = z_clean[z_clean > u_r] - u_r
+
+    c_l, _, scale_l = stats.genpareto.fit(ex_l, floc=0.0) if len(ex_l) >= 5 else (0.0, 0.0, 0.5)
+    c_r, _, scale_r = stats.genpareto.fit(ex_r, floc=0.0) if len(ex_r) >= 5 else (0.0, 0.0, 0.5)
+
+    return {
+        "u_left": u_l,
+        "u_right": u_r,
+        "gpd_left": {"shape_xi": float(c_l), "scale_beta": float(scale_l)},
+        "gpd_right": {"shape_xi": float(c_r), "scale_beta": float(scale_r)},
+    }
+
+
 def refit_parameters_on_subset(
     df_train_sub: pd.DataFrame,
     mapping_config: Dict[str, str],
@@ -561,14 +923,22 @@ def refit_parameters_on_subset(
     """
     Refit R-6 (Johnson SU) and R-7 (EVT) parameters strictly on training complement.
     Ensures zero data leakage during cross-validation rounds.
+    Strictly restricted to 3 statutory families: 'gaussian', 'johnsonsu', 'evt'.
     """
     r6_out: Dict[str, Any] = {"johnsonsu_parameters": {}}
+    r7_out: Dict[str, Any] = {"stations": {}}
     for st, family in mapping_config.items():
+        if family not in {"gaussian", "johnsonsu", "evt"}:
+            raise ValueError(
+                f"Invalid distribution family '{family}' for station {st}. "
+                "Allowed families are strictly: ['gaussian', 'johnsonsu', 'evt']"
+            )
+
         if family == "johnsonsu":
             sub_st = df_train_sub[(df_train_sub["station"] == st) & (~df_train_sub["is_nan_obs"])]
             if len(sub_st) > 50:
                 z_raw = (sub_st["resid_calibrated"] / sub_st["sigma_forecast"]).to_numpy()
-                gamma, delta, xi, lam = stats.johnsonsu.fit(z_raw)
+                gamma, delta, xi, lam = _fit_johnsonsu_multistart(z_raw)
                 r6_out["johnsonsu_parameters"] = {
                     "gamma": float(gamma),
                     "delta": float(delta),
@@ -580,24 +950,11 @@ def refit_parameters_on_subset(
                     "gamma": 0.0, "delta": 1.0, "xi": 0.0, "lambda": 1.0
                 }
 
-    r7_out: Dict[str, Any] = {"stations": {}}
-    for st, family in mapping_config.items():
-        if family == "evt":
+        elif family == "evt":
             sub_st = df_train_sub[(df_train_sub["station"] == st) & (~df_train_sub["is_nan_obs"])]
             if len(sub_st) > 50:
                 z_raw = (sub_st["resid_calibrated"] / sub_st["sigma_forecast"]).to_numpy()
-                u_l = float(np.percentile(z_raw, 5))
-                u_r = float(np.percentile(z_raw, 95))
-                z_left_excess = u_l - z_raw[z_raw < u_l]
-                z_right_excess = z_raw[z_raw > u_r] - u_r
-                fit_l = stats.genpareto.fit(z_left_excess, floc=0)
-                fit_r = stats.genpareto.fit(z_right_excess, floc=0)
-                r7_out["stations"][st] = {
-                    "u_left": u_l,
-                    "u_right": u_r,
-                    "gpd_left": {"shape_xi": float(fit_l[0]), "scale_beta": float(fit_l[2])},
-                    "gpd_right": {"shape_xi": float(fit_r[0]), "scale_beta": float(fit_r[2])},
-                }
+                r7_out["stations"][st] = _fit_evt_parameters(z_raw)
             else:
                 r7_out["stations"][st] = {
                     "u_left": -1.645, "u_right": 1.645,
@@ -674,7 +1031,12 @@ def run_cv_reliability_pipeline(
         round_table_list.append(tbl_r)
 
     pooled_eval_df = pd.concat(all_round_eval_records, ignore_index=True)
-    table_global, weighted_ece = build_global_reliability_table(pooled_eval_df, num_bins=num_bins)
+    dual_res = build_dual_track_reliability_table(pooled_eval_df, num_bins=num_bins)
+    table_global = dual_res["benchmark_table"]
+    table_decision = dual_res["decision_table"]
+    weighted_ece = dual_res["weighted_ece"]
+    ece_ci_lower = dual_res["ece_ci_lower"]
+    ece_ci_upper = dual_res["ece_ci_upper"]
 
     # Compute inter-round dispersion across 20 rounds
     all_rounds_df = pd.concat(round_table_list, ignore_index=True)
@@ -713,7 +1075,10 @@ def run_cv_reliability_pipeline(
     return {
         "df_expanded": pooled_eval_df,
         "table_global": table_global,
+        "table_decision": table_decision,
         "weighted_ece": weighted_ece,
+        "ece_ci_lower": ece_ci_lower,
+        "ece_ci_upper": ece_ci_upper,
         "table_stratified": table_stratified,
         "table_brier": table_brier,
         "manifest": manifest,
@@ -732,6 +1097,7 @@ def run_reliability_pipeline(
     out_global_path: Optional[Path] = None,
     out_stratified_path: Optional[Path] = None,
     out_brier_path: Optional[Path] = None,
+    out_decision_path: Optional[Path] = None,
     binning_scheme: str = "statutory_7bin",
     mode: str = "insample",
     model_status: str = "RETRAINED-v2",
@@ -749,19 +1115,32 @@ def run_reliability_pipeline(
         binning_scheme=binning_scheme,
         target_obs_col=target_obs_col,
     )
-    table_global, weighted_ece = build_global_reliability_table(df_expanded, num_bins=20)
+    dual_res = build_dual_track_reliability_table(df_expanded, num_bins=20)
+    table_global = dual_res["benchmark_table"]
+    table_decision = dual_res["decision_table"]
+    weighted_ece = dual_res["weighted_ece"]
+    ece_ci_lower = dual_res["ece_ci_lower"]
+    ece_ci_upper = dual_res["ece_ci_upper"]
+
     table_stratified = build_stratified_warning_table(df_expanded, num_bins=10, stations=stations_list)
     table_brier = compute_brier_skill_scores(df_expanded, df_train, target_obs_col=target_obs_col, stations_list=stations_list)
 
-    meta = metadata_headers or {}
+    meta = dict(metadata_headers or {})
+    meta["ece_ci_95"] = f"[{ece_ci_lower:.4%}, {ece_ci_upper:.4%}]"
+
     save_dataframe_with_metadata(table_global, out_global_path, meta)
+    if out_decision_path:
+        save_dataframe_with_metadata(table_decision, out_decision_path, meta)
     save_dataframe_with_metadata(table_stratified, out_stratified_path, meta)
     save_dataframe_with_metadata(table_brier, out_brier_path, meta)
 
     return {
         "df_expanded": df_expanded,
         "table_global": table_global,
+        "table_decision": table_decision,
         "weighted_ece": weighted_ece,
+        "ece_ci_lower": ece_ci_lower,
+        "ece_ci_upper": ece_ci_upper,
         "table_stratified": table_stratified,
         "table_brier": table_brier,
     }
@@ -783,6 +1162,7 @@ def main():
     parser.add_argument("--lead-hour", type=int, default=18, help="Lead hour (e.g. 18).")
     parser.add_argument("--model-status", type=str, default="AUTO", help="Model status tag (RETRAINED-v2 / LEGACY-DISEASED).")
     parser.add_argument("--out-global", type=Path, default=DEFAULT_OUT_GLOBAL, help="Output path for global CSV.")
+    parser.add_argument("--out-decision", type=Path, default=DEFAULT_OUT_DECISION, help="Output path for decision track CSV.")
     parser.add_argument("--out-stratified", type=Path, default=DEFAULT_OUT_STRATIFIED, help="Output path for stratified CSV.")
     parser.add_argument("--out-brier", type=Path, default=DEFAULT_OUT_BRIER, help="Output path for Brier CSV.")
 
@@ -834,8 +1214,12 @@ def main():
         raise FileNotFoundError(f"{args.train_parquet} not found.")
 
     df_train = pd.read_parquet(args.train_parquet)
-    # Filter to requested stations
-    df_train = df_train[df_train["station"].isin(stations_list)].copy()
+    # R6 & Section 2.4: Robust Input Defense & Adapter
+    df_train = validate_and_adapt_input_dataset(
+        df_train,
+        requested_stations=stations_list,
+        target_obs_col=target_obs_col,
+    )
 
     # Tool source hash
     tool_hash = compute_file_sha256(Path(__file__).resolve())
@@ -866,7 +1250,9 @@ def main():
             stations_list=stations_list,
             num_bins=20,
         )
+        metadata_block["ece_ci_95"] = f"[{res['ece_ci_lower']:.4%}, {res['ece_ci_upper']:.4%}]"
         save_dataframe_with_metadata(res["table_global"], args.out_global, metadata_block)
+        save_dataframe_with_metadata(res["table_decision"], args.out_decision, metadata_block)
         save_dataframe_with_metadata(res["table_stratified"], args.out_stratified, metadata_block)
         save_dataframe_with_metadata(res["table_brier"], args.out_brier, metadata_block)
     else:
@@ -883,6 +1269,7 @@ def main():
             out_global_path=args.out_global,
             out_stratified_path=args.out_stratified,
             out_brier_path=args.out_brier,
+            out_decision_path=args.out_decision,
             binning_scheme=args.binning_scheme,
             mode=args.mode,
             model_status=model_status,
@@ -891,11 +1278,18 @@ def main():
             metadata_headers=metadata_block,
         )
 
-    print(f"\n[Artifact 1] Global Reliability Table: {args.out_global}")
-    print(f"Global Weighted ECE: {res['weighted_ece']:.4%}")
+    print(f"\n[Artifact 1] Global Reliability Benchmark Table: {args.out_global}")
+    print(f"Global Weighted ECE: {res['weighted_ece']:.4%} (95% Bootstrap CI: [{res['ece_ci_lower']:.4%}, {res['ece_ci_upper']:.4%}])")
     meta_m = compute_table_meta_metrics(res["table_global"])
     print(f"Out-of-CI Rate vs Expected: {meta_m['out_of_ci_count']}/{meta_m['total_valid_strata']} ({meta_m['out_of_ci_rate']:.1%}) vs nominal 5.0%")
     print(res["table_global"].to_string(index=False))
+
+    print(f"\n[Artifact 1b] Decision Track Reliability Table: {args.out_decision}")
+    meta_d = compute_table_meta_metrics(res["table_decision"])
+    print(f"Decision Track Out-of-CI Rate: {meta_d['out_of_ci_count']}/{meta_d['total_valid_strata']} ({meta_d['out_of_ci_rate']:.1%})")
+    wide_count = int((res["table_decision"]["label"] == "WIDE-BIN").sum())
+    print(f"Wide Bins (delta_p > 0.15): {wide_count}/{len(res['table_decision'])}")
+    print(res["table_decision"].to_string(index=False))
 
     print(f"\n[Artifact 2] Stratified Warning Table: {args.out_stratified}")
     meta_s = compute_table_meta_metrics(res["table_stratified"])
