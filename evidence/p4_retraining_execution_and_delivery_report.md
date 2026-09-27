@@ -152,12 +152,12 @@
 7. **`test_p4_multistart_determinism`** (*新增*): 机器可验证的多起点协议确定性复算（抽样 5 格偏差均为 $0.00\text{e}+00$）。
 
 ### 测试执行证据
-- **P4 7 门禁专项测试**:
+- **P4 8 门禁专项测试**:
   - 执行命令: `pytest tests/unit/modeling/test_p4_retraining_integrity.py -v`
-  - 运行结果: **`7 passed in 4.74s`** (退出码: `0`)
+  - 运行结果: **`8 passed in 4.12s`** (退出码: `0`，含 Gate 8 EVT CDF 积分与解析分位数验证)
 - **全量无过滤离线单元测试**:
   - 执行命令: `pytest tests/unit/ -q`
-  - 运行结果: **`840 passed, 9 skipped, 3 warnings in 77.81s`** (退出码: `0`，用例基数 $840 + 9 = 849$ 项)
+  - 运行结果: **`841 passed, 9 skipped, 3 warnings in 76.11s`** (退出码: `0`，用例基数 $841 + 9 = 850$ 项)
 
 ---
 
@@ -170,7 +170,8 @@
 | [`evidence/p4_active10_training_variance_factors.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_active10_training_variance_factors.json) | **10 站 $\times$ 4 季新 $c_{\text{train}}$ 参数表 (均值 1.0768)** | `bf19f1fb18be34172a7657da977aaf5bc457ca71bedbe7671b57422aad3f12ab` |
 | [`evidence/p4_active10_climate_calibration.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_active10_climate_calibration.json) | **10 站 $\times$ 4 季形态参数表 (KMIA 100% JSU)** | `246397fdeff31384c1703d8ce3fa049028cb6d44254c23997261c6bb276ee8a5` |
 | [`evidence/model_inventory_audit.csv`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/model_inventory_audit.csv) | **960 格多起点重拟在役模型普查底账** | `b1526a7b1d6f401cb0f2beaaf79bb7634d75c607913c70638d91cb3184239caa` |
-| [`evidence/p4_anchor_reconciliation_report.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_anchor_reconciliation_report.md) | **三维对账核验报告 (法定多起点重拟版)** | `90cf7919d7d1f5b02660d5bfa60ca51d3886561fa5b169542a647953257ec224` |
-| [`evidence/p4_bic_comparability_note.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_bic_comparability_note.md) | **BIC 可比性与似然全域归一化说明书** | `1c45c1103f6f3be4fb6642d634289893d56214589d97bf9b109e992ae2c14041` |
+| [`evidence/p4_anchor_reconciliation_report.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_anchor_reconciliation_report.md) | **三维对账核验报告 (含 KLAX 顺子值复核与夏季物理注记)** | `ec546f5e351abffc835974ac3d54dec9964f9ef8bef9f17b1f3ae94c3addec4e` |
+| [`evidence/p4_bic_comparability_note.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_bic_comparability_note.md) | **BIC 可比性与似然全域归一化说明书 (含 Round 3 EVT 确权)** | `2d76f3acb317f1681e3d1d1e1965763f562811a0aa4a8700b8b63f6aadaa88b0` |
+| [`evidence/p4_block_cv_dry_run_audit.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_block_cv_dry_run_audit.json) | **Block-CV 3 折工程干跑审计工件** | `efbb5796ecea83acb4b65d33b41017e452c38a2fbcc93c8cf2d99287c150cbfa` |
 | [`specs/preregistration-p4-active10-retrain.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/specs/preregistration-p4-active10-retrain.md) | **预注册规格书 (补钉 8 多起点留痕)** | `a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3` |
-| [`tests/unit/modeling/test_p4_retraining_integrity.py`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/tests/unit/modeling/test_p4_retraining_integrity.py) | **7 项增强质检验收测试套件** | `cb251d184bf4038a8e1df37648316b231ff683d73507d3fa78f5ae888f28faee` |
+| [`tests/unit/modeling/test_p4_retraining_integrity.py`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/tests/unit/modeling/test_p4_retraining_integrity.py) | **8 项增强质检验收测试套件 (含 Gate 8 EVT CDF)** | `3d2437b87ad99787661280eb2e8cecf2aa860f03d5d983860f7281ba5deab7be` |

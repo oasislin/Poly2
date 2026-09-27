@@ -69,3 +69,14 @@ $$\log f_{\text{spliced}}(z_i) = \begin{cases}
 在修复优化器并施加似然归一化后，KMIA 重新回归 Johnson SU：
 1. **R-6 历史锚点恢复生效**: KMIA 在 Round 3 确立的 Johnson SU 偏态建模得到物理与算法延续；
 2. **三维对账表对应项**: 由于 KMIA 选定家族为 Johnson SU，但其粒度由“全周期单套”升级为“站级 $\times$ 四季独立套”，其 PIT K-S 指标按“粒度升级导致的预期微幅物理漂移”处置，法定门禁 $p \ge 0.05$ 维持不变。
+
+---
+
+## 四、 Round 3 遗产审计注记：历史 EVT CDF 评估路径权重确权
+
+经审计历史回溯代码 `scripts/evaluate_round3_oos.py`（第 168–186 行）：
+1. **历史评估路径完整性**: 在 Round 3 的 OOS 与 PIT 评测函数中，EVT 混合累积分布函数（CDF）评估路径自始至终包含 $0.05$ 的尾部权重乘子：
+   - 左尾 ($z < u_L$): $\text{PIT} = 0.05 \cdot \left(1 + \xi_L \frac{u_L - z}{\beta_L}\right)^{-1/\xi_L}$
+   - 右尾 ($z > u_R$): $\text{PIT} = 1.0 - 0.05 \cdot \left(1 + \xi_R \frac{z - u_R}{\beta_R}\right)^{-1/\xi_R}$
+2. **审计结论**: Round 3 历史代码的 **CDF 路径完全合规**，满足全域边界 $\lim_{z \to -\infty} F(z) = 0.0$ 与 $\lim_{z \to +\infty} F(z) = 1.0$；本次 P4 补钉 8 修复的仅是**拟合侧分布竞争选型时的 BIC 目标函数似然归一化**，评测侧与推理侧的 CDF 权重早在 Round 3 即已落实，前后同源。
+

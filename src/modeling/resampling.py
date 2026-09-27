@@ -354,10 +354,41 @@ def fit_statutory_pipeline_fold(
             crps = sig * (z * (2 * stats.norm.cdf(z) - 1) + 2 * stats.norm.pdf(z) - 1.0 / np.sqrt(np.pi))
             return float(np.mean(crps))
 
-        init_p = [0.0, 1.0, max(sigma_floor, 1.0), 0.2]
-        bounds = [(-15.0, 15.0), (0.5, 1.5), (sigma_floor, 10.0), (0.0, 5.0)]
-        res = optimize.minimize(emos_crps_obj, init_p, bounds=bounds, method="L-BFGS-B")
-        seasonal_emos[season] = tuple(res.x.tolist())
+        init_a = float(np.mean(y_tr) - np.mean(ens_m))
+        init_b = 1.0
+        init_c = float(max(sigma_floor, np.std(y_tr - ens_m)))
+        init_d = 0.5
+        bounds = [(-50.0, 50.0), (0.0, 3.0), (sigma_floor, 20.0), (0.0, 3.0)]
+
+        guesses = [
+            [init_a, init_b, init_c, init_d],
+            [0.0, 1.0, 2.0, 0.5],
+            [-2.0, 1.05, 3.0, 0.8],
+            [2.0, 0.95, 1.5, 0.3],
+            [init_a * 0.5, 1.0, sigma_floor, 0.2],
+        ]
+
+        best_res = None
+        best_loss = float("inf")
+        for g in guesses:
+            try:
+                res = optimize.minimize(
+                    emos_crps_obj,
+                    x0=g,
+                    bounds=bounds,
+                    method="L-BFGS-B",
+                    options={"maxiter": 1000, "ftol": 1e-9, "gtol": 1e-7},
+                )
+                if res.success and res.fun < best_loss:
+                    best_loss = res.fun
+                    best_res = res
+            except Exception:
+                continue
+
+        if best_res is not None:
+            seasonal_emos[season] = tuple(best_res.x.tolist())
+        else:
+            seasonal_emos[season] = (0.0, 1.0, sigma_floor, 0.1)
 
     # Step 2: Compute raw predictions and fold-local causal trailing bias
     mu_raw = np.zeros(len(train_work))
@@ -428,10 +459,10 @@ def fit_statutory_pipeline_fold(
             ex_r = z_scores[z_scores > u_r] - u_r
             c_l, loc_l, scale_l = stats.genpareto.fit(ex_l, floc=0.0)
             c_r, loc_r, scale_r = stats.genpareto.fit(ex_r, floc=0.0)
-            # Approximate hybrid loglik
+            # Properly spliced normalized log-likelihood with log(0.05) tail weights
             loglik_evt = float(np.sum(stats.norm.logpdf(z_scores[(z_scores >= u_l) & (z_scores <= u_r)])))
-            loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_l, c_l, scale=scale_l)))
-            loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_r, c_r, scale=scale_r)))
+            loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_l, c_l, scale=scale_l))) + float(len(ex_l) * math.log(0.05))
+            loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_r, c_r, scale=scale_r))) + float(len(ex_r) * math.log(0.05))
             bic_evt = 4.0 * math.log(n_samples) - 2.0 * loglik_evt
             evt_params = {
                 "u_left": u_l, "u_right": u_r,
