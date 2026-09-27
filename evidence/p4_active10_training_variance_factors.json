@@ -3,100 +3,100 @@
     "station": "KORD",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.2315902063863342,
-      "Autumn": 1.35
+      "Winter": 1.1054859283249718,
+      "Spring": 1.0842030429669511,
+      "Summer": 1.0408185216397194,
+      "Autumn": 1.0793934296196628
     }
   },
   "KLGA": {
     "station": "KLGA",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.1017621464773266,
+      "Spring": 1.103513971088026,
+      "Summer": 1.0492598431217264,
+      "Autumn": 1.0949052962159298
     }
   },
   "KATL": {
     "station": "KATL",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 0.9592043710226955,
-      "Autumn": 1.35
+      "Winter": 1.1004448929748347,
+      "Spring": 1.0978199071679375,
+      "Summer": 0.9748238065188138,
+      "Autumn": 1.0666962351611438
     }
   },
   "KDAL": {
     "station": "KDAL",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.2854558124548403,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0630887747099365,
+      "Spring": 1.0630263963100353,
+      "Summer": 1.0547043884998861,
+      "Autumn": 1.1151341005235174
     }
   },
   "KSEA": {
     "station": "KSEA",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0575688607208096,
+      "Spring": 1.0414856087601587,
+      "Summer": 0.9812230496507943,
+      "Autumn": 1.0794855130546446
     }
   },
   "KLAX": {
     "station": "KLAX",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0771160887851217,
+      "Spring": 1.2345138843318002,
+      "Summer": 0.9950330580632534,
+      "Autumn": 1.1114006944666273
     }
   },
   "KHOU": {
     "station": "KHOU",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0480570077822504,
+      "Spring": 1.0910229014428816,
+      "Summer": 1.0325890581079993,
+      "Autumn": 1.1362728239446185
     }
   },
   "KMIA": {
     "station": "KMIA",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.1756598568520544,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0974388543288969,
+      "Spring": 1.1357755232608902,
+      "Summer": 1.1273597973180798,
+      "Autumn": 1.1176580135605232
     }
   },
   "KSFO": {
     "station": "KSFO",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0619309637848873,
+      "Spring": 1.1225837008583128,
+      "Summer": 1.0785767772744606,
+      "Autumn": 1.038042997401424
     }
   },
   "KAUS": {
     "station": "KAUS",
     "training_years": "2000-2018",
     "seasonal_c_train": {
-      "Winter": 1.35,
-      "Spring": 1.35,
-      "Summer": 1.35,
-      "Autumn": 1.35
+      "Winter": 1.0848362651251615,
+      "Spring": 1.0524312740353168,
+      "Summer": 0.9692998221327154,
+      "Autumn": 1.1052892538630583
     }
   }
 }

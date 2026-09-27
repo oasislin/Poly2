@@ -5,60 +5,37 @@
       "Winter": {
         "selected_family": "johnsonsu",
         "shape_params": {
-          "gamma": -1.3909275294298153,
-          "delta": 2.2767762416557145,
-          "xi": -3.028275726866937,
-          "lambda": 4.235483437626737
+          "gamma": -1.4103056361635993,
+          "delta": 2.2649775588113643,
+          "xi": -1.2269105951487012,
+          "lambda": 1.6731734677919277
         },
-        "delta_bic": -5923.702647356918
+        "delta_bic": -145.70907426873055
       },
       "Spring": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.7792887255189402,
-          "u_right": 3.1855736212368764,
-          "gpd_left": {
-            "shape_xi": -0.0668937423119608,
-            "scale_beta": 0.9515531797297998
-          },
-          "gpd_right": {
-            "shape_xi": -0.0077341603990123435,
-            "scale_beta": 1.718716115625933
-          }
+          "gamma": -0.4814951171315866,
+          "delta": 2.0291022385099873,
+          "xi": -0.4798338693155866,
+          "lambda": 1.7447303017897053
         },
-        "delta_bic": -3475.7566645953902
+        "delta_bic": -62.25010862848558
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -1.9603158482546328,
-          "u_right": 1.9990986351218207,
-          "gpd_left": {
-            "shape_xi": 0.16763219044448807,
-            "scale_beta": 0.735270763982142
-          },
-          "gpd_right": {
-            "shape_xi": 0.016080010394881786,
-            "scale_beta": 0.6466410468934133
-          }
-        },
-        "delta_bic": -1489.9218479116416
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.1492652518723894,
-          "u_right": 2.3334547034204496,
-          "gpd_left": {
-            "shape_xi": -0.07175728513649063,
-            "scale_beta": 0.7231447165460533
-          },
-          "gpd_right": {
-            "shape_xi": 0.2233819488179579,
-            "scale_beta": 0.7631466753162843
-          }
+          "gamma": -0.6254160556509663,
+          "delta": 2.421695694446381,
+          "xi": -0.6053514419832813,
+          "lambda": 2.1182731089485194
         },
-        "delta_bic": -1881.2974463584987
+        "delta_bic": -47.4890151428699
       }
     }
   },
@@ -66,68 +43,34 @@
     "station": "KLGA",
     "seasons": {
       "Winter": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.9344855006101165,
-          "u_right": 3.6652582372596503,
-          "gpd_left": {
-            "shape_xi": 0.10943788703804802,
-            "scale_beta": 0.719619818574081
-          },
-          "gpd_right": {
-            "shape_xi": -0.01872516098238885,
-            "scale_beta": 1.8278269968774794
-          }
+          "gamma": -0.924247251988654,
+          "delta": 1.9895756485765077,
+          "xi": -0.8464772444393405,
+          "lambda": 1.559310133352939
         },
-        "delta_bic": -3990.619783128447
+        "delta_bic": -126.50177170727602
       },
       "Spring": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -3.519782475638874,
-          "u_right": 3.888146835779043,
-          "gpd_left": {
-            "shape_xi": 0.2047906762734757,
-            "scale_beta": 0.9357617143124112
-          },
-          "gpd_right": {
-            "shape_xi": -0.2527815725471135,
-            "scale_beta": 2.053407306790416
-          }
-        },
-        "delta_bic": -4823.843036568084
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -2.8798213242146105,
-          "u_right": 2.648895231976269,
-          "gpd_left": {
-            "shape_xi": -0.05562568578785976,
-            "scale_beta": 1.255770784868922
-          },
-          "gpd_right": {
-            "shape_xi": -0.044281422877017265,
-            "scale_beta": 1.036726816327719
-          }
-        },
-        "delta_bic": -2726.499711080296
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.8488647960400337,
-          "u_right": 3.06981612000831,
-          "gpd_left": {
-            "shape_xi": -0.006633725181868,
-            "scale_beta": 0.9673195723114688
-          },
-          "gpd_right": {
-            "shape_xi": 0.2496311075213247,
-            "scale_beta": 0.986089140163926
-          }
+          "gamma": -0.37845432100673043,
+          "delta": 1.785689940648211,
+          "xi": -0.3667640525905818,
+          "lambda": 1.4740266895097243
         },
-        "delta_bic": -3107.9112801074352
+        "delta_bic": -88.3990080433723
       }
     }
   },
@@ -135,68 +78,35 @@
     "station": "KATL",
     "seasons": {
       "Winter": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -3.928610008770489,
-          "u_right": 3.698544738911697,
-          "gpd_left": {
-            "shape_xi": -0.19028894473221528,
-            "scale_beta": 1.5223163315096895
-          },
-          "gpd_right": {
-            "shape_xi": 0.11523026683323737,
-            "scale_beta": 1.314973868344746
-          }
-        },
-        "delta_bic": -4796.20384484823
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Spring": {
         "selected_family": "evt_hybrid",
         "shape_params": {
-          "u_left": -3.263995642928045,
-          "u_right": 3.5464251011015144,
+          "u_left": -1.6430243500164763,
+          "u_right": 1.5484593642488937,
           "gpd_left": {
-            "shape_xi": 0.10804720809282774,
-            "scale_beta": 1.1680579474461392
+            "shape_xi": -0.09400616603981649,
+            "scale_beta": 0.8465415249694024
           },
           "gpd_right": {
-            "shape_xi": -0.0368514210662589,
-            "scale_beta": 1.3880862615594933
+            "shape_xi": -0.12709864271448718,
+            "scale_beta": 0.7254368305869706
           }
         },
-        "delta_bic": -4110.968028087549
+        "delta_bic": -24.031069063043105
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -2.189013390630932,
-          "u_right": 1.8736335607499661,
-          "gpd_left": {
-            "shape_xi": -0.006353960041569632,
-            "scale_beta": 0.8957748345057018
-          },
-          "gpd_right": {
-            "shape_xi": 0.18355332321654716,
-            "scale_beta": 0.7444152791577354
-          }
-        },
-        "delta_bic": -1649.3719843656872
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -3.119382323260058,
-          "u_right": 2.9049779554757995,
-          "gpd_left": {
-            "shape_xi": -0.014226357768825604,
-            "scale_beta": 1.2651696154877525
-          },
-          "gpd_right": {
-            "shape_xi": -0.10010059606272972,
-            "scale_beta": 1.6149556255237076
-          }
-        },
-        "delta_bic": -3456.960426446718
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       }
     }
   },
@@ -204,68 +114,45 @@
     "station": "KDAL",
     "seasons": {
       "Winter": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -2.276121904070104,
-          "u_right": 2.3048104507593505,
-          "gpd_left": {
-            "shape_xi": -0.05494890880408149,
-            "scale_beta": 0.9103179803827891
-          },
-          "gpd_right": {
-            "shape_xi": 0.07180690309584126,
-            "scale_beta": 0.7995142339566308
-          }
-        },
-        "delta_bic": -1837.4271259926272
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Spring": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.6010554856040944,
-          "u_right": 2.470542833455714,
-          "gpd_left": {
-            "shape_xi": -0.23967481058469658,
-            "scale_beta": 1.3074149641267392
-          },
-          "gpd_right": {
-            "shape_xi": 0.024651314250851954,
-            "scale_beta": 1.0595709683552865
-          }
+          "gamma": 0.47626674413712655,
+          "delta": 1.7881918278688849,
+          "xi": 0.46887253154417363,
+          "lambda": 1.4800421927618679
         },
-        "delta_bic": -2386.7793622279805
+        "delta_bic": -57.69812136321889
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.5518011056734444,
-          "u_right": 2.4727195307068257,
-          "gpd_left": {
-            "shape_xi": 0.09492727023398155,
-            "scale_beta": 1.21580830826599
-          },
-          "gpd_right": {
-            "shape_xi": -0.018941879819066983,
-            "scale_beta": 0.7923037585864291
-          }
+          "gamma": 0.49108255538140994,
+          "delta": 1.51475863116171,
+          "xi": 0.4682982235731187,
+          "lambda": 1.1438806227777094
         },
-        "delta_bic": -2433.5170258120097
+        "delta_bic": -241.49290827835648
       },
       "Autumn": {
         "selected_family": "evt_hybrid",
         "shape_params": {
-          "u_left": -3.0435430690596084,
-          "u_right": 2.685813078405856,
+          "u_left": -1.8238217915679389,
+          "u_right": 1.4518558289077232,
           "gpd_left": {
-            "shape_xi": -0.08488502362581803,
-            "scale_beta": 1.3153261021292608
+            "shape_xi": -0.08914526539371653,
+            "scale_beta": 0.7274696737620627
           },
           "gpd_right": {
-            "shape_xi": 0.28293993844514154,
-            "scale_beta": 0.7654797707737786
+            "shape_xi": 0.2013315597890887,
+            "scale_beta": 0.48089250896620783
           }
         },
-        "delta_bic": -2956.1879802479434
+        "delta_bic": -46.854834492602095
       }
     }
   },
@@ -275,12 +162,12 @@
       "Winter": {
         "selected_family": "johnsonsu",
         "shape_params": {
-          "gamma": -1.261294802637071,
-          "delta": 2.6737731774415865,
-          "xi": -2.699144374526536,
-          "lambda": 5.254197289127599
+          "gamma": -2.6606876910273867,
+          "delta": 3.579940401077738,
+          "xi": -2.237889585828207,
+          "lambda": 2.650480079185132
         },
-        "delta_bic": -4959.536144811972
+        "delta_bic": -48.26668469907145
       },
       "Spring": {
         "selected_family": "gaussian",
@@ -288,36 +175,14 @@
         "delta_bic": 0.0
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -2.631212984120571,
-          "u_right": 2.7766842059121783,
-          "gpd_left": {
-            "shape_xi": -0.27127460341493903,
-            "scale_beta": 1.1547087001411254
-          },
-          "gpd_right": {
-            "shape_xi": -0.18116195313611222,
-            "scale_beta": 1.2936683070233326
-          }
-        },
-        "delta_bic": -2501.3588485619766
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
-        "shape_params": {
-          "u_left": -3.707853269411406,
-          "u_right": 3.7695725645160723,
-          "gpd_left": {
-            "shape_xi": 0.03019794686568443,
-            "scale_beta": 1.3951290322232424
-          },
-          "gpd_right": {
-            "shape_xi": 0.12410516399686213,
-            "scale_beta": 1.1670569703539493
-          }
-        },
-        "delta_bic": -4754.281276277876
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       }
     }
   },
@@ -325,40 +190,45 @@
     "station": "KLAX",
     "seasons": {
       "Winter": {
-        "selected_family": "johnsonsu",
-        "shape_params": {
-          "gamma": -0.9067607085806124,
-          "delta": 1.914493296822585,
-          "xi": -2.899764219797767,
-          "lambda": 5.245117807488553
-        },
-        "delta_bic": -14710.626382985994
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       },
       "Spring": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -5.189912372894235,
-          "u_right": 4.798237489138101,
-          "gpd_left": {
-            "shape_xi": -0.39503961869467497,
-            "scale_beta": 2.591369271297855
-          },
-          "gpd_right": {
-            "shape_xi": -0.29407874650696697,
-            "scale_beta": 2.4998685471864377
-          }
+          "gamma": -0.3382065677781133,
+          "delta": 1.262066831442191,
+          "xi": -0.32461932560004336,
+          "lambda": 0.8909466693391797
         },
-        "delta_bic": -8457.724585651746
+        "delta_bic": -209.56410988632524
       },
       "Summer": {
-        "selected_family": "gaussian",
-        "shape_params": {},
-        "delta_bic": 0.0
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": -0.30106830304947885,
+          "delta": 2.020033052177288,
+          "xi": -0.2786574864085216,
+          "lambda": 1.7367300311659535
+        },
+        "delta_bic": -64.57733484468918
       },
       "Autumn": {
-        "selected_family": "gaussian",
-        "shape_params": {},
-        "delta_bic": 0.0
+        "selected_family": "evt_hybrid",
+        "shape_params": {
+          "u_left": -1.5663517331799848,
+          "u_right": 1.949557171741803,
+          "gpd_left": {
+            "shape_xi": -0.22729650476634602,
+            "scale_beta": 0.5180547284379045
+          },
+          "gpd_right": {
+            "shape_xi": -0.28143959495590365,
+            "scale_beta": 0.753860314966317
+          }
+        },
+        "delta_bic": -85.8508180485569
       }
     }
   },
@@ -371,41 +241,34 @@
         "delta_bic": 0.0
       },
       "Spring": {
-        "selected_family": "gaussian",
-        "shape_params": {},
-        "delta_bic": 0.0
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": 0.37918033874977897,
+          "delta": 2.0403174729966835,
+          "xi": 0.3672323671640184,
+          "lambda": 1.7771283970522682
+        },
+        "delta_bic": -55.46799010629002
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.580283103637055,
-          "u_right": 2.186810159382535,
-          "gpd_left": {
-            "shape_xi": 0.07989281790050407,
-            "scale_beta": 0.967583682584679
-          },
-          "gpd_right": {
-            "shape_xi": 0.0731776907476086,
-            "scale_beta": 0.7817566342349751
-          }
+          "gamma": 0.6834727019947314,
+          "delta": 1.8150748120708635,
+          "xi": 0.6436042310678174,
+          "lambda": 1.4383781062241927
         },
-        "delta_bic": -2113.748398853356
+        "delta_bic": -108.0232366303344
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -3.127672917961507,
-          "u_right": 2.4815382192881685,
-          "gpd_left": {
-            "shape_xi": -0.05229954720661288,
-            "scale_beta": 1.2424372795900476
-          },
-          "gpd_right": {
-            "shape_xi": 0.20054240702705906,
-            "scale_beta": 0.7454549113471556
-          }
+          "gamma": 0.4946702122838546,
+          "delta": 1.430243701719716,
+          "xi": 0.4678156171305364,
+          "lambda": 1.053513343810362
         },
-        "delta_bic": -2770.438767669605
+        "delta_bic": -203.06707368915067
       }
     }
   },
@@ -413,68 +276,44 @@
     "station": "KMIA",
     "seasons": {
       "Winter": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.3798333389015998,
-          "u_right": 2.007568740542838,
-          "gpd_left": {
-            "shape_xi": -0.28945850386613703,
-            "scale_beta": 1.7288301752458584
-          },
-          "gpd_right": {
-            "shape_xi": -0.0598614133149221,
-            "scale_beta": 0.5961433526928188
-          }
+          "gamma": 0.9559060773596038,
+          "delta": 1.8594855053100048,
+          "xi": 0.8673913440602445,
+          "lambda": 1.3875687509769712
         },
-        "delta_bic": -1875.562458395857
+        "delta_bic": -178.10152470450885
       },
       "Spring": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -1.8477255406492965,
-          "u_right": 1.535992592339741,
-          "gpd_left": {
-            "shape_xi": 0.012702998274094376,
-            "scale_beta": 1.0051463143692696
-          },
-          "gpd_right": {
-            "shape_xi": -0.09215587148461449,
-            "scale_beta": 0.5098453609467128
-          }
+          "gamma": 0.5798906448517674,
+          "delta": 1.6076667281074615,
+          "xi": 0.5346679107570822,
+          "lambda": 1.201483747689783
         },
-        "delta_bic": -1258.2175842190072
+        "delta_bic": -233.79192352346217
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.1063130486069523,
-          "u_right": 1.5791698193766295,
-          "gpd_left": {
-            "shape_xi": -0.20307675206279252,
-            "scale_beta": 1.1649625739440772
-          },
-          "gpd_right": {
-            "shape_xi": -0.015093104772482487,
-            "scale_beta": 0.5297390039847003
-          }
+          "gamma": 0.8639100090396283,
+          "delta": 1.636331800531794,
+          "xi": 0.766492256090434,
+          "lambda": 1.1627554787937964
         },
-        "delta_bic": -1369.2592843629382
+        "delta_bic": -211.26630680577182
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.221029142616302,
-          "u_right": 1.726389489146197,
-          "gpd_left": {
-            "shape_xi": -0.10852344605640032,
-            "scale_beta": 1.103318241771776
-          },
-          "gpd_right": {
-            "shape_xi": 0.14437331810463455,
-            "scale_beta": 0.4025698514847384
-          }
+          "gamma": 0.826785164892602,
+          "delta": 1.6564360804417844,
+          "xi": 0.7493473391613262,
+          "lambda": 1.2033326793215382
         },
-        "delta_bic": -1490.2432430743074
+        "delta_bic": -230.1219014936978
       }
     }
   },
@@ -484,38 +323,43 @@
       "Winter": {
         "selected_family": "johnsonsu",
         "shape_params": {
-          "gamma": -1.0822123972441842,
-          "delta": 2.29315943565019,
-          "xi": -2.256227750967095,
-          "lambda": 4.32350602302842
+          "gamma": -1.085792960365938,
+          "delta": 2.367344083039621,
+          "xi": -1.0081187486978576,
+          "lambda": 1.9439753285430088
         },
-        "delta_bic": -4760.372364253589
+        "delta_bic": -56.42589249412595
       },
       "Spring": {
-        "selected_family": "gaussian",
-        "shape_params": {},
-        "delta_bic": 0.0
-      },
-      "Summer": {
-        "selected_family": "gaussian",
-        "shape_params": {},
-        "delta_bic": 0.0
-      },
-      "Autumn": {
         "selected_family": "evt_hybrid",
         "shape_params": {
-          "u_left": -2.7858212737427457,
-          "u_right": 3.42478326457898,
+          "u_left": -1.5986540502958095,
+          "u_right": 1.80311042619895,
           "gpd_left": {
-            "shape_xi": 5.7253527955587454e-05,
-            "scale_beta": 1.3998171477286712
+            "shape_xi": -0.09145428442576614,
+            "scale_beta": 0.5015539700379714
           },
           "gpd_right": {
-            "shape_xi": -0.10739388569460717,
-            "scale_beta": 1.4777340204393985
+            "shape_xi": -0.32300237650220454,
+            "scale_beta": 0.8233388736444452
           }
         },
-        "delta_bic": -3628.2795727559014
+        "delta_bic": -42.35090991148263
+      },
+      "Summer": {
+        "selected_family": "johnsonsu",
+        "shape_params": {
+          "gamma": -1.0689459766561864,
+          "delta": 2.6086122473658637,
+          "xi": -1.0002146731016412,
+          "lambda": 2.2152113658293744
+        },
+        "delta_bic": -56.189199204894976
+      },
+      "Autumn": {
+        "selected_family": "gaussian",
+        "shape_params": {},
+        "delta_bic": 0.0
       }
     }
   },
@@ -525,60 +369,42 @@
       "Winter": {
         "selected_family": "johnsonsu",
         "shape_params": {
-          "gamma": 0.7422563761626733,
-          "delta": 1.9160845126986883,
-          "xi": 1.999435640925118,
-          "lambda": 4.288198554755143
+          "gamma": 0.6972800453964833,
+          "delta": 1.8183480462274428,
+          "xi": 0.6615717976340807,
+          "lambda": 1.4342404867153693
         },
-        "delta_bic": -8096.36442904039
+        "delta_bic": -108.63978150010462
       },
       "Spring": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.0955352925141195,
-          "u_right": 1.9756796484702415,
-          "gpd_left": {
-            "shape_xi": 0.16106948842876329,
-            "scale_beta": 0.9283697738447116
-          },
-          "gpd_right": {
-            "shape_xi": -0.07984897175289574,
-            "scale_beta": 1.0688481498307243
-          }
+          "gamma": 0.5397790351281604,
+          "delta": 1.6561530286708828,
+          "xi": 0.5262958548509016,
+          "lambda": 1.3093886403303259
         },
-        "delta_bic": -1825.878435131709
+        "delta_bic": -126.24104111135239
       },
       "Summer": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.354662894186067,
-          "u_right": 2.3412661078637984,
-          "gpd_left": {
-            "shape_xi": 0.034745668369491625,
-            "scale_beta": 1.2054534227130334
-          },
-          "gpd_right": {
-            "shape_xi": 0.2735731351551076,
-            "scale_beta": 0.6987536264697152
-          }
+          "gamma": 0.46694674678806203,
+          "delta": 1.5256884005765898,
+          "xi": 0.44269067122144756,
+          "lambda": 1.1401802484145644
         },
-        "delta_bic": -2259.4445975850904
+        "delta_bic": -193.35621852399527
       },
       "Autumn": {
-        "selected_family": "evt_hybrid",
+        "selected_family": "johnsonsu",
         "shape_params": {
-          "u_left": -2.12707725268193,
-          "u_right": 2.1100011235256484,
-          "gpd_left": {
-            "shape_xi": 0.13310537267025385,
-            "scale_beta": 0.9172842666583314
-          },
-          "gpd_right": {
-            "shape_xi": 0.1232184990427124,
-            "scale_beta": 0.6852243751090077
-          }
+          "gamma": 0.35627596091694935,
+          "delta": 1.5293521442980236,
+          "xi": 0.3540952522423711,
+          "lambda": 1.1825199958601504
         },
-        "delta_bic": -1762.3081832574944
+        "delta_bic": -155.0703024708946
       }
     }
   }

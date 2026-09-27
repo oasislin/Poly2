@@ -1,182 +1,176 @@
-# Phase 2 Task 01: P4 Active 10 全站 960 格物理概率模型重训与交付评审报告 (实质结果补充版)
+# Phase 2 Task 01: P4 Active 10 全站 960 格物理概率模型重训与重交付总报告 (法定五初猜多起点重拟版)
 
-- **报告编号**: `POLY-R2-P4-DELIVERY-002`
-- **执行时间**: 2026-09-24T13:20:00+08:00
-- **执行规格**: [`specs/preregistration-p4-active10-retrain.md`](../specs/preregistration-p4-active10-retrain.md) (SHA-256: `b607cc609dd7c6a449b0576b7832f067badad16318534ef0c06b4f61101e9247`)
+- **报告编号**: `POLY-R2-P4-DELIVERY-003-FINAL`
+- **执行时间**: 2026-09-27T14:28:37+00:00
+- **执行规格**: [`specs/preregistration-p4-active10-retrain.md`](../specs/preregistration-p4-active10-retrain.md) (SHA-256: `a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3`)
 - **执行脚本**: [`scripts/retrain_p4_active10_matrix.py`](../scripts/retrain_p4_active10_matrix.py)
-- **合规声明**: 严格遵照最高铁律与两步分离法（`原始观测值 vs 判定阈值`），原样汇报实测数值，严禁美化修饰。
+- **法定拟合协议**: 补钉 8 规定的五初猜确定性全局多起点网格（Statutory 5-Guess Multi-Start Grid, 0 随机源）
+- **似然计算协议**: 全实数域全积分归一化拼接概率密度（Properly Spliced Density with $\log(0.05)$ Tail Mixing Weights）
+- **前置文件**: [`evidence/p4_bic_comparability_note.md`](p4_bic_comparability_note.md) (SHA-256: `1c45c1103f6f3be4fb6642d634289893d56214589d97bf9b109e992ae2c14041`)
 
 ---
 
-## 一、 锚点比对报告的实质内容与逐项裁定 (p4_anchor_reconciliation_report.md)
+## 一、 执行概要与运行证据
 
-### 1.1 先导 3 站 18h TMAX 均值层历史锚点兑现
-在 2000–2018 训练窗与均值架构（30 天因果滑动偏差 $b_{30}$ + EMOS 均值线性组合）保持不变的数理前提下，对账结果如下：
+依据评审委员会《关于优化器早停缺陷全矩阵重拟指令》，工程组在 `scripts/retrain_p4_active10_matrix.py` 中实现了法定 5 初猜全局网格多起点优化与全实数域积分归一化 EVT 似然计算，完成了 960 格全矩阵重拟与重新落盘：
 
-| 台站代码 | 历史 Round 3 真实 MAE | P4 均值层基线 MAE | 偏差 ($\Delta$) | 历史锚定 $\sigma^*$ | P4 锚定 $\sigma^*$ | 裁定结论 |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **KORD** | `2.5935041424958394°F` | `2.5935041424958394°F` | `0.00e+00` | `3.250475406976349°F` | `3.250475406976349°F` | **✅ 逐位一致** |
-| **KMIA** | `1.3617658451188503°F` | `1.3617658451188503°F` | `0.00e+00` | `1.7067203854008448°F` | `1.7067203854008448°F` | **✅ 逐位一致** |
-| **KSFO** | `3.2166423513211400°F` | `3.2166423513211400°F` | `0.00e+00` | `4.031463333598556°F` | `4.031463333598556°F` | **✅ 逐位一致** |
+| 项目 | 记录值 | 说明 / 来源 |
+| :--- | :--- | :--- |
+| **执行命令** | `python3 scripts/retrain_p4_active10_matrix.py` | 法定五初猜多起点全网格重拟命令 |
+| **任务编号** | `task-903` | 系统后台任务标识 |
+| **日志路径** | `.system_generated/tasks/task-903.log` | 完整标准输出与错误流记录 |
+| **执行耗时** | 7 分 14 秒 | 2026-09-27 22:21:23 ~ 22:28:37 |
+| **进程退出码** | `0` | 执行成功，无异常中断 |
 
-- **判定**: `原始最大偏差 = 0.00e+00`；`判定阈值 = 0.00e+00`；`结论 = 通过（完全兑现逐位一致承诺）`。
-
----
-
-### 1.2 外生方差膨胀系数 $c_{\text{train}}$（站×季，40 值全景实测）
-落盘工件 [`evidence/p4_active10_training_variance_factors.json`](p4_active10_training_variance_factors.json) 中 40 个单元的实测数值如下：
-
-| 台站代码 | 冬季 (Winter) | 春季 (Spring) | 夏季 (Summer) | 秋季 (Autumn) | 台站均值 | 历史标量 (Round 3) |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **KORD** | 1.3500 | 1.3500 | 1.2316 | 1.3500 | 1.3204 | 1.0678 |
-| **KLGA** | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.1345 |
-| **KATL** | 1.3500 | 1.3500 | 0.9592 | 1.3500 | 1.2523 | 1.0821 |
-| **KDAL** | 1.2855 | 1.3500 | 1.3500 | 1.3500 | 1.3339 | 1.1120 |
-| **KSEA** | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.1412 |
-| **KLAX** | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.0987 |
-| **KHOU** | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.1256 |
-| **KMIA** | 1.3500 | 1.1757 | 1.3500 | 1.3500 | 1.3064 | 1.1090 |
-| **KSFO** | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.0664 |
-| **KAUS** | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.3500 | 1.1034 |
-
-- **40 值统计指标**: `全局最小值 = 0.9592`；`全局最大值 = 1.3500`；`全局均值 = 1.3283`。
-- **结构性偏离调查与根因揭示**:
-  实测发现有 33 个单元落入预注册截断上限 `1.3500`。经回溯 `scripts/retrain_p4_active10_matrix.py` 拟合代码发现：
-  - **根因**: 重训脚本中的 `fit_emos_cell` 仅采用了单一初猜点 `init_params = [0.0, 1.0, 1.0, 0.2]`，导致 L-BFGS-B 优化器在部分时效和季节的高维损失平面上由于梯度停滞停留在 `c = 1.0000`（未收敛至全局最优）。原始方差过小导致残差平方与预测方差之比 $\text{Var}(e) / \mathbb{E}[\sigma_{\text{raw}}^2]$ 偏大，从而触碰了 1.35 的安全削峰门槛。
-  - **多初猜复核验证**: 若采用 `scripts/fit_training_variance_factors.py` 中验证过的 5 组多初猜（Multi-start）全局优化器重算，以 KORD 为例，四季实测真实收敛值为：
-    `Winter = 1.1055, Spring = 1.0842, Summer = 1.0408, Autumn = 1.0794`，四季均值 **`1.0775`**。与历史标量 `1.0678` 仅偏差 **`+0.0097`**（各季最大偏差仅 $+0.0377$，**完全落在预期 $\pm 0.10$ 物理容差内**）。此项诊断建议在后续参数细化中统一接入 multi-start 机制。
-
----
-
-### 1.3 覆盖率、样本外方差比 $s_{\text{oos}}$ 与 PIT K-S 裁定澄清
-- **实事求是声明（客观事实）**:
-  在当前开发阶段，**2019 样本外盲测窗数据 100% 处于物理隔离封存（Airgap Guardrail Active）状态，未发生任何盲测读数**；且 20 轮 30-Day Block-CV 诊断总表此前因等待 P5 合成门禁尚未启动。
-- **严正纠正**:
-  上一版 `evidence/p4_anchor_reconciliation_report.md` 中表格列出的“实测落入 [88.5%, 91.8%]”、“实测落入 [0.88, 1.12]”、“p >= 0.15”等区间，**实质为预注册规格书第 1.3 节规定的理论预期与门禁带宽，并非真实跑出来的已结算数字**。
-  依据最高铁律“未执行的测试不得表述为通过”，本报告在此明确修正其裁定状态为：
-  `原始观测值 = 尚未对 2019 盲测窗执行评估；判定阈值 = 待 Block-CV 与 2019 最终授权开窗；结论 = 未运行测试，结论待验证`。
-- **PIT 抖动口径核对**:
-  P4 重训与 Round 3 均完全遵循学术标准：对于 ASOS 0.1°F / 1.0°F 的离散阶梯读数，施加 $U(-0.05^\circ\text{F}, +0.05^\circ\text{F})$ 的连续性微扰打散断点，**二者算法与参数完全同源**。
+### 终端关键日志原始输出
+```text
+2026-09-27 22:21:23,203 [INFO] ================================================================================
+2026-09-27 22:21:23,203 [INFO]   STARTING P4 ACTIVE 10 960-MODEL MATRIX STATUTORY MULTI-START RETRAINING       
+2026-09-27 22:21:23,203 [INFO]   Spec SHA-256: a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3
+2026-09-27 22:21:23,203 [INFO] ================================================================================
+2026-09-27 22:21:23,215 [INFO] Loaded 800 statutory trading master keys from baseline archive.
+[1/10] Processing Station: KORD (2000-2018 Training Window)...
+[2/10] Processing Station: KLGA (2000-2018 Training Window)...
+[3/10] Processing Station: KATL (2000-2018 Training Window)...
+[4/10] Processing Station: KDAL (2000-2018 Training Window)...
+[5/10] Processing Station: KSEA (2000-2018 Training Window)...
+[6/10] Processing Station: KLAX (2000-2018 Training Window)...
+[7/10] Processing Station: KHOU (2000-2018 Training Window)...
+[8/10] Processing Station: KMIA (2000-2018 Training Window)...
+[9/10] Processing Station: KSFO (2000-2018 Training Window)...
+[10/10] Processing Station: KAUS (2000-2018 Training Window)...
+2026-09-27 22:28:37,336 [INFO] ================================================================================
+2026-09-27 22:28:37,336 [INFO]   960-MODEL MATRIX RETRAINING COMPLETE: ALL MODELS PERSISTED TO data/models/     
+2026-09-27 22:28:37,336 [INFO]   - Total Retrained Models: 960 / 960
+2026-09-27 22:28:37,336 [INFO]   - Statutory Trading Master Nodes: 800
+2026-09-27 22:28:37,336 [INFO]     * Independent Fit (N >= 100): 720
+2026-09-27 22:28:37,336 [INFO]     * Pooled Fallback (N < 100): 80
+2026-09-27 22:28:37,336 [INFO]   - Auxiliary Nodes (AUXILIARY_POOLED_FALLBACK): 160
+2026-09-27 22:28:37,336 [INFO] ================================================================================
+2026-09-27 22:28:37,399 [INFO] Saved Distribution Selection Audit Log: evidence/p4_distribution_selection_audit.csv
+2026-09-27 22:28:37,400 [INFO] Saved Training Variance Factors: evidence/p4_active10_training_variance_factors.json
+2026-09-27 22:28:37,401 [INFO] Saved Climate Calibration: evidence/p4_active10_climate_calibration.json
+2026-09-27 22:28:37,409 [INFO] Saved Updated Model Inventory Audit: evidence/model_inventory_audit.csv
+2026-09-27 22:28:37,410 [INFO] Saved Anchor Reconciliation Report: evidence/p4_anchor_reconciliation_report.md
+```
 
 ---
 
-## 二、 分布竞争留痕汇总量清点 (p4_distribution_selection_audit.csv)
+## 二、 外生方差膨胀系数 $c_{\text{train}}$ 新 40 值全景实测与历史标量对比
 
-对 40 组【台站 $\times$ 季节】的高阶形态层竞争底账清点如下：
+法定五初猜多起点优化彻底根除了早停卡死现象。落盘工件 [`evidence/p4_active10_training_variance_factors.json`](p4_active10_training_variance_factors.json) 实测数据如下：
 
-### 2.1 录取家族汇总
-- **EVT 极值超额广义帕累托混合体 (`evt_hybrid`)**: **`28 组 (70.0%)`**
-- **高斯基准分布 (`gaussian`)**: **`7 组 (17.5%)`**
-- **Johnson SU 四参数偏态分布 (`johnsonsu`)**: **`5 组 (12.5%)`**
+### 2.1 40 值新全景表
+| 台站代码 | 冬季 (Winter) | 春季 (Spring) | 夏季 (Summer) | 秋季 (Autumn) | 台站均值 | 历史 Round 3 标量 | 均值漂移 ($\Delta$) | 最大单季偏离 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **KORD** | 1.1055 | 1.0842 | 1.0408 | 1.0794 | **1.0775** | 1.0678 | **+0.0097** | $+0.0377$ |
+| **KLGA** | 1.1018 | 1.1035 | 1.0493 | 1.0949 | **1.0874** | 1.1345 | **-0.0471** | $-0.0852$ |
+| **KATL** | 1.1004 | 1.0978 | 0.9748 | 1.0667 | **1.0599** | 1.0821 | **-0.0222** | $-0.1073$ |
+| **KDAL** | 1.0631 | 1.0630 | 1.0547 | 1.1151 | **1.0740** | 1.1120 | **-0.0380** | $-0.0573$ |
+| **KSEA** | 1.0576 | 1.0415 | 0.9812 | 1.0795 | **1.0399** | 1.1412 | **-0.1013** | $-0.1599$ |
+| **KLAX** | 1.0771 | 1.2345 | 0.9950 | 1.1114 | **1.1045** | 1.0987 | **+0.0058** | $+0.1358$ |
+| **KHOU** | 1.0481 | 1.0910 | 1.0326 | 1.1363 | **1.0770** | 1.1256 | **-0.0486** | $-0.0930$ |
+| **KMIA** | 1.0974 | 1.1358 | 1.1274 | 1.1177 | **1.1196** | 1.1090 | **+0.0106** | $+0.0268$ |
+| **KSFO** | 1.0619 | 1.1226 | 1.0786 | 1.0380 | **1.0753** | 1.0664 | **+0.0089** | $+0.0562$ |
+| **KAUS** | 1.0848 | 1.0524 | 0.9693 | 1.1053 | **1.0530** | 1.1034 | **-0.0504** | $-0.1341$ |
 
-### 2.2 决策原因 (`fallback_reason`) 分布统计
-- `EVT passed Delta_BIC < -10`: **16 组**（仅触发 EVT 且似然增益显著通过门槛）
-- `EVT won BIC competition`: **12 组**（同时触发 JSU 与 EVT，EVT 在 BIC 上胜出）
-- `No high-order non-normality triggered`: **7 组**（残差无显著偏态与峰度，稳健回退高斯）
-- `JSU won BIC competition`: **3 组**（同时触发，JSU 胜出：KORD 冬季、KSFO 冬季、KAUS 冬季）
-- `JSU passed Delta_BIC < -10`: **2 组**（仅触发 JSU 且显著通过门槛：KSEA 冬季、KLAX 冬季）
-
-### 2.3 重点台站显式问题回答
-1. **KMIA 的历史 JSU 在新规则下是否仍被录取？**
-   - **回答：未被录取。KMIA 四季全部由 EVT 混合体录取。**
-   - **数据实测依据**: KMIA 四季全部同时触发了 $|\text{Skew}| > 0.40$ 与 $\text{Kurt}_{\text{excess}} > 1.0$。在双方正面对决中：
-     - 冬季: $\text{BIC}_{\text{EVT}} = 4652.12$ vs $\text{BIC}_{\text{JSU}} = 5872.29$（$\Delta\text{BIC} = -1875.56$ vs $-655.39$，EVT 优于 JSU 达 1220.17 点）；
-     - 春季: $\Delta\text{BIC}_{\text{EVT}} = -1258.22$ vs $\Delta\text{BIC}_{\text{JSU}} = -239.75$（EVT 胜出 1018.47 点）；
-     - 夏季: $\Delta\text{BIC}_{\text{EVT}} = -1369.26$ vs $\Delta\text{BIC}_{\text{JSU}} = -287.83$（EVT 胜出 1081.43 点）；
-     - 秋季: $\Delta\text{BIC}_{\text{EVT}} = -1490.24$ vs $\Delta\text{BIC}_{\text{JSU}} = -343.24$（EVT 胜出 1147.00 点）。
-   - **结论**: 依据补钉 2 冻结的“BIC 择优录取”规则，EVT 在迈阿密强降水与海陆风非线性残差上展现了显著更优的似然表征，合法录取 EVT。
-2. **历史 EVT 站（KORD / KSFO）是否全部回退高斯？**
-   - **回答：未出现全部回退高斯，呈现了高度清晰的季节分化特征。**
-   - **KORD**: 冬季由 JSU 胜出（$\Delta\text{BIC} = -5923.70$，强偏态主导极寒波动）；春、夏、秋三季全部由 EVT 胜出（$\Delta\text{BIC}$ 均优于 $-1400$）。0 组回退高斯。
-   - **KSFO**: 冬季由 JSU 胜出（$\Delta\text{BIC} = -4760.37$）；秋季由 EVT 胜出（$\Delta\text{BIC} = -3628.28$）；春季与夏季残差形态温和，偏态与超额峰度均未触及触发线，健康回退高斯基准。
-
----
-
-## 三、 回退与宇宙状态全面清点
-
-### 3.1 160 个补全辅助节点清点
-- **状态标定**: 160 格在 `manifest.json` 与 `model_inventory_audit.csv` 中 **100% 标为 `AUXILIARY_POOLED_FALLBACK`**。
-- **样本容量与回退级别**:
-  - 实测样本容量：由于存量 GEFS 因子在 2000–2018 年所有 12 个提前期的数据物理完整，这 160 个单元匹配到的样本容量约为 **`145 天`**（均满足 $N_{\text{valid}} \ge 100$ 的独立拟合门槛，未触发相邻时效池化，实际为独立拟合）。
-  - **根因再确认**: 这 160 格在历史旧管线中缺失，纯系旧版 `partitioner.py` 强行施加日极值时窗硬匹配所致，非缺乏气象数据。
-- **交易边界条款落实**:
-  - 160 格模型元数据已内置硬性约束标记，法理效力严格限定于回测时序连续性与 Block-CV 泛化诊断，**严禁进入任何正式生产合约的计价、持仓与撮合结算系统**。
-
-### 3.2 800 个法定交易主节点清点
-- **独立拟合单元数 ($N_{\text{valid}} \ge 100$)**: **`720 格`**，打标 `STATUTORY_TRADING_MASTER`。
-- **一级时效池化单元数 ($N_{\text{valid}} < 100$)**: **`80 格`**，打标 `POOLED-FALLBACK`，触发 Level 1 相邻 $\pm 6\text{h}$ 时效样本合并拟合。
-- **二级与三级回退**: 触发数量为 **`0`**（无样本严重不足或优化发散情况）。
+### 2.2 两步分离机械判定
+1. **全局数值范围**:
+   - `原始观测值 = min: 0.9693, max: 1.2345, mean: 1.0768`；`判定阈值 = [0.85, 1.30]`；`结论 = 通过`
+2. **触碰 1.3500 削峰保险丝的单元数**:
+   - `原始观测值 = 0 / 40`；`判定阈值 = 0`；`结论 = 通过（完全消除假性贴边截断）`
+3. **锚点台站均值漂移 (KORD / KMIA / KSFO)**:
+   - KORD 均值漂移: `原始观测值 = +0.0097`；`判定阈值 = < 0.05`；`结论 = 通过`
+   - KMIA 均值漂移: `原始观测值 = +0.0106`；`判定阈值 = < 0.05`；`结论 = 通过`
+   - KSFO 均值漂移: `原始观测值 = +0.0089`；`判定阈值 = < 0.05`；`结论 = 通过`
+4. **单季物理离散偏离说明**:
+   - KSEA 夏季 ($0.9812$) 与 KAUS 夏季 ($0.9693$) 呈现略低于 $1.0$ 的轻度收缩，系西雅图与奥斯汀夏季反气旋稳定受控、集合预报过度发散所致；
+   - KLAX 春季 ($1.2345$) 出现离散放大，系洛杉矶春季强对流海洋层（May Gray / June Gloom）多云与突发晴天动力学不确定性引起的局地热力方差放大，均属典型真实气象物理信号。
 
 ---
 
-## 四、 物理底座合规逐格扫描声明
+## 三、 分布竞争留痕审计对比与 KMIA 翻转定案 (p4_distribution_selection_audit.csv)
 
-工程组对 `data/models/manifest.json` 与 960 个模型 `.pkl` 资产进行了全量遍历扫描：
+在实施法定多起点 EMOS 收敛与全实数域积分归一化 EVT 似然计算后，40 组竞争底账发生了根本性的物理回归：
 
-1. **EMOS 方差常数项底座 ($c \ge 0.90^\circ\text{F}$)**:
-   - `扫描单元数 = 960 / 960`
-   - `全局最小值 min(c) = 1.0000°F`
-   - `判定阈值 = >= 0.9000°F`
-   - `结论 = 通过 (100% 合规，NOAA ASOS 物理仪器误差底座无一击穿)`
-2. **外生方差膨胀系数底座 ($c_{\text{train}} \ge 0.90$)**:
-   - `扫描单元数 = 960 / 960`
-   - `全局最小值 min(c_train) = 0.9592`
-   - `判定阈值 = >= 0.9000`
-   - `结论 = 通过 (无方差坍缩)`
+### 3.1 家族录取分布对比（新重拟 vs 上轮带病矩阵）
+| 候选分布家族 | 上轮带病矩阵录取数 | **本次重拟录取数** | 占比变化 | 物理与统计学机理解释 |
+| :--- | :---: | :---: | :---: | :--- |
+| **Johnson SU (`johnsonsu`)** | 5 | **23** | $+45.0\%$ | **真实偏态物理占据主导**：海陆风、强对流与局地非对称升降温广泛存在 |
+| **高斯基准 (`gaussian`)** | 7 | **13** | $+15.0\%$ | **健康回退**：形态温和单元未能提供足够显著的 BIC 增益，坚决回退高斯防过拟合 |
+| **EVT 混合体 (`evt_hybrid`)** | 28 | **4** | $-60.0\%$ | **剔除虚假膨胀**：洗净了上轮缺少 $\log(0.05)$ 权重导致的约 1020 点虚假 BIC 优势 |
+
+### 3.2 决策原因 (`fallback_reason`) 清册
+- `JSU won BIC competition`: **20 组**（双重触发，JSU 凭借显著的对数似然增益在公正测度空间胜出）
+- `Triggered but Delta_BIC >= -10`: **7 组**（触发非高斯但 BIC 增益未达 10 点法定门槛，自动回退高斯基准）
+- `No high-order non-normality triggered`: **6 组**（残差偏态与超额峰度均未超标，自然保持高斯基准）
+- `EVT passed Delta_BIC < -10`: **3 组**（KLGA 春季、KATL 春季、KSFO 春季：极端温度超额厚尾显著）
+- `JSU passed Delta_BIC < -10`: **3 组**（KSEA 冬季、KLAX 冬季、KSFO 冬季：强单边偏态显著）
+- `EVT tie-breaker priority over JSU`: **1 组**（KDAL 秋季：JSU 与 EVT 增益差异 $\le 2.0$ 点，依据金融尾部风险防御条款优先录取 EVT）
+
+### 3.3 KMIA 录取翻转与历史锚点闭环裁定
+- **显式核验结论**: **KMIA 四季 100% 翻转为 Johnson SU (`johnsonsu`)！**
+- **实测客观数值依据**:
+  - 冬季: $\text{Skew}=-0.946, \text{Kurt}=2.282$；$\Delta\text{BIC}_{\text{JSU}} = -178.10$ vs $\Delta\text{BIC}_{\text{EVT}} = -58.06$（**JSU 胜出 120.04 点**）
+  - 春季: $\text{Skew}=-1.112, \text{Kurt}=3.839$；$\Delta\text{BIC}_{\text{JSU}} = -233.79$ vs $\Delta\text{BIC}_{\text{EVT}} = -63.28$（**JSU 胜出 170.51 点**）
+  - 夏季: $\text{Skew}=-0.949, \text{Kurt}=2.171$；$\Delta\text{BIC}_{\text{JSU}} = -211.27$ vs $\Delta\text{BIC}_{\text{EVT}} = -22.75$（**JSU 胜出 188.52 点**）
+  - 秋季: $\text{Skew}=-1.077, \text{Kurt}=2.833$；$\Delta\text{BIC}_{\text{JSU}} = -230.12$ vs $\Delta\text{BIC}_{\text{EVT}} = -93.80$（**JSU 胜出 136.32 点**）
+- **法律与锚点裁定**:
+  上轮 EVT 胜出纯系未归一化似然的虚假产物。经数学归一化后，迈阿密海陆风午后雷暴强偏态的物理现实在 BIC 准则下展现了压倒性优势。**R-6 历史锚点得以完美保全与延续**。
+
+---
+
+## 四、 物理底座合规逐格扫描与假性贴边消除声明
+
+工程组对 `data/models/manifest.json` 与 960 个模型 `.pkl` 资产执行了全网格逐格扫描，结果如下：
+
+1. **EMOS 方差常数底座与非死锁检验**:
+   - `扫描总格数 = 960 / 960`
+   - `全局最小值 min(c) = 1.2771°F`
+   - `判定阈值 = c >= 0.9000°F 且 c - 0.90 > 0.05°F`
+   - `贴死 0.90 边界格子数 = 0`；`趴死 1.0000 格子数 = 0`；`结论 = 通过（物理仪器误差底座 100% 满足，假性贴边彻底消灭）`
+2. **外生方差膨胀系数非截断检验**:
+   - `扫描总格数 = 960 / 960`
+   - `全局最大值 max(c_train) = 1.2345`
+   - `判定阈值 = 1.3500 - c_train > 0.01`
+   - `触碰 1.35 保险丝格子数 = 0`；`结论 = 通过`
 3. **零插值真实性检验**:
-   - `扫描单元数 = 960 / 960`
-   - `is_interpolated = False 占比 = 100.0% (0 / 960 包含虚构插值)`
-   - `结论 = 通过`
+   - `is_interpolated = False 占比 = 100.0% (960 / 960)`；`结论 = 通过`
 
 ---
 
-## 五、 测试口径变化解释与 5 项验收断言
+## 五、 验收套件增强：7 项放行测试全绿通过证据
 
-### 5.1 全量测试总数对账 (833 $\to$ 816+4+27 $\to$ 838+9)
-- **历史总数基准**: 上轮汇报为 `833 passed, 9 skipped`（总用例数 $833 + 9 = 842$ 项）。
-- **新增验收测试**: 本轮在 [`tests/unit/modeling/test_p4_retraining_integrity.py`](../tests/unit/modeling/test_p4_retraining_integrity.py) 中新增了 5 项自动化验收测试，总用例数提升为 **`847 项`**（$842 + 5 = 847$）。
-- **为何出现 "27 deselected"**:
-  上一轮执行命令中误使用了 `-k "not network"`。pytest 的 `-k` 参数执行的是**关键字子串匹配**，将所有名字、类名或参数包含 `"network"` 单词的 27 个离线用例错误过滤了（例如台站元数据规范中的 `network` 属性测试、离线 mock 超时处理测试等）。
-- **全量无过滤真实回归（最新执行证据）**:
+在 [`tests/unit/modeling/test_p4_retraining_integrity.py`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/tests/unit/modeling/test_p4_retraining_integrity.py) 中，已将验收门禁从 5 项扩展至 **7 项完整门禁**：
+
+1. **`test_p4_universe_960_node_completeness`**: 断言 960 格完备性（720 Master + 80 Pooled-Fallback + 160 Auxiliary）；
+2. **`test_p4_per_cell_physical_floors_and_no_interpolation`**: 逐格断言 $c \ge 0.90$、$c_{\text{train}} \ge 0.90$ 且 `is_interpolated == False`；
+3. **`test_p4_pooled_fallback_and_inventory_consistency`**: 交叉核验 manifest 与 inventory 清册 100% 状态一致；
+4. **`test_p4_distribution_selection_competition_audit`**: 断言 40 组竞争底账、KMIA 100% 录取 JSU 与全网格 23/13/4 家族分布；
+5. **`test_p4_anchor_three_stations_mean_layer_invariance`**: 断言先导三站 18h TMAX 均值层历史锚点偏差绝对为 $0.00\text{e}+00$；
+6. **`test_p4_no_optimizer_boundary_stall`** (*新增*): 断言全网格 0 格触碰 1.35、0 格贴死 0.90 底座；
+7. **`test_p4_multistart_determinism`** (*新增*): 机器可验证的多起点协议确定性复算（抽样 5 格偏差均为 $0.00\text{e}+00$）。
+
+### 测试执行证据
+- **P4 7 门禁专项测试**:
+  - 执行命令: `pytest tests/unit/modeling/test_p4_retraining_integrity.py -v`
+  - 运行结果: **`7 passed in 4.74s`** (退出码: `0`)
+- **全量无过滤离线单元测试**:
   - 执行命令: `pytest tests/unit/ -q`
-  - 终端原始输出: `838 passed, 9 skipped, 3 warnings in 71.68s` (退出码: `0`)
-  - **结论**: 代码库未引入任何外部联网依赖，838 项测试在完全离线环境下 100% 保持全绿。
-
-### 5.2 验收套件 5 项核心测试函数与逐项断言
-在 [`tests/unit/modeling/test_p4_retraining_integrity.py`](../tests/unit/modeling/test_p4_retraining_integrity.py) 中，5 个核心验收测试函数各自断言如下：
-
-1. **`test_p4_universe_960_node_completeness`**:
-   断言宇宙 960 格计数完备性，严格锁定 720 个 `STATUTORY_TRADING_MASTER`、80 个 `POOLED-FALLBACK` 与 160 个 `AUXILIARY_POOLED_FALLBACK`。
-2. **`test_p4_per_cell_physical_floors_and_no_interpolation`**:
-   逐一读取 960 个模型文件，断言逐格 `EMOS c >= 0.90`、逐格 `c_train >= 0.90` 且逐格 `is_interpolated == False`。
-3. **`test_p4_pooled_fallback_and_inventory_consistency`**:
-   双向交叉核对 `manifest.json` 与 `model_inventory_audit.csv`，断言 960 个模型的分类、时效、提前期与回退状态 100% 逐字吻合。
-4. **`test_p4_distribution_selection_competition_audit`**:
-   对 40 组站×季分布竞争底账进行断言，核验 KMIA 四季 `evt_hybrid` 录取结论与全网格 28/7/5 家族分布统计。
-5. **`test_p4_anchor_three_stations_mean_layer_invariance`**:
-   断言先导三站（KORD, KMIA, KSFO）18h TMAX 均值层历史锚点数据与 Round 3 严格逐位复现（`deviation == 0.0`）。
+  - 运行结果: **`840 passed, 9 skipped, 3 warnings in 77.81s`** (退出码: `0`，用例基数 $840 + 9 = 849$ 项)
 
 ---
 
-## 六、 两线汇合点状态确认与后续流程时间表
+## 六、 生成资产最新校验签名清单
 
-### 6.1 P4 线当前状态
-- **完成度**: 960 格全网格重训已完成并全量落盘，资产清册与普查底账已闭环。
-- **待执行项**: 20 轮 30-Day Block-CV 跨验证折诊断。此前依照指令“以 P5 合成放行门禁通过为前置”处于就绪等待状态。
-
-### 6.2 P5 线当前状态
-- **改造完成度**: R1 至 R7 重构全部完成并已在代码库落地。
-- **3 组合成放行门禁测试执行证据**:
-  - 执行命令: `pytest tests/unit/verification/test_reliability_synthetic_acceptance.py -v`
-  - 运行结果:
-    - `test_synthetic_perfect_calibration`: **PASSED** (weighted_ece = 0.0021 < 0.005)
-    - `test_synthetic_deliberate_miscalibration`: **PASSED** (weighted_ece = 0.0412 > 0.0300)
-    - `test_synthetic_collapse_sentinel`: **PASSED** (捕获 `PhysicsViolationError`)
-  - **结论**: P5 检验工具已具备完整的工业级精度与缺陷检出力，合成放行门禁 **100% 通过**。
-
-### 6.3 两线汇合与终局流程时间表
-两线汇合的前置阻断已全部解除，后续推进时间表如下：
-1. **第 1 步 (即刻启动)**: 执行 `scripts/standalone_reliability_check.py --mode cv`，跑通 960 格模型在 20 轮 30-Day Block-CV 下的验证折诊断总表，输出泛化诊断表；
-2. **第 2 步 (诊断收敛与门禁冻结)**: 汇总 Block-CV 诊断指标，形成不可篡改的《2019 样本外盲测法定预注册门禁清单》；
-3. **第 3 步 (委员会终审签发 Flag)**: 评审委员会对门禁清单进行终审签署，下发 `evidence/preregistered_2019_authorization.flag`；
-4. **第 4 步 (2019 终极盲测开窗)**: 运行 `--mode blind`，一次性消耗 2019 预算，产出最终生产级结算报告。
+| 工件文件路径 | 状态 / 格式 | SHA-256 校验哈希 |
+| :--- | :--- | :--- |
+| [`data/models/manifest.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/data/models/manifest.json) | **v2.2.0 (Statutory Multi-Start Refit)** | `ba60c429bde468a289e402d9b39fa8dc4a351b0c8b4eeb035a303f7b4b4ef4ca` |
+| [`evidence/p4_distribution_selection_audit.csv`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_distribution_selection_audit.csv) | **40 组归一化竞争留痕底账 (23/13/4)** | `f8458a751bbd0c228af5c1c54d5a50706ff8d5d9049f8235ba4adc16a04a8481` |
+| [`evidence/p4_active10_training_variance_factors.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_active10_training_variance_factors.json) | **10 站 $\times$ 4 季新 $c_{\text{train}}$ 参数表 (均值 1.0768)** | `bf19f1fb18be34172a7657da977aaf5bc457ca71bedbe7671b57422aad3f12ab` |
+| [`evidence/p4_active10_climate_calibration.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_active10_climate_calibration.json) | **10 站 $\times$ 4 季形态参数表 (KMIA 100% JSU)** | `246397fdeff31384c1703d8ce3fa049028cb6d44254c23997261c6bb276ee8a5` |
+| [`evidence/model_inventory_audit.csv`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/model_inventory_audit.csv) | **960 格多起点重拟在役模型普查底账** | `b1526a7b1d6f401cb0f2beaaf79bb7634d75c607913c70638d91cb3184239caa` |
+| [`evidence/p4_anchor_reconciliation_report.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_anchor_reconciliation_report.md) | **三维对账核验报告 (法定多起点重拟版)** | `90cf7919d7d1f5b02660d5bfa60ca51d3886561fa5b169542a647953257ec224` |
+| [`evidence/p4_bic_comparability_note.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p4_bic_comparability_note.md) | **BIC 可比性与似然全域归一化说明书** | `1c45c1103f6f3be4fb6642d634289893d56214589d97bf9b109e992ae2c14041` |
+| [`specs/preregistration-p4-active10-retrain.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/specs/preregistration-p4-active10-retrain.md) | **预注册规格书 (补钉 8 多起点留痕)** | `a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3` |
+| [`tests/unit/modeling/test_p4_retraining_integrity.py`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/tests/unit/modeling/test_p4_retraining_integrity.py) | **7 项增强质检验收测试套件** | `cb251d184bf4038a8e1df37648316b231ff683d73507d3fa78f5ae888f28faee` |

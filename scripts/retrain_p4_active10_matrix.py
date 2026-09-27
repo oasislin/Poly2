@@ -178,9 +178,9 @@ def fit_emos_cell(
             # Level 3 prior baseline
             return (0.0, 1.0, sigma_floor, 0.1), "POOLED-FALLBACK-L3", 3
 
-    ens_m = training_data["ens_mean"].to_numpy()
-    ens_v = training_data["ens_var"].to_numpy()
-    y_true = training_data["obs_temp_f"].to_numpy()
+    ens_m = training_data["ens_mean"].to_numpy(dtype=np.float64)
+    ens_v = training_data["ens_var"].to_numpy(dtype=np.float64)
+    y_true = training_data["obs_temp_f"].to_numpy(dtype=np.float64)
 
     def crps_loss(params):
         a, b, c, d = params
@@ -191,23 +191,50 @@ def fit_emos_cell(
         crps = sig * (z * (2 * stats.norm.cdf(z) - 1) + 2 * stats.norm.pdf(z) - 1.0 / np.sqrt(np.pi))
         return float(np.mean(crps))
 
-    init_params = [0.0, 1.0, max(sigma_floor, 1.0), 0.2]
-    bounds = [(-20.0, 20.0), (0.4, 1.6), (sigma_floor, 15.0), (0.0, 5.0)]
+    init_a = float(np.mean(y_true) - np.mean(ens_m))
+    init_b = 1.0
+    init_c = float(max(sigma_floor, np.std(y_true - ens_m)))
+    init_d = 0.5
+    bounds = [(-50.0, 50.0), (0.0, 3.0), (sigma_floor, 20.0), (0.0, 3.0)]
 
-    try:
-        res = optimize.minimize(crps_loss, init_params, bounds=bounds, method="L-BFGS-B")
-        if res.success:
-            params = tuple(float(x) for x in res.x)
-            return params, fallback_status, fallback_level
-    except Exception as exc:
-        logger.warning("Optimization failed: %s. Using prior fallback.", exc)
+    # Statutory 5-Guess Multi-Start Grid (Patch 8, Zero Random Sources)
+    guesses = [
+        [init_a, init_b, init_c, init_d],
+        [0.0, 1.0, 2.0, 0.5],
+        [-2.0, 1.05, 3.0, 0.8],
+        [2.0, 0.95, 1.5, 0.3],
+        [init_a * 0.5, 1.0, sigma_floor, 0.2],
+    ]
+
+    best_res = None
+    best_loss = float("inf")
+
+    for g in guesses:
+        try:
+            res = optimize.minimize(
+                crps_loss,
+                x0=g,
+                bounds=bounds,
+                method="L-BFGS-B",
+                options={"maxiter": 1000, "ftol": 1e-9, "gtol": 1e-7},
+            )
+            if res.success and res.fun < best_loss:
+                best_loss = res.fun
+                best_res = res
+        except Exception:
+            continue
+
+    if best_res is not None:
+        params = tuple(float(x) for x in best_res.x)
+        return params, fallback_status, fallback_level
 
     return (0.0, 1.0, sigma_floor, 0.1), "POOLED-FALLBACK-L3", 3
 
 
 def main() -> int:
     logger.info("================================================================================")
-    logger.info("  STARTING P4 ACTIVE 10 960-MODEL MATRIX RETRAINING (Spec b607cc60...e9247)   ")
+    logger.info("  STARTING P4 ACTIVE 10 960-MODEL MATRIX STATUTORY MULTI-START RETRAINING       ")
+    logger.info("  Spec SHA-256: a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3")
     logger.info("================================================================================")
 
     # 1. Enforce Airgap
@@ -304,8 +331,8 @@ def main() -> int:
                     c_l, loc_l, scale_l = stats.genpareto.fit(ex_l, floc=0.0)
                     c_r, loc_r, scale_r = stats.genpareto.fit(ex_r, floc=0.0)
                     loglik_evt = float(np.sum(stats.norm.logpdf(z_scores[(z_scores >= u_l) & (z_scores <= u_r)])))
-                    loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_l, c_l, scale=scale_l)))
-                    loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_r, c_r, scale=scale_r)))
+                    loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_l, c_l, scale=scale_l))) + float(len(ex_l) * math.log(0.05))
+                    loglik_evt += float(np.sum(stats.genpareto.logpdf(ex_r, c_r, scale=scale_r))) + float(len(ex_r) * math.log(0.05))
                     bic_evt = 4.0 * math.log(n_samples) - 2.0 * loglik_evt
                     evt_fit_params = {
                         "u_left": u_l, "u_right": u_r,
@@ -479,7 +506,7 @@ def main() -> int:
                         "model_filename": f"data/models/{pkl_filename}",
                         "archived_path": "ACTIVE_PRODUCTION_MODEL",
                         "training_window": "2000-2018",
-                        "fitting_script_version": "scripts/retrain_p4_active10_matrix.py (spec b607cc60...e9247)",
+                        "fitting_script_version": "scripts/retrain_p4_active10_matrix.py (spec a3cb9954...4fb3, Statutory Multi-Start)",
                         "file_sha256": file_sha,
                         "status": node_status,
                     })
@@ -497,8 +524,11 @@ def main() -> int:
     # Step C: Write Updated Manifest & Evidence Artifacts
     # -------------------------------------------------------------------------
     manifest_data = {
-        "manifest_version": "2.1.0",
+        "manifest_version": "2.2.0",
         "status": "PRODUCTION_RETRAINED_V2",
+        "fitting_protocol": "STATUTORY_5_GUESS_MULTI_START",
+        "superseded_previous_matrix": "SUPERSEDED_BY_MULTISTART_REFIT",
+        "spec_sha256": "a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dataset_ref": "calib-dataset-v2.0",
         "train_start_year": 2000,
