@@ -6,7 +6,7 @@
 - **执行脚本**: [`scripts/retrain_p4_active10_matrix.py`](../scripts/retrain_p4_active10_matrix.py)
 - **法定拟合协议**: 补钉 8 规定的五初猜确定性全局多起点网格（Statutory 5-Guess Multi-Start Grid, 0 随机源）
 - **似然计算协议**: 全实数域全积分归一化拼接概率密度（Properly Spliced Density with $\log(0.05)$ Tail Mixing Weights）
-- **前置文件**: [`evidence/p4_bic_comparability_note.md`](p4_bic_comparability_note.md) (SHA-256: `1c45c1103f6f3be4fb6642d634289893d56214589d97bf9b109e992ae2c14041`)
+- **前置文件**: [`evidence/p4_bic_comparability_note.md`](p4_bic_comparability_note.md) (SHA-256: `2d76f3acb317f1681e3d1d1e1965763f562811a0aa4a8700b8b63f6aadaa88b0`)
 
 ---
 
