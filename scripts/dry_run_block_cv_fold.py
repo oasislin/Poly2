@@ -29,7 +29,6 @@ from src.modeling.resampling import BlockCrossValidator, fit_statutory_pipeline_
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 EVIDENCE_DIR = REPO_ROOT / "evidence"
 
 

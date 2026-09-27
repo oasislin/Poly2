@@ -16,12 +16,15 @@ Mandated by R2 Mainline Protocol & P3 Specification:
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+import logging
 import math
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 import numpy as np
 import pandas as pd
 
 from src.utils.airgap import AirgapViolationError, SEALED_YEAR, verify_year_whitelist
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_SEED = 20260923
@@ -382,7 +385,8 @@ def fit_statutory_pipeline_fold(
                 if res.success and res.fun < best_loss:
                     best_loss = res.fun
                     best_res = res
-            except Exception:
+            except (ValueError, RuntimeError, TypeError) as e:
+                logger.debug("EMOS multi-start candidate optimization error: %s", e)
                 continue
 
         if best_res is not None:
@@ -447,7 +451,8 @@ def fit_statutory_pipeline_fold(
             loglik_jsu = float(np.sum(stats.johnsonsu.logpdf(z_scores, gamma, delta, loc=xi, scale=lam)))
             bic_jsu = 4.0 * math.log(n_samples) - 2.0 * loglik_jsu
             jsu_params = {"gamma": gamma, "delta": delta, "xi": xi, "lambda": lam}
-        except Exception:
+        except (ValueError, RuntimeError, TypeError) as e:
+            logger.debug("Fold Johnson SU fit failure: %s", e)
             bic_jsu = None
 
     if evt_triggered:
@@ -469,7 +474,8 @@ def fit_statutory_pipeline_fold(
                 "gpd_left": {"shape_xi": c_l, "scale_beta": scale_l},
                 "gpd_right": {"shape_xi": c_r, "scale_beta": scale_r},
             }
-        except Exception:
+        except (ValueError, RuntimeError, TypeError) as e:
+            logger.debug("Fold EVT GPD fit failure: %s", e)
             bic_evt = None
 
     # Step 7: Resolve priority and selection
@@ -527,4 +533,52 @@ def fit_statutory_pipeline_fold(
         shape_params=shape_params,
         selection_audit=audit,
     )
+
+
+def evaluate_evt_tail_cdf(z: float, st_params: Dict[str, Any]) -> float:
+    """
+    Evaluate hybrid core Gaussian + EVT GPD tail cumulative distribution function F(z).
+    Enforces 0.05 tail mass weighting: F(u_l) = 0.05, F(u_r) = 0.95.
+    """
+    from scipy import stats
+
+    if math.isinf(z):
+        return 1.0 if z > 0 else 0.0
+
+    u_l, u_r = st_params["u_left"], st_params["u_right"]
+    xi_l, beta_l = st_params["gpd_left"]["shape_xi"], st_params["gpd_left"]["scale_beta"]
+    xi_r, beta_r = st_params["gpd_right"]["shape_xi"], st_params["gpd_right"]["scale_beta"]
+
+    if z < u_l:
+        val = 1.0 + xi_l * (u_l - z) / beta_l
+        return 0.0 if val <= 0 else float(0.05 * (val ** (-1.0 / xi_l)))
+    elif z > u_r:
+        val = 1.0 + xi_r * (z - u_r) / beta_r
+        return 1.0 if val <= 0 else float(1.0 - 0.05 * (val ** (-1.0 / xi_r)))
+    return float(stats.norm.cdf(z))
+
+
+def evaluate_evt_tail_pdf(z: float, st_params: Dict[str, Any]) -> float:
+    """
+    Evaluate hybrid core Gaussian + EVT GPD tail probability density function f(z).
+    Analytically consistent with evaluate_evt_tail_cdf.
+    """
+    from scipy import stats
+
+    u_l, u_r = st_params["u_left"], st_params["u_right"]
+    xi_l, beta_l = st_params["gpd_left"]["shape_xi"], st_params["gpd_left"]["scale_beta"]
+    xi_r, beta_r = st_params["gpd_right"]["shape_xi"], st_params["gpd_right"]["scale_beta"]
+
+    if z < u_l:
+        val = 1.0 + xi_l * (u_l - z) / beta_l
+        if val <= 0:
+            return 0.0
+        return float(0.05 * (1.0 / beta_l) * (val ** (-1.0 / xi_l - 1.0)))
+    elif z > u_r:
+        val = 1.0 + xi_r * (z - u_r) / beta_r
+        if val <= 0:
+            return 0.0
+        return float(0.05 * (1.0 / beta_r) * (val ** (-1.0 / xi_r - 1.0)))
+    return float(stats.norm.pdf(z))
+
 

@@ -194,15 +194,17 @@ def test_p4_multistart_determinism():
 
 def test_p4_evt_cdf_analytical_boundary_and_weights():
     """
-    Gate 8: EVT CDF Path Weights & Analytical Integral Verification.
+    Gate 8: EVT CDF Path Weights & Analytical/Numerical Integral Verification.
     Validates that:
     1. All calibrated EVT units adhere to physical bounds: u_l < u_r, beta > 0.
     2. Limits at infinity satisfy F(-inf) = 0.0 and F(+inf) = 1.0.
     3. Boundary values at u_l^- and u_r^+ evaluate exactly to 0.05 and 0.95 (0.05 tail mass).
     4. Analytical PPF inversion on tail quantile grids matches F(z) to within 1e-7.
     5. Tail regions exhibit strict monotonic non-decreasing behavior.
+    6. Direct numerical quadrature confirms left tail integral = 0.0500 and right tail integral = 0.0500.
     """
-    from scripts.standalone_reliability_check import _evaluate_evt_tail_cdf
+    from scipy import integrate
+    from src.modeling.resampling import evaluate_evt_tail_cdf, evaluate_evt_tail_pdf
 
     calib_path = EVIDENCE_DIR / "p4_active10_climate_calibration.json"
     with open(calib_path) as f:
@@ -226,14 +228,14 @@ def test_p4_evt_cdf_analytical_boundary_and_weights():
                 assert betar > 0.0, f"{st} {season}: beta_right {betar} <= 0"
 
                 # 2. Exact limits at infinity
-                assert _evaluate_evt_tail_cdf(float("-inf"), p) == 0.0
-                assert _evaluate_evt_tail_cdf(float("inf"), p) == 1.0
-                assert _evaluate_evt_tail_cdf(-10000.0, p) == 0.0
-                assert abs(_evaluate_evt_tail_cdf(10000.0, p) - 1.0) < 1e-12
+                assert evaluate_evt_tail_cdf(float("-inf"), p) == 0.0
+                assert evaluate_evt_tail_cdf(float("inf"), p) == 1.0
+                assert evaluate_evt_tail_cdf(-10000.0, p) == 0.0
+                assert abs(evaluate_evt_tail_cdf(10000.0, p) - 1.0) < 1e-12
 
                 # 3. Boundary values with 0.05 tail weight
-                f_ul = _evaluate_evt_tail_cdf(ul - 1e-9, p)
-                f_ur = _evaluate_evt_tail_cdf(ur + 1e-9, p)
+                f_ul = evaluate_evt_tail_cdf(ul - 1e-9, p)
+                f_ur = evaluate_evt_tail_cdf(ur + 1e-9, p)
                 assert abs(f_ul - 0.05) < 1e-6, f"{st} {season}: f(ul^-)={f_ul} != 0.05"
                 assert abs(f_ur - 0.95) < 1e-6, f"{st} {season}: f(ur^+)={f_ur} != 0.95"
 
@@ -241,7 +243,7 @@ def test_p4_evt_cdf_analytical_boundary_and_weights():
                 for p_target in [0.0001, 0.001, 0.01, 0.025, 0.049]:
                     val = (p_target / 0.05) ** (-xil)
                     z_p = ul - (betal / xil) * (val - 1.0)
-                    f_eval = _evaluate_evt_tail_cdf(z_p, p)
+                    f_eval = evaluate_evt_tail_cdf(z_p, p)
                     assert abs(f_eval - p_target) < 1e-7, (
                         f"{st} {season}: Left tail target {p_target} evaluated to {f_eval}"
                     )
@@ -249,19 +251,27 @@ def test_p4_evt_cdf_analytical_boundary_and_weights():
                 for p_target in [0.951, 0.975, 0.99, 0.999, 0.9999]:
                     val = ((1.0 - p_target) / 0.05) ** (-xir)
                     z_p = ur + (betar / xir) * (val - 1.0)
-                    f_eval = _evaluate_evt_tail_cdf(z_p, p)
+                    f_eval = evaluate_evt_tail_cdf(z_p, p)
                     assert abs(f_eval - p_target) < 1e-7, (
                         f"{st} {season}: Right tail target {p_target} evaluated to {f_eval}"
                     )
 
                 # 5. Strict tail monotonicity
                 z_left = np.linspace(-15.0, ul - 1e-5, 100)
-                f_left = [_evaluate_evt_tail_cdf(z, p) for z in z_left]
+                f_left = [evaluate_evt_tail_cdf(z, p) for z in z_left]
                 assert all(f_left[i] <= f_left[i + 1] + 1e-12 for i in range(len(f_left) - 1))
 
                 z_right = np.linspace(ur + 1e-5, 15.0, 100)
-                f_right = [_evaluate_evt_tail_cdf(z, p) for z in z_right]
+                f_right = [evaluate_evt_tail_cdf(z, p) for z in z_right]
                 assert all(f_right[i] <= f_right[i + 1] + 1e-12 for i in range(len(f_right) - 1))
+
+                # 6. Direct numerical quadrature of spliced density tails
+                z_min = (ul + betal / xil) if xil < 0 else -100.0
+                z_max = (ur - betar / xir) if xir < 0 else 100.0
+                i_left, _ = integrate.quad(lambda z: evaluate_evt_tail_pdf(z, p), z_min, ul)
+                i_right, _ = integrate.quad(lambda z: evaluate_evt_tail_pdf(z, p), ur, z_max)
+                assert abs(i_left - 0.05) < 1e-4, f"{st} {season}: Left tail quadrature {i_left} != 0.05"
+                assert abs(i_right - 0.05) < 1e-4, f"{st} {season}: Right tail quadrature {i_right} != 0.05"
 
     assert evt_found == 4, f"Expected 4 EVT units, found {evt_found}"
 

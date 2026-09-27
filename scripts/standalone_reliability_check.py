@@ -30,6 +30,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.verification.settlement import compute_settlement_hit_probability
 from src.verification.resampling import get_or_create_cv_manifest
+from src.modeling.resampling import evaluate_evt_tail_cdf
 
 DEFAULT_TRAIN_PARQUET = PROJECT_ROOT / "data" / "processed" / "audit_arrays" / "2000_2018_training_arrays.parquet"
 DEFAULT_R6_JSON = PROJECT_ROOT / "evidence" / "r6_kmia_parameters.json"
@@ -157,19 +158,8 @@ def compute_evt_variance(station_params: Dict[str, Any]) -> float:
     return float(m2_left + m2_core + m2_right)
 
 
-def _evaluate_evt_tail_cdf(z: float, st_params: Dict[str, Any]) -> float:
-    """Evaluate hybrid core Gaussian + EVT GPD tail cumulative distribution function."""
-    u_l, u_r = st_params["u_left"], st_params["u_right"]
-    xi_l, beta_l = st_params["gpd_left"]["shape_xi"], st_params["gpd_left"]["scale_beta"]
-    xi_r, beta_r = st_params["gpd_right"]["shape_xi"], st_params["gpd_right"]["scale_beta"]
-
-    if z < u_l:
-        val = 1.0 + xi_l * (u_l - z) / beta_l
-        return 0.0 if val <= 0 else float(0.05 * (val ** (-1.0 / xi_l)))
-    elif z > u_r:
-        val = 1.0 + xi_r * (z - u_r) / beta_r
-        return 1.0 if val <= 0 else float(1.0 - 0.05 * (val ** (-1.0 / xi_r)))
-    return float(stats.norm.cdf(z))
+# EVT GPD tail CDF evaluation canonicalized in src/modeling/resampling.py
+_evaluate_evt_tail_cdf = evaluate_evt_tail_cdf
 
 
 def evaluate_station_cdf(
