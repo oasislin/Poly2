@@ -1,0 +1,9 @@
+{
+ "oracle_adversarial.csv": "09688c278c933e6a5e514f9fea5a2feadd7e74b505633b7ee55a48dca5efbb2e",
+ "oracle_arithmetic.json": "651481c4fd89d67af3b40d72cde46bec2f8aec28d26bf0a08e1610c337a556af",
+ "oracle_routing.csv": "da642f6a3059fbd74fe58f0e9b0fd2becef90005d9e5d567d7a5078fb3c66374",
+ "oracle_streams_invariants.json": "74e178155f3a5fe58dfe2ec888f340a8200aa99e27aed3075d3380a1355856f9",
+ "stream_identical.csv": "79007c11a815cf6958cb528ce8ca1e5a9486a5f4200c5ef7abe032432187f7a2",
+ "stream_lowband.csv": "a5613fd88a27094cfa0e3c75db9b3681fe589b24a236defd0690aa258164b0b6",
+ "stream_uniform.csv": "9a8e52309a8c7c73c939fb5eed7f2a8e491e1b54d5c8c004e60a1ac9df4d5a68"
+}
