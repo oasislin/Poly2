@@ -42,6 +42,7 @@
     "r2_mainline_p1_to_p4_audit_and_delivery_report.md": "8ad5cb92097848b2ea81634f02fc59182a9fd31d1b1484435dc1eec324a095e1",
     "model_inventory_audit.csv": "0fbfbf17d64867e017e5242d55ebad3ad4090e4ba98441aac858f454e415da9d",
     "specs/preregistration-p5-verification-spec.md": "167a3ea6aa5a10c3a24cb11493c362eddd3c25ce6f0851b94ea4af82a0bc9940",
-    "evidence/p5_remediation_delivery_report.md": "281208c86aab3f61f5eb0897e6a69893fb67603a0c61f4f69c4eee4a70fa913b"
+    "evidence/p5_remediation_delivery_report.md": "281208c86aab3f61f5eb0897e6a69893fb67603a0c61f4f69c4eee4a70fa913b",
+    "evidence/p5_gate4_reconciliation_report.md": "70a2d3ad7a9a4d157d5dc32986a90e656c94b0d36bf318a6f72340ce2e8042dd"
   }
 }
