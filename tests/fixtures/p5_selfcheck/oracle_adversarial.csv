@@ -1,0 +1,7 @@
+pit,expect
+NaN,error:DataAssetError
+-0.01,error:DataAssetError
+1.0001,error:DataAssetError
+inf,error:DataAssetError
+,error:empty_input
+0.35,error:degenerate

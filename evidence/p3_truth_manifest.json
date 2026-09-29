@@ -1,0 +1,98 @@
+{
+  "dataset_name": "GHCN-Daily Truth Layer (NCEI)",
+  "window_years": "2000-2019",
+  "fetch_date": "2026-09-23",
+  "truth_source": "ghcn_daily",
+  "files": {
+    "KORD": {
+      "ghcn_id": "USW00094846",
+      "parquet_file": "KORD.parquet",
+      "sha256": "67bff35bec03d95202ca289ebe2268070d9525e5d7a35a7fe7203b2bc7bc2dd6",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KLGA": {
+      "ghcn_id": "USW00014732",
+      "parquet_file": "KLGA.parquet",
+      "sha256": "86e63d91caa7d9f6298ed031995f357e6e3c33e469f2182cd55cc6d2cbf06e17",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KATL": {
+      "ghcn_id": "USW00013874",
+      "parquet_file": "KATL.parquet",
+      "sha256": "54127a06b539654af85f585b62c1682dd4af03c93c0128eca09db7eb9018b10e",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KDAL": {
+      "ghcn_id": "USW00013960",
+      "parquet_file": "KDAL.parquet",
+      "sha256": "eca34aed5682a59cb1924ef433fb80b54626b9c0ad024ad0a0eff1cd70173f3c",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KSEA": {
+      "ghcn_id": "USW00024233",
+      "parquet_file": "KSEA.parquet",
+      "sha256": "f55054b94f4b4763b67d2efc0dde9cfc6f03e3e2c0a645e06360d025fd91c7c8",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KLAX": {
+      "ghcn_id": "USW00023174",
+      "parquet_file": "KLAX.parquet",
+      "sha256": "69287cb14bd08c9eafc8f62176ea3868d28e2c88e60058d7736149053e0e8d17",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KHOU": {
+      "ghcn_id": "USW00012918",
+      "parquet_file": "KHOU.parquet",
+      "sha256": "ff94cf62abb504c12749e13cc2f0a7e4b77e6b7d9008816ee95bc92031077fba",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KMIA": {
+      "ghcn_id": "USW00012839",
+      "parquet_file": "KMIA.parquet",
+      "sha256": "25393e3d495f734338b61b330a503691cce1cee8012f27263a70cb0fdf8ef1d3",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    },
+    "KSFO": {
+      "ghcn_id": "USW00023234",
+      "parquet_file": "KSFO.parquet",
+      "sha256": "632c7f901653f5b95d2a1ad9dc30c981a5bd6241d86df364b3572bfcc6ff2b7b",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 20,
+      "completeness_pct": 99.73
+    },
+    "KAUS": {
+      "ghcn_id": "USW00013904",
+      "parquet_file": "KAUS.parquet",
+      "sha256": "2f74c5a1acfc8366cab12802d3ea2485e11ed39af61aa329fef4cfabe2e17166",
+      "row_count": 7305,
+      "expected_days": 7305,
+      "missing_count": 0,
+      "completeness_pct": 100.0
+    }
+  }
+}

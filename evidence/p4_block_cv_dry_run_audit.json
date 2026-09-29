@@ -1,0 +1,174 @@
+{
+  "station": "KORD",
+  "n_folds_tested": 3,
+  "total_elapsed_seconds": 1.9337,
+  "max_peak_mem_mb": 1.53,
+  "status": "ENGINEERING_DRY_RUN_PASSED",
+  "folds": [
+    {
+      "fold_idx": 0,
+      "round_id": 0,
+      "train_samples": 6250,
+      "test_samples": 690,
+      "elapsed_seconds": 0.6357,
+      "mem_start_mb": 0.0,
+      "mem_end_mb": 0.09,
+      "mem_peak_mb": 1.45,
+      "selected_family": "johnsonsu",
+      "seasonal_emos": {
+        "Winter": [
+          4.6932,
+          1.0,
+          3.545,
+          0.5
+        ],
+        "Spring": [
+          4.4702,
+          1.0,
+          3.9333,
+          0.5
+        ],
+        "Summer": [
+          2.5366,
+          1.0,
+          2.8614,
+          0.5
+        ],
+        "Autumn": [
+          3.4676,
+          1.0,
+          2.9553,
+          0.5
+        ]
+      },
+      "seasonal_c_train": {
+        "Winter": 1.0037,
+        "Spring": 0.9728,
+        "Summer": 0.9729,
+        "Autumn": 0.9829
+      },
+      "selection_audit": {
+        "n_samples": 6250,
+        "skewness": 0.49406833322028254,
+        "kurtosis_fisher": 1.9844217412892506,
+        "jsu_triggered": true,
+        "evt_triggered": true,
+        "bic_gaussian": 17707.276336538536,
+        "bic_jsu": 17442.932521961488,
+        "bic_evt": 17673.109122146056,
+        "delta_bic_winner": -264.34381457704876,
+        "selected_family": "johnsonsu"
+      }
+    },
+    {
+      "fold_idx": 1,
+      "round_id": 1,
+      "train_samples": 6250,
+      "test_samples": 690,
+      "elapsed_seconds": 0.6301,
+      "mem_start_mb": 0.09,
+      "mem_end_mb": 0.12,
+      "mem_peak_mb": 1.5,
+      "selected_family": "johnsonsu",
+      "seasonal_emos": {
+        "Winter": [
+          4.7054,
+          1.0,
+          3.4826,
+          0.5
+        ],
+        "Spring": [
+          4.4733,
+          1.0,
+          3.8947,
+          0.5
+        ],
+        "Summer": [
+          2.4795,
+          1.0,
+          2.7318,
+          0.5
+        ],
+        "Autumn": [
+          3.3948,
+          1.0,
+          2.6093,
+          0.5
+        ]
+      },
+      "seasonal_c_train": {
+        "Winter": 1.0043,
+        "Spring": 0.9742,
+        "Summer": 1.0273,
+        "Autumn": 1.0785
+      },
+      "selection_audit": {
+        "n_samples": 6250,
+        "skewness": 0.4529249570403669,
+        "kurtosis_fisher": 1.7674650797066027,
+        "jsu_triggered": true,
+        "evt_triggered": true,
+        "bic_gaussian": 17707.49410411308,
+        "bic_jsu": 17480.714657932956,
+        "bic_evt": 17714.633178853095,
+        "delta_bic_winner": -226.77944618012407,
+        "selected_family": "johnsonsu"
+      }
+    },
+    {
+      "fold_idx": 2,
+      "round_id": 2,
+      "train_samples": 6250,
+      "test_samples": 690,
+      "elapsed_seconds": 0.6679,
+      "mem_start_mb": 0.12,
+      "mem_end_mb": 0.15,
+      "mem_peak_mb": 1.53,
+      "selected_family": "johnsonsu",
+      "seasonal_emos": {
+        "Winter": [
+          4.6542,
+          1.0,
+          3.5256,
+          0.5
+        ],
+        "Spring": [
+          4.4144,
+          1.0,
+          3.8597,
+          0.5
+        ],
+        "Summer": [
+          2.569,
+          1.0,
+          2.9243,
+          0.5
+        ],
+        "Autumn": [
+          3.4444,
+          1.0,
+          2.9262,
+          0.5
+        ]
+      },
+      "seasonal_c_train": {
+        "Winter": 1.0008,
+        "Spring": 0.9648,
+        "Summer": 0.9638,
+        "Autumn": 0.9853
+      },
+      "selection_audit": {
+        "n_samples": 6250,
+        "skewness": 0.4911999990893608,
+        "kurtosis_fisher": 2.014659790828489,
+        "jsu_triggered": true,
+        "evt_triggered": true,
+        "bic_gaussian": 17705.631926601396,
+        "bic_jsu": 17446.66773253169,
+        "bic_evt": 17681.010790794146,
+        "delta_bic_winner": -258.96419406970745,
+        "selected_family": "johnsonsu"
+      }
+    }
+  ]
+}

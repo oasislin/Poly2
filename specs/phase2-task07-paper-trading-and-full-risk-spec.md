@@ -1,9 +1,9 @@
 # 规格书：风控联动贯通、全套注入测试统一验收与纸面盘仿真运行器 (Phase 2 Task 07)
 
 > [!CAUTION]
-> **CRITICAL NOTICE (Review Audit R5)**:
-> Metrics fixed at commit `67d668b`. All pre-existing metric-dependent conclusions, Sharpe claims (>2.0), and 2019 backtest results in this spec are **VOID pending `--recompute`** with verified statistical closure metrics.
-> Furthermore, current paper trading simulator is strictly defined as **Synthetic Opponent Simulation** (using theoretical mathematical pricing). True microsecond order book replay is officially **deferred until genuine L2/L3 order book dataset asset ingestion**.
+> **CRITICAL NOTICE (Architectural Decision 2026-09-23)**:
+> **DEPRECATED & SUSPENDED**: 经架构决策审计，2019 年在物理现实中不存在真实 Polymarket 订单簿资产，使用合成做市商 (`SyntheticMarketMaker`) 与内生档位开展的 2019 历史量化回测（夏普/回撤指标）**正式作废并永久废除（VOID & ABOLISHED）**。
+> 本规格书中仅保留纯软件逻辑层面的**全套注入测试（Test-Scenario A~E）**作为 CI/CD 架构故障注入门禁；所有“模拟盘口/撮合回测”条款全量挂起，系统严禁使用任何合成对手方证明物理模型有效性。物理模型全量验收与晋升由 **Phase 2 Task 08** 接管。
 
 - **Spec Issue**: [#94](https://github.com/oasislin/Poly2/issues/94) (Spec: Phase 2 Task 07 - 风控联动贯通、全套注入测试统一验收与纸面盘仿真运行器)
 - **Tickets**:
