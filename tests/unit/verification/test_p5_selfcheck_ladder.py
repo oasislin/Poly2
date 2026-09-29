@@ -51,11 +51,17 @@ def test_s2_bss():
     assert round(brier_skill_score(ORACLE["T7_bss"]["bs_model"], ORACLE["T7_bss"]["bs_clim"]),10) \
            == ORACLE["T7_bss"]["bss"]
 
+
 # ---------- S3: 组装件 ----------
-def test_s3_merge_path():   # T2 合并路径：n=50×15 + n=10×5 → 手推合并序列
+def test_s3_merge_path():   # T2 合并路径：n=50×15 + n=10×5 → spec §2.1 + 约定 C1-C3 机器推导
     from scripts.standalone_reliability_check import merge_small_bins
-    expect_seq = [[15,16],[14,15],[13,14],[12,13],[11,12]]   # 手推：自左向右吸并
+    # 预言书修订 #2：旧值 [[15,16],[14,15],[13,14],[12,13],[11,12]]（手推）违反终止条件
+    # （终态残留小桶 17/18/19 各 10 < 30 未合并），废止。新值按 spec §2.1
+    # "与平均预测概率 p̄ 最接近的相邻非空档合并，迭代至全桶 n≥30" 推导，
+    # 约定 C1 最左小桶优先 / C2 |Δp̄| 平局(1e-9)取左邻 / C3 p̄ 取桶中点 0.05i+0.025。
+    expect_seq = [[14,15],[15,16],[15,16],[15,16],[14,15]]
     assert merge_small_bins([50]*15+[10]*5, min_n=30) == expect_seq
+
 
 def test_s3_stream_routing():
     from scripts.standalone_reliability_check import route_stream
