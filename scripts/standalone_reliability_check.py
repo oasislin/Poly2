@@ -157,7 +157,8 @@ def pit_to_bin(pit: float) -> int:
 def route_pit_value(pit: Any) -> int:
     """
     Defensive input sentinel for single PIT routing (S1).
-    Validates empty, nan, bounds, and flags degenerate inputs.
+    Validates empty, nan, and bounds.
+    Spec Revision #4 Annex B1: 0.35 routes legally to bin 8 ([0.35, 0.40)).
     """
     if pit is None or (isinstance(pit, str) and pit.strip() == ""):
         raise DataAssetError("empty_input: PIT value cannot be empty")
@@ -167,9 +168,19 @@ def route_pit_value(pit: Any) -> int:
         raise DataAssetError(f"DataAssetError: invalid non-numeric PIT value '{pit}'") from e
     if math.isnan(val) or math.isinf(val) or val < 0.0 or val > 1.0:
         raise DataAssetError(f"DataAssetError: invalid PIT value {val} out of bounds or NaN/inf")
-    if abs(val - 0.35) < 1e-9:
-        raise DataAssetError("degenerate: collapsed variance / invariant degenerate PIT detected")
     return pit_to_bin(val)
+
+
+def check_stream_degeneracy(pits: Union[List[float], np.ndarray], tol: float = 1e-9) -> None:
+    """
+    Check if a stream of PIT values has collapsed variance (all identical values).
+    Spec Revision #4 Annex B2: Triggers degenerate exception on zero-variance stream (N > 1).
+    """
+    if len(pits) > 1:
+        first = float(pits[0])
+        if all(abs(float(p) - first) <= tol for p in pits):
+            raise DataAssetError("degenerate: zero variance / collapsed variance stream detected")
+
 
 
 def wilson_interval(k: int, n: int, confidence: float = 0.95) -> Tuple[float, float]:
@@ -285,9 +296,10 @@ def merge_small_bins(
     return merges
 
 
-def route_stream(csv_path: str) -> Dict[str, Any]:
+def route_stream(csv_path: str, check_degeneracy: bool = False) -> Dict[str, Any]:
     """
     Parse CSV stream of PIT values, route into 20 bins, and extract invariants.
+    If check_degeneracy is True, raises DataAssetError on zero-variance streams (Spec Revision #4 Annex B2).
     """
     import csv as _csv
     pits = []
@@ -299,6 +311,9 @@ def route_stream(csv_path: str) -> Dict[str, Any]:
             if val < 0.0 or val > 1.0 or math.isnan(val):
                 raise DataAssetError(f"Stream PIT out of bounds: {val}")
             pits.append(val)
+
+    if check_degeneracy:
+        check_stream_degeneracy(pits)
 
     counts = [0] * 20
     for p in pits:
@@ -313,6 +328,14 @@ def route_stream(csv_path: str) -> Dict[str, Any]:
         "counts": counts,
         "first_last_bin_of_sorted": first_last_sorted,
     }
+
+
+def analyze_pit_stream(csv_path: str) -> Dict[str, Any]:
+    """
+    Stream analysis entry point enforcing stream-level degeneracy validation (Spec Revision #4 Annex B2).
+    """
+    return route_stream(csv_path, check_degeneracy=True)
+
 
 
 def compute_file_sha256(path: Path) -> str:
@@ -1344,7 +1367,7 @@ def main():
 
     if args.synthetic_suite is not None:
         import csv as _csv
-        res = route_stream(str(args.synthetic_suite))
+        res = route_stream(str(args.synthetic_suite), check_degeneracy=True)
         out_target = args.out if args.out is not None else Path("synthetic_out.csv")
         with open(out_target, "w", newline="", encoding="utf-8") as f:
             writer = _csv.writer(f)
