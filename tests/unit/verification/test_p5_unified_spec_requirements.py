@@ -309,3 +309,54 @@ def test_smoothed_loyo_climatology_circular_continuity():
     assert pool_d1 is not None and len(pool_d1) > 0
     assert 70.0 in pool_d1
     assert 72.0 in pool_d1
+
+
+# ==============================================================================
+# Spec Revision #4 Annex B: 0.35 Semantics Unification Tests
+# ==============================================================================
+
+def test_035_scalar_routing_success():
+    """Annex B1: Single scalar PIT = 0.35 routes legally into bin 8 ([0.35, 0.40))."""
+    from scripts.standalone_reliability_check import route_pit_value, pit_to_bin
+    assert pit_to_bin(0.35) == 8
+    assert route_pit_value(0.35) == 8
+    assert route_pit_value("0.35") == 8
+
+
+def test_stream_level_degeneracy_detection():
+    """Annex B2: Stream-level zero variance (all identical values) triggers DataAssetError."""
+    from scripts.standalone_reliability_check import (
+        check_stream_degeneracy,
+        route_stream,
+        analyze_pit_stream,
+        DataAssetError,
+    )
+    # 1. Normal varied stream should pass
+    varied = [0.1, 0.2, 0.35, 0.4, 0.8]
+    check_stream_degeneracy(varied)
+
+    # 2. Identical stream (0.35 x 1000) must trigger DataAssetError
+    with pytest.raises(DataAssetError) as exc_info:
+        check_stream_degeneracy([0.35] * 1000)
+    assert "degenerate: zero variance" in str(exc_info.value)
+
+    # 3. Any other identical constant stream (e.g. 0.70 x 50) must also trigger
+    with pytest.raises(DataAssetError) as exc_info2:
+        check_stream_degeneracy([0.70] * 50)
+    assert "degenerate: zero variance" in str(exc_info2.value)
+
+    # 4. Stream analysis entry point on fixture stream_identical.csv must trigger
+    fix_dir = Path("tests/fixtures/p5_selfcheck")
+    identical_csv = fix_dir / "stream_identical.csv"
+    with pytest.raises(DataAssetError):
+        analyze_pit_stream(str(identical_csv))
+
+    with pytest.raises(DataAssetError):
+        route_stream(str(identical_csv), check_degeneracy=True)
+
+    # 5. Non-degenerate stream_uniform.csv must pass stream analysis
+    uniform_csv = fix_dir / "stream_uniform.csv"
+    res = analyze_pit_stream(str(uniform_csv))
+    assert res["row_count"] == 1000
+
+
