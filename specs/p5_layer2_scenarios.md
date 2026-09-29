@@ -98,7 +98,11 @@ $$\text{seeds} = [101, 202, 303, 404, 505]$$
 #### 5. 与模型训练质量的挂钩说明
 防止模型在训练集出现过拟合震荡时输出无意义的近零方差（$\sigma \to 0$），进而污染评估报告。场景三保障了检验引擎作为“质检员”自身的刚性防御能力。
 
+> **【附注：$\sigma < 0.90^\circ\text{F}$ 物理底限阈值出处声明】**  
+> 该阈值严格溯源自美国国家气象局（NWS / FAA / DOD 联合标准）ASOS 地面自动气象站标配的 PRT-1088 100Ω 铂电阻温度传感器（Platinum Resistance Thermometer）的设计测量不确定度与物理仪器噪声底线（Instrument Noise Floor $\pm 0.5^\circ\text{C} \approx \pm 0.90^\circ\text{F}$，详见 ASOS User's Guide 6.2 节）。日最高温/最低温（TMAX/TMIN）实测物理采样本身存在不可消除的 PRT 传感器固有热扰动；任何下游统计或机器学习模型若预测 $\sigma_{\text{forecast}} < 0.90^\circ\text{F}$，即属于数学过度自信（Overconfident Variance Collapse）或物理非法的优化退化，必须由 `PhysicsViolationError` 实施硬阻断。
+
 ---
+
 
 ### 2.4 场景四：0.35 语义统一回归 (Stream Degeneracy & Single-Value Routing)
 
