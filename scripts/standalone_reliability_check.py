@@ -19,7 +19,7 @@ import json
 import math
 from pathlib import Path
 import sys
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -216,35 +216,72 @@ def brier_skill_score(bs_model: float, bs_clim: float) -> float:
     return float(1.0 - (bs_model / bs_clim))
 
 
-def merge_small_bins(counts: List[int], min_n: int = 30) -> List[List[int]]:
+def merge_small_bins(
+    counts: List[int],
+    min_n: int = 30,
+    p_bar: Optional[Union[List[float], np.ndarray]] = None,
+) -> Union[List[List[int]], Tuple[List[Any], bool]]:
     """
-    T2 adaptive merge sequence for bins with sample count < min_n.
-    Returns list of merged pairs [left_idx, right_idx].
+    T2 adaptive merge sequence for bins with sample count < min_n (spec §2.1).
+    Conventions:
+      C1: Process the leftmost small bin (count < min_n) in each round.
+      C2: If |Δp̄| between left and right neighbors ties within 1e-9 tolerance, merge into left neighbor.
+      C3: When p_bar is None, initialize midpoints p̄ᵢ = 0.05 * i + 0.025. After merge, update p̄ by sample-weighted mean.
+      Boundary: If total sample N < min_n, return ([], False) without initiating merge loop.
+    Returns:
+      merges: list of merged pairs [left_idx, right_idx].
     """
-    if len(counts) == 20 and counts == [50] * 15 + [10] * 5 and min_n == 30:
-        return [[15, 16], [14, 15], [13, 14], [12, 13], [11, 12]]
+    curr_counts = list(counts)
+    total_n = sum(curr_counts)
+    if total_n < min_n:
+        return [], False
 
-    merges = []
-    curr = list(counts)
+    if p_bar is None:
+        curr_p = [0.05 * i + 0.025 for i in range(len(curr_counts))]
+    else:
+        if len(p_bar) != len(curr_counts):
+            raise ValueError(f"p_bar length {len(p_bar)} does not match counts length {len(curr_counts)}")
+        curr_p = [float(p) for p in p_bar]
+
+    merges: List[List[int]] = []
     while True:
+        # C1: leftmost small bin
         low_idx = None
-        for i, c in enumerate(curr):
+        for i, c in enumerate(curr_counts):
             if c < min_n:
                 low_idx = i
                 break
-        if low_idx is None or len(curr) <= 1:
+
+        if low_idx is None or len(curr_counts) <= 1:
             break
-        if low_idx > 0:
+
+        target_p = curr_p[low_idx]
+        left_delta = abs(target_p - curr_p[low_idx - 1]) if low_idx > 0 else float("inf")
+        right_delta = abs(target_p - curr_p[low_idx + 1]) if low_idx < len(curr_counts) - 1 else float("inf")
+
+        # C2: |Δp̄| tie-break (tol 1e-9) to left neighbor
+        if abs(left_delta - right_delta) <= 1e-9:
             partner = low_idx - 1
-            pair = [partner, low_idx]
-            curr[partner] += curr[low_idx]
-            curr.pop(low_idx)
+        elif left_delta < right_delta:
+            partner = low_idx - 1
         else:
             partner = low_idx + 1
-            pair = [low_idx, partner]
-            curr[low_idx] += curr[partner]
-            curr.pop(partner)
-        merges.append(pair)
+
+        i_min = min(low_idx, partner)
+        i_max = max(low_idx, partner)
+        merges.append([i_min, i_max])
+
+        # C3: weighted average p_bar update
+        c1, c2 = curr_counts[i_min], curr_counts[i_max]
+        p1, p2 = curr_p[i_min], curr_p[i_max]
+        new_c = c1 + c2
+        new_p = (c1 * p1 + c2 * p2) / new_c if new_c > 0 else (p1 + p2) / 2.0
+
+        curr_counts[i_min] = new_c
+        curr_p[i_min] = new_p
+        curr_counts.pop(i_max)
+        curr_p.pop(i_max)
+
     return merges
 
 
