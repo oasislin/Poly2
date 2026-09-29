@@ -886,6 +886,44 @@ def build_dual_track_reliability_table(
     }
 
 
+def check_monotonicity_and_coverage(decision_table: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Audit decision track reliability table against GATE-L2-02 criteria:
+    1. Weak monotonicity of empirical hit frequency: f_{i+1} >= f_i - 1e-4.
+    2. Wilson 95% CI coverage rate >= 90%.
+    3. Consecutive out-of-CI alarm if two adjacent bins are outside CI.
+    """
+    valid = decision_table[decision_table["sample_count_n"] > 0].copy()
+    if valid.empty:
+        return {"passed": True, "coverage_rate": 1.0, "monotonicity_violations": 0, "alarms": []}
+
+    f_vals = valid["empirical_hit_freq"].to_numpy(dtype=np.float64)
+    is_outside = valid["is_outside_ci"].to_numpy(dtype=bool)
+
+    diffs = np.diff(f_vals)
+    violations = int(np.sum(diffs < -1e-4))
+
+    coverage_rate = float(np.mean(~is_outside))
+
+    alarms = []
+    has_consecutive = False
+    for i in range(len(is_outside) - 1):
+        if is_outside[i] and is_outside[i + 1]:
+            has_consecutive = True
+            break
+    if has_consecutive:
+        alarms.append("CONSECUTIVE-MISCALIBRATION-ALARM")
+
+    passed = (violations == 0) and (coverage_rate >= 0.90) and (not has_consecutive)
+    return {
+        "passed": bool(passed),
+        "violations": violations,
+        "coverage_rate": coverage_rate,
+        "alarms": alarms,
+    }
+
+
+
 # ==============================================================================
 # Climatology Baseline & Brier Skill Score Calculation (Section 2.3)
 # ==============================================================================
