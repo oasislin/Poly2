@@ -1,0 +1,30 @@
+{
+  "station": "KORD",
+  "seed": 20260923,
+  "total_planned_rounds": 20,
+  "executed_rounds_count": 1,
+  "halted": true,
+  "halt_reason": "fold_00 GateReport failed: Reliability gate thresholds not satisfied (ECE=0.2600)",
+  "folds": [
+    {
+      "round_id": 0,
+      "val_start": "2000-09-27",
+      "val_end": "2018-08-23",
+      "train_samples": 6250,
+      "val_samples": 690,
+      "mae": 2.604362745127909,
+      "elapsed_seconds": 0.2583129405975342,
+      "gate_passed": false,
+      "weighted_ece": 0.26002891271328343,
+      "bss": 0.6486862317743811,
+      "s_ladder": {
+        "S1_input_defense": true,
+        "S2_calibration_ece": false,
+        "S3_monotonicity": true,
+        "S4_wilson_coverage": false,
+        "S5_ks_goodness": true
+      },
+      "error_message": "Reliability gate thresholds not satisfied"
+    }
+  ]
+}
