@@ -201,7 +201,7 @@ def test_p4_evt_cdf_analytical_boundary_and_weights():
     3. Boundary values at u_l^- and u_r^+ evaluate exactly to 0.05 and 0.95 (0.05 tail mass).
     4. Analytical PPF inversion on tail quantile grids matches F(z) to within 1e-7.
     5. Tail regions exhibit strict monotonic non-decreasing behavior.
-    6. Direct numerical quadrature confirms left tail integral = 0.0500 and right tail integral = 0.0500.
+    6. Direct numerical quadrature confirms left tail integral = 0.0500, right tail integral = 0.0500, and EVT CDF full domain normalization F(+inf) = 1.0 (integral >= 0.9999).
     """
     from scipy import integrate
     from src.modeling.resampling import evaluate_evt_tail_cdf, evaluate_evt_tail_pdf
@@ -265,13 +265,19 @@ def test_p4_evt_cdf_analytical_boundary_and_weights():
                 f_right = [evaluate_evt_tail_cdf(z, p) for z in z_right]
                 assert all(f_right[i] <= f_right[i + 1] + 1e-12 for i in range(len(f_right) - 1))
 
-                # 6. Direct numerical quadrature of spliced density tails
+                # 6. Direct numerical quadrature of spliced density tails & full domain normalization
                 z_min = (ul + betal / xil) if xil < 0 else -100.0
                 z_max = (ur - betar / xir) if xir < 0 else 100.0
                 i_left, _ = integrate.quad(lambda z: evaluate_evt_tail_pdf(z, p), z_min, ul)
                 i_right, _ = integrate.quad(lambda z: evaluate_evt_tail_pdf(z, p), ur, z_max)
                 assert abs(i_left - 0.05) < 1e-4, f"{st} {season}: Left tail quadrature {i_left} != 0.05"
                 assert abs(i_right - 0.05) < 1e-4, f"{st} {season}: Right tail quadrature {i_right} != 0.05"
+
+                # EVT CDF full domain normalization assertion: F(+inf) = 1.0 and numerical upper bound >= 0.9999
+                f_inf = evaluate_evt_tail_cdf(float("inf"), p)
+                f_zmax = evaluate_evt_tail_cdf(z_max, p)
+                pass_normalization = (f_inf == 1.0) and (f_zmax >= 0.9999) and (abs(f_zmax - 1.0) < 1e-4)
+                assert pass_normalization, f"{st} {season}: EVT CDF normalization failed (F(+inf)={f_inf}, F(z_max)={f_zmax})"
 
     assert evt_found == 4, f"Expected 4 EVT units, found {evt_found}"
 
