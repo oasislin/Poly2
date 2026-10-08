@@ -16,8 +16,11 @@ Mandated by R2 Mainline Protocol & P3 Specification:
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+import hashlib
+import json
 import logging
 import math
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 import numpy as np
 import pandas as pd
@@ -231,15 +234,20 @@ class BlockCrossValidator:
 def run_block_cv(
     df: pd.DataFrame,
     fit_fn: Callable[[pd.DataFrame], Any],
-    eval_fn: Callable[[Any, pd.DataFrame], Dict[str, float]],
+    eval_fn: Callable[[Any, pd.DataFrame], Dict[str, Any]],
     date_col: str = "target_date",
     n_rounds: int = DEFAULT_N_ROUNDS,
     holdout_ratio: float = DEFAULT_HOLDOUT_RATIO,
     seed: int = DEFAULT_SEED,
+    export_evidence: bool = False,
+    evidence_dir: Optional[Union[str, Path]] = None,
 ) -> Dict[str, Any]:
     """
     Executes 20-round Block-CV loop.
     CRITICAL CONSTRAINT: Model refitting (fit_fn) is called STRICTLY inside each round.
+    Statutory Hooks:
+    - Hook 1: Invokes run_reliability_gate(val_df / predictions) per fold.
+    - Hook 2: Optional persistence of model, predictions, gate_report, and sha256 manifest per fold.
     """
     # Enforce airgap on dataset
     years = pd.to_datetime(df[date_col]).dt.year.unique()
@@ -260,16 +268,92 @@ def run_block_cv(
         # 2. Evaluate model on val_df (10% holdout blocks)
         metrics = eval_fn(model, val_df)
 
+        # Statutory Hook 1: Call P5 reliability gate
+        from src.verification.p5_gate import GateReport, run_reliability_gate
+
+        pred_source = val_df
+        if isinstance(metrics, dict):
+            if "predictions" in metrics and isinstance(metrics["predictions"], pd.DataFrame):
+                pred_source = metrics["predictions"]
+            elif "predictions_df" in metrics and isinstance(metrics["predictions_df"], pd.DataFrame):
+                pred_source = metrics["predictions_df"]
+
+        gate_report: GateReport = run_reliability_gate(pred_source)
+
+        # Statutory Hook 2: Export fold artifacts and sha256 manifest if requested
+        artifact_paths: Dict[str, str] = {}
+        artifact_hashes: Dict[str, str] = {}
+        if export_evidence:
+            out_dir = Path(evidence_dir) if evidence_dir else Path("evidence")
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            # 2a. Model representation artifact
+            model_file = out_dir / f"cv_fold_{round_id}_model.json"
+            model_repr = {"round_id": round_id, "model_str": str(model)}
+            if hasattr(model, "to_dict"):
+                try:
+                    model_repr["model"] = model.to_dict()
+                except Exception:
+                    pass
+            elif isinstance(model, dict):
+                try:
+                    json.dumps(model)
+                    model_repr["model"] = model
+                except Exception:
+                    pass
+            with open(model_file, "w", encoding="utf-8") as f:
+                json.dump(model_repr, f, indent=2, default=str)
+            artifact_paths["model"] = str(model_file)
+
+            # 2b. Predictions artifact
+            pred_file = out_dir / f"cv_fold_{round_id}_predictions.parquet"
+            if isinstance(pred_source, pd.DataFrame):
+                pred_source.to_parquet(pred_file, index=False)
+            else:
+                pd.DataFrame({"round_id": [round_id]}).to_parquet(pred_file, index=False)
+            artifact_paths["predictions"] = str(pred_file)
+
+            # 2c. GateReport artifact
+            report_file = out_dir / f"cv_fold_{round_id}_report.json"
+            with open(report_file, "w", encoding="utf-8") as f:
+                json.dump(gate_report.to_dict(), f, indent=2, default=str)
+            artifact_paths["gate_report"] = str(report_file)
+
+            # 2d. Compute sha256 checksums
+            for art_name, art_path in list(artifact_paths.items()):
+                p = Path(art_path)
+                with open(p, "rb") as f:
+                    artifact_hashes[art_name] = hashlib.sha256(f.read()).hexdigest()
+
+            # 2e. Write sha256 manifest
+            manifest_file = out_dir / f"cv_fold_{round_id}_manifest.json"
+            manifest_data = {
+                "round_id": round_id,
+                "artifacts": {
+                    k: {"path": artifact_paths[k], "sha256": artifact_hashes[k]}
+                    for k in artifact_paths
+                },
+            }
+            with open(manifest_file, "w", encoding="utf-8") as f:
+                json.dump(manifest_data, f, indent=2)
+            artifact_paths["manifest"] = str(manifest_file)
+            with open(manifest_file, "rb") as f:
+                artifact_hashes["manifest"] = hashlib.sha256(f.read()).hexdigest()
+
         result_entry = {
             "round_id": round_id,
             "train_samples": len(train_df),
             "val_samples": len(val_df),
-            **metrics,
+            "gate_report": gate_report,
+            "artifact_paths": artifact_paths,
+            "artifact_hashes": artifact_hashes,
+            **{k: v for k, v in metrics.items() if k not in ("predictions", "predictions_df")},
         }
         round_results.append(result_entry)
 
     # Aggregate metric summary across rounds
-    metric_keys = [k for k in round_results[0].keys() if k not in ("round_id", "train_samples", "val_samples")]
+    non_summary_keys = {"round_id", "train_samples", "val_samples", "gate_report", "artifact_paths", "artifact_hashes"}
+    metric_keys = [k for k in round_results[0].keys() if k not in non_summary_keys]
     summary: Dict[str, Dict[str, float]] = {}
 
     for k in metric_keys:
