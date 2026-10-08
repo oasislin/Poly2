@@ -1,0 +1,9 @@
+[project]
+name = "poly-way2"
+version = "2.2.0"
+requires-python = ">=3.13,<3.14"
+
+[tool.pytest.ini_options]
+minversion = "8.3"
+addopts = "-p no:anyio -v"
+testpaths = ["tests"]
