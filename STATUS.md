@@ -1,14 +1,13 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-09-22 21:55:00
+updated: 2026-10-09 20:10:00
 ---
 # 项目状态（唯一状态入口）
 
-- **当前阶段**：Phase 2 Task 07 缺陷归正闭环（Issue [#100](https://github.com/oasislin/Poly2/issues/100) 及 Tickets [#101](https://github.com/oasislin/Poly2/issues/101) ~ [#104](https://github.com/oasislin/Poly2/issues/104) 全部完成）—— 确立“Tier 1 48h工程端到端冒烟 + Tier 2 2019高保真样本外量化回测”双轨解耦架构，彻底消除合成测试虚假套利。
-- **活跃工作流**：2019 全年 365 天 Active 10 站历史回测全量跑通（`data/reports/historical_backtest_2019_report.json`），日独立结算真实年化夏普 13.06，MDD 0.09%，胜率 52.5%，零非物理违规且资金守恒；48h 工程冒烟零穿仓全绿，全库 819+ 测试 100% 绿灯！
-- **冻结产物**：`docs/frozen/phase1/`（只读），`data/processed/calib-dataset-v2.0/`，`data/models/`（200 模型矩阵），`specs/phase2-task07-paper-trading-and-full-risk-spec.md`（含 Addendum 1）
-- **隔离区**：`data/legacy-v1-suspect/`（Wunderground 等旧版疑似污染数据已物理隔离，SUPERSEDED）
-- **为什么处于当前节点**：Phase 2 全部 7 个主任务与双轨量化归正均已闭环，完成对抗做市商与高保真 2019 全年日结算金融检验，系统具备生产级实盘量化投注能力。
+- **当前阶段**：Phase 6 双城 TMax 全网格验证与方法论封盘准备中。前序 `P4-AUDIT-RELIABILITY-v1.3b` (KORD/18h/TMax) 正式关门验收，确定以真分布 PIT 口径为法定基准（旧高斯尺结论作废）；生产模型库 960 格中已审计 4 格（0.417%），TMin 480 格审计覆盖率为 0%。（修订依据：P5 取证 / v1.3b 关门 2026-10-09）
+- **活跃工作流**：本会话执行 P6 前置工单：P6-0-DOC-SYNC（台账与文档对账同步）与 P6-1-HANDOFF（生成新会话交接文件 `evidence/handoff_p6_tmax_fullgrid.md`）；后续 P6-2 全网格抽检（KORD + KMIA 92 格）将在新会话凭交接文件启动。（修订依据：委员会裁决 2026-10-09）
+- **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 全部工件冻结归档；1.28 深尾报价参考系数与 $\le 35\%$ 锋利度断言严格为 KORD/18h/TMax 专属，严禁跨格移植；Active 10 交易宇宙基准真值为 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`。（修订依据：P5 取证 / v1.3b 关门 / 委员会裁决 2026-10-09）
+- **为什么处于当前节点**：单格审计尺子已彻底纠正（PIT 换尺使得偏度收敛至 0.047、超额峰度收敛至 0.067），需按规划完成双城 96 格（新增 92 格）全时效/四季验证并产出方法论封盘文档后，方可启动真实盘预测管道接入。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-09-22 21:55）
+（最近更新：2026-10-09 20:10）

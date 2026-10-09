@@ -58,3 +58,16 @@
 | **R-4A** | [`r4_ece_definition_audit.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r4_ece_definition_audit.md) | **修复令 R-4** | 离散 7 档位加权 ECE 功效审计报告，维持硬门禁 $\le 3.0\%$，论证多档位分布与第一轮中心档位假象病灶。 |
 | **R-4B** | [`r4_gate_calibration_protocol.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r4_gate_calibration_protocol.md) | **修复令 R-4** | 《门禁标定与变更管理协议》：解析推导外生变量（$\sigma_{\text{inst}}$, $\sigma^*$, 方差比），确立预注册与防篡改规则。 |
 | **R-5** | [`recompute_settlement_report.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/recompute_settlement_report.md) | **修复令 R-5** | 基于 GHCN-Daily 官方气候真值重算结算报告：加权 ECE 全绿（0.46%~2.39% $\le 3.0\%$），十分位闭包全绿，如实记录 KMIA KS-test。 |
+
+---
+
+### 五、P4 可靠度审计与 P5 范围核查工件清单 (P4-AUDIT-RELIABILITY & P5-AUDIT-SCOPE)
+
+| 编号 | 工件名称与路径 | 协议与任务条款 | 核心内容摘要 |
+| :--- | :--- | :--- | :--- |
+| **P4-v1.3b-1** | [`evidence/p4_audit_reliability_v13b_report.md`](evidence/p4_audit_reliability_v13b_report.md) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | TMax KORD 关门审计法定报告：PIT 均匀性 $p=0.46915 \gg 0.05$、残差偏度 0.0471、超额峰度 0.0667、实质分档（全部微小偏差）、峰值桶断言 $\le 35\%$ 全绿（Max 31.77%）、1.28 深尾系数。 |
+| **P4-v1.3b-2** | [`evidence/p4_audit_reliability_v13b_summary.json`](evidence/p4_audit_reliability_v13b_summary.json) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | v1.3b 关门法定统计结构化数据，含前置三声明与审计范围声明。 |
+| **P4-v1.3b-3** | [`evidence/p4_audit_reliability_v13b_lineage.json`](evidence/p4_audit_reliability_v13b_lineage.json) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | 13,740 样本外验证日 100% 逐日数据血统映射与 SHA256 签名。 |
+| **P5-SCP-1** | [`evidence/p5_audit_scope_recon_memo.md`](evidence/p5_audit_scope_recon_memo.md) | **工单 P5-AUDIT-SCOPE** | 训练覆盖范围核实备忘：960 格模型已训练、20 折审计覆盖率 4/960 (0.42%)、Active 10 站真值修正、TMin 零审计定责。 |
+| **P5-SCP-2** | [`evidence/p5_audit_scope_recon.json`](evidence/p5_audit_scope_recon.json) | **工单 P5-AUDIT-SCOPE** | 覆盖范围核查结构化对账矩阵与台站缺口清单。 |
+

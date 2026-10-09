@@ -30,10 +30,10 @@
   - 当前 13,740 验证日**仅覆盖 KORD 单一站点（芝加哥奥黑尔机场）**！
   - 溯源证据：[`tests/unit/modeling/test_p4_block_cv_20fold.py:54`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/tests/unit/modeling/test_p4_block_cv_20fold.py#L54) 硬编码 `station = "KORD"`，20 轮 Block-CV 每折约 687 验证日，累加得到池化 13,740 站·日，全部为 KORD 单站数据。
 - **与全量训练范围的比例关系**:
-  - **台站覆盖比**: $1 / 10 = \mathbf{10.0\%}$（Active 10 宇宙中，KMIA, KSFO, KDEN, KATL, KDAL, KHOU, KPHX, KLAS, KSEA 9 站尚未经过 20 折审计）；
+  - **台站覆盖比**: $1 / 10 = \mathbf{10.0\%}$（法定 Active 10 交易宇宙为 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`，见 `src/data_processing/constants.py:395-406` 与 `configs/climate_floor_v2.json`；其中其余 9 站 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KSEA, KSFO` 尚未经过 20 折 Block-CV 审计，前期草稿误列之 KDEN/KPHX/KLAS 已按配置文件真值修正剔除；修订依据：P5 取证 / 委员会裁决 2026-10-09）；
   - **时效覆盖比**: $1 / 12 = \mathbf{8.33\%}$（仅 18h 单一时效，其余 11 提前期未审计）；
   - **标的覆盖比**: $1 / 2 = \mathbf{50.0\%}$（仅 TMax，TMin 为 0%）；
-  - **全矩阵网格覆盖比**: $4 / 960 = \mathbf{0.417\%}$（仅覆盖了 KORD 站 18h TMax 四季网格）。
+  - **全矩阵网格覆盖比**: $4 / 960 = \mathbf{0.417\%}$（仅覆盖了 KORD 站 18h TMax 四季网格，其余 956 格未审计；修订依据：P5 取证 / v1.3b 关门 2026-10-09）。
 
 ### 2. TMin 零可靠度审计证据清单（直接回答用户第二问）
 - **证据 1 (输入端无数据)**：审计主脚本 [`scripts/audit_p4_reliability_v13.py:90`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/scripts/audit_p4_reliability_v13.py#L90) 仅读取 `cv_fold_{r}_predictions.parquet`，其中只有 `obs_tmax_f`，无任何最低温输入通道；
@@ -88,13 +88,26 @@
 
 ---
 
-## 四、 本单交付与零代码改动留痕
+## 四、 委员会决议更新与后续阶段规划 (2026-10-09 更新)
+
+1. **v1.3b 已关门定案**:
+   - `P4-AUDIT-RELIABILITY-v1.3b` 正式验收关门。KORD/18h/TMax 格审计结论以 **PIT 口径（真模型 Johnson SU CDF 变换）为准**（PIT 均匀性 $p = 0.46915 \gg 0.05$，残差偏度 $+0.0471$，超额峰度 $+0.0667$），旧高斯尺形态异常诊断作废存档。（修订依据：v1.3b 关门 2026-10-09）
+2. **审计覆盖率基线确认**:
+   - 生产模型库 960 格中，目前仅完成 KORD 18h TMax 四季共 **4 格（0.417%）** 可靠度审计，其余 956 格（含全部 TMin 480 格及 Active 10 其余 9 站全部时效）审计覆盖率为 **0.0%**。（修订依据：P5 取证 / v1.3b 关门 2026-10-09）
+3. **参数适用边界与红线**:
+   - 1.28 深尾报价参考系数、$\le 35\%$ 锋利度断言严格为 **KORD/18h/TMax 专属**，严禁跨格推断或跨站套用。（修订依据：v1.3b 关门 / 委员会裁决 2026-10-09）
+4. **已定扩展计划 (P6 Roadmap)**:
+   - **一期全网格抽检**: KORD + KMIA $\times$ TMax $\times$ 12 提前期 $\times$ 4 季（共 96 格；其中 KORD/18h 4 格复用 v1.3b 结论不重跑，实际新增 92 格）；
+   - **方法论封盘**: 96 格完成逐格独立 BIC 选型与衰减曲线后，产出封盘文档，锁定分布族与校准方法论；
+   - **实盘管道接入**: 方法论封盘后接入真实盘预测管道，其后再推进其余 8 站扩展；TMin 480 格与其余 8 站暂时冻结挂账。（修订依据：委员会裁决 2026-10-09）
+
+---
+
+## 五、 本单交付与零代码改动留痕
 
 1. **执行边界遵守**:
    - 本工单期间**零代码改动**（未修改任何 `src/` 模型代码，未重跑拟合，未触发 TMin 审计）；
-   - 测试基线保持不变，申报 **“零基线变更”（维持 967 项基线）**；
+   - 测试基线保持不变，维持 970 项全绿；
 2. **交付工件落盘清单**:
-   - 结构化数据：[`evidence/p5_audit_scope_recon.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p5_audit_scope_recon.json)  
-     SHA-256: `3b469f2ea71060ca8b990e729ea57fa0d02462e92cff8217bbba94285bf63673`
-   - 取证备忘全文：[`evidence/p5_audit_scope_recon_memo.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p5_audit_scope_recon_memo.md)  
-     SHA-256: `18fbe95ce6ae16a75a7ffbc8990c74fb36b04e6c382103f6f34e56598587d159`
+   - 结构化数据：[`evidence/p5_audit_scope_recon.json`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p5_audit_scope_recon.json)
+   - 取证备忘全文：[`evidence/p5_audit_scope_recon_memo.md`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/evidence/p5_audit_scope_recon_memo.md)

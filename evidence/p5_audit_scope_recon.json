@@ -24,9 +24,9 @@
         "line_anchor": "StatutoryFoldModel(station='KORD', variable='tmax', ...); 20/20 折存在"
       },
       "audit_coverage": {
-        "status": "已覆盖 (先导站 KORD)",
-        "evidence_path": "evidence/p4_audit_reliability_v13_summary.json",
-        "line_anchor": "13,740 验证日 (KORD 18h TMax 20 折池化)"
+        "status": "已覆盖 (先导站 KORD / 18h / TMax 四季 / v1.3b PIT 关门)",
+        "evidence_path": "evidence/p4_audit_reliability_v13b_summary.json",
+        "line_anchor": "13,740 验证日 (KORD 18h TMax 20 折池化，PIT KS p=0.46915，偏度 0.0471，超额峰度 0.0667)"
       }
     },
     "TMin": {
@@ -52,7 +52,7 @@
       },
       "audit_coverage": {
         "status": "完全未覆盖 (0%)",
-        "evidence_path": "evidence/p4_audit_reliability_v13_summary.json",
+        "evidence_path": "evidence/p4_audit_reliability_v13b_summary.json",
         "line_anchor": "历史审计工件仅包含 TMax，TMin 审计记录为 0"
       }
     }
@@ -61,11 +61,36 @@
     "total_production_models_in_repo": 960,
     "max_models_count": 480,
     "min_models_count": 480,
+    "active_10_universe_stations": [
+      "KATL",
+      "KAUS",
+      "KDAL",
+      "KHOU",
+      "KLAX",
+      "KLGA",
+      "KMIA",
+      "KORD",
+      "KSEA",
+      "KSFO"
+    ],
     "cv_audited_stations": ["KORD"],
+    "cv_unaudited_stations": [
+      "KATL",
+      "KAUS",
+      "KDAL",
+      "KHOU",
+      "KLAX",
+      "KLGA",
+      "KMIA",
+      "KSEA",
+      "KSFO"
+    ],
     "cv_audited_lead_hours": [18],
     "cv_audited_variables": ["TMax"],
     "model_coverage_ratio_audited": "4 / 960 (0.417%)",
     "station_coverage_ratio": "1 / 10 (10.0%)",
-    "variable_coverage_ratio": "1 / 2 (50.0%)"
+    "variable_coverage_ratio": "1 / 2 (50.0%)",
+    "station_list_truth_source": "src/data_processing/constants.py:395-406 & configs/climate_floor_v2.json",
+    "revision_basis": "修订依据：P5 取证 / v1.3b 关门 / 委员会裁决 2026-10-09"
   }
 }
