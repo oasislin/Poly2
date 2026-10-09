@@ -76,7 +76,7 @@
 | **P6-HTD-1** | [`evidence/p6_heavytail_diag_report.md`](evidence/p6_heavytail_diag_report.md) | **工单 P6-HEAVYTAIL-DIAG** | KORD 42h 厚尾归因拆层与机制诊断四件套质检报告：完成锋面条件化、sigma_eff 离散度、留一法敏感度、折内季节构成四项实测与机械两步判定。 |
 | **P6-HTD-2** | [`evidence/p6_heavytail_diag_results.json`](evidence/p6_heavytail_diag_results.json) | **工单 P6-HEAVYTAIL-DIAG** | 机制诊断四件套结构化结果工件，包含 42h 目标格与 12h..36h 对照组完整统计数值。 |
 | **P6-CALM-1** | `evidence/p6_calm_outlier_precheck_report.md (待落盘)` | **工单 P6-CALM-OUTLIER** | 平静日极端失准的事前指纹判别与 Regime 条件模型评估报告（封盘后执行项，状态：REGISTERED_PENDING_MAINLINE；工件落盘后回填 SHA）。 |
-| **P6-KMIA-GATE-1** | [`evidence/kmia_12h_gate_report.md`](evidence/kmia_12h_gate_report.md) | **工单 P6-KMIA-GATE** | KMIA_12h 回溯门禁取证与预注册放行裁决报告：数据五件套全绿、20 折 EVT 碾压获胜（中位数 ΔBIC=-291.96）、Top-5 极端失准均为预报集体失效且集合极窄离散度、达成自动放行分支。 |
+| **P6-KMIA-GATE-1** | [`evidence/kmia_12h_gate_report.md`](evidence/kmia_12h_gate_report.md)<br>[`evidence/kmia_12h_data_gate_audit.md`](evidence/kmia_12h_data_gate_audit.md) | **工单 P6-KMIA-GATE** | KMIA_12h 回溯门禁取证与预注册放行裁决报告：数据五件套全绿、20 折 EVT 碾压获胜（中位数 ΔBIC=-291.96）、Top-5 极端失准均为预报集体失效且集合极窄离散度、达成自动放行分支；加权 ECE 0.0183 越法定门槛 0.0100 挂旗 COMPLETED_ECE_FLAGGED 入账。 |
 | **P7-SYNC-1** | [`evidence/p7_sync_bridge_audit.md`](evidence/p7_sync_bridge_audit.md)<br>[`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md) | **工单 P7-SYNC-BRIDGE**<br>*(别名备注：原 P7-SYNC-AUDIT-1)* | 受控出域通道建设、三方一致性核验与同步政策入册：172 采样文件 100% 一致 (0 mismatch)，Git 总体积 52.50 MiB，最大 blob 7.36 MiB；确立 Git LFS 分层与“未验收不出域、验收必出域”政策，主干 PR #128 关门合流。 |
 
 
