@@ -77,6 +77,7 @@
 | **P6-HTD-2** | [`evidence/p6_heavytail_diag_results.json`](evidence/p6_heavytail_diag_results.json) | **工单 P6-HEAVYTAIL-DIAG** | 机制诊断四件套结构化结果工件，包含 42h 目标格与 12h..36h 对照组完整统计数值。 |
 | **P6-CALM-1** | `evidence/p6_calm_outlier_precheck_report.md (待落盘)` | **工单 P6-CALM-OUTLIER** | 平静日极端失准的事前指纹判别与 Regime 条件模型评估报告（封盘后执行项，状态：REGISTERED_PENDING_MAINLINE；工件落盘后回填 SHA）。 |
 | **P6-KMIA-GATE-1** | [`evidence/kmia_12h_gate_report.md`](evidence/kmia_12h_gate_report.md) | **工单 P6-KMIA-GATE** | KMIA_12h 回溯门禁取证与预注册放行裁决报告：数据五件套全绿、20 折 EVT 碾压获胜（中位数 ΔBIC=-291.96）、Top-5 极端失准均为预报集体失效且集合极窄离散度、达成自动放行分支。 |
+| **P7-SYNC-AUDIT-1** | [`evidence/p7_sync_bridge_audit.md`](evidence/p7_sync_bridge_audit.md) | **工单 P7-SYNC-BRIDGE** | 推送完整性核验与仓库体检报告：172 采样文件本地↔远端 100% 一致 (0 mismatch)，Git 总体积 52.50 MiB << 500 MiB，最大 blob 7.36 MiB << 50 MiB，判定通道可信走分支 A。 |
 
 
 
