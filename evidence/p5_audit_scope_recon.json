@@ -1,0 +1,71 @@
+{
+  "audit_scope_title": "P5-AUDIT-SCOPE: 训练覆盖范围核实 + 检验范围缺口确认 + TMin 审计预研",
+  "statutory_reference": "specs/preregistration-p4-active10-retrain.md Section 4.2",
+  "audit_recon_matrix": {
+    "TMax": {
+      "design_spec_terms": {
+        "status": "存在",
+        "evidence_path": "specs/preregistration-p4-active10-retrain.md",
+        "line_anchor": "Line 158: '960 完整连续全网格（10 台站 × 4 季节 × 2 标的(Max/Min) × 12 提前期(6h~72h)）'"
+      },
+      "data_pipeline": {
+        "status": "存在",
+        "evidence_path": "src/data_acquisition/gefs_fetcher.py:201; src/data_processing/slicer.py:237; scripts/retrain_p4_active10_matrix.py:134",
+        "line_anchor": "REFORECAST_VARIABLES=('tmax_2m','tmin_2m'); obs_col='tmax_f'"
+      },
+      "fitting_implementation": {
+        "status": "存在",
+        "evidence_path": "scripts/retrain_p4_active10_matrix.py:442; tests/unit/modeling/test_p4_block_cv_20fold.py:71",
+        "line_anchor": "for var in ['Max', 'Min']; variable='tmax'"
+      },
+      "per_fold_artifacts": {
+        "status": "存在",
+        "evidence_path": "evidence/cv_fold_0_model.json:3; evidence/cv_fold_0_predictions.parquet",
+        "line_anchor": "StatutoryFoldModel(station='KORD', variable='tmax', ...); 20/20 折存在"
+      },
+      "audit_coverage": {
+        "status": "已覆盖 (先导站 KORD)",
+        "evidence_path": "evidence/p4_audit_reliability_v13_summary.json",
+        "line_anchor": "13,740 验证日 (KORD 18h TMax 20 折池化)"
+      }
+    },
+    "TMin": {
+      "design_spec_terms": {
+        "status": "存在",
+        "evidence_path": "specs/preregistration-p4-active10-retrain.md",
+        "line_anchor": "Line 158: '960 完整连续全网格（10 台站 × 4 季节 × 2 标的(Max/Min) × 12 提前期(6h~72h)）'"
+      },
+      "data_pipeline": {
+        "status": "存在",
+        "evidence_path": "src/data_acquisition/gefs_fetcher.py:201; src/data_processing/slicer.py:239; scripts/retrain_p4_active10_matrix.py:135",
+        "line_anchor": "REFORECAST_VARIABLES=('tmax_2m','tmin_2m'); obs_col='tmin_f'"
+      },
+      "fitting_implementation": {
+        "status": "存在 (全矩阵网格)",
+        "evidence_path": "scripts/retrain_p4_active10_matrix.py:442",
+        "line_anchor": "for var in ['Max', 'Min']: fit_emos_cell"
+      },
+      "per_fold_artifacts": {
+        "status": "不存在 (Block-CV 缺口)",
+        "evidence_path": "tests/unit/modeling/test_p4_block_cv_20fold.py:71; evidence/cv_fold_*_model.json",
+        "line_anchor": "Block-CV 仅调用 variable='tmax'; cv_fold_* 中 TMin 工件数量为 0"
+      },
+      "audit_coverage": {
+        "status": "完全未覆盖 (0%)",
+        "evidence_path": "evidence/p4_audit_reliability_v13_summary.json",
+        "line_anchor": "历史审计工件仅包含 TMax，TMin 审计记录为 0"
+      }
+    }
+  },
+  "universe_gap_summary": {
+    "total_production_models_in_repo": 960,
+    "max_models_count": 480,
+    "min_models_count": 480,
+    "cv_audited_stations": ["KORD"],
+    "cv_audited_lead_hours": [18],
+    "cv_audited_variables": ["TMax"],
+    "model_coverage_ratio_audited": "4 / 960 (0.417%)",
+    "station_coverage_ratio": "1 / 10 (10.0%)",
+    "variable_coverage_ratio": "1 / 2 (50.0%)"
+  }
+}
