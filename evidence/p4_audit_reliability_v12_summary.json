@@ -1,0 +1,313 @@
+{
+  "specification_version": "P4-AUDIT-RELIABILITY-v1.2",
+  "methodology": "20-Fold Block-CV Daily Lineage Pinning & Deterministic Replay",
+  "sample_size": 600,
+  "n_folds": 20,
+  "seed": 20260923,
+  "mandatory_header_declarations": {
+    "declaration_1_backcasting_assumption": "Historical validation period (2000-2018) objectively has no live Polymarket orderbook assets. All bin evaluations and settlement verdicts deterministically replay the 0.35 semantic routing specification (DiscreteBinEngine v1.2) and statutory Half-Up settlement rounding (ADR-0012) against 600 validation days extracted strictly from 20-fold Block-CV out-of-fold prediction artifacts.",
+    "declaration_2_rule_version_dependency": "This audit strictly depends on specification P4-AUDIT-RELIABILITY-v1.2 (2\u00b0F step size, even-integer grid lines, X.5 half-degree boundaries, 9-bin adsorbed window with center bin at slot 5, 11-bin mutually exclusive and collectively exhaustive structure). Any market structure change requires spec bump.",
+    "declaration_3_ground_truth_vs_audit_lens": "The underlying continuous probability distribution F(mu, sigma) is the sole physics ground truth; the 11-bin discrete grid is merely an evaluation lens for contract settlement and market mapping. Production trading pricing integrates directly over F, free from discrete resolution constraints."
+  },
+  "in_window_calibration": {
+    "subpopulation": "In-Window (Pricing / Tradeable 9-bins)",
+    "total_event_records": 5400,
+    "weighted_ece": 0.0074,
+    "wilson_coverage_rate": 0.8333,
+    "monotonicity_violations": 0,
+    "strata": [
+      {
+        "strata_label": "[0.00, 0.03)",
+        "lower_p": 0.0,
+        "upper_p": 0.03,
+        "sample_count": 1341,
+        "mean_p_pred": 0.0143,
+        "observed_hit_rate": 0.0134,
+        "calibration_gap": 0.0009,
+        "weighted_ece_contribution": 0.0002,
+        "brier_score": 0.0132,
+        "wilson_ci_lower": 0.0073,
+        "wilson_ci_upper": 0.0196,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.03, 0.07)",
+        "lower_p": 0.03,
+        "upper_p": 0.07,
+        "sample_count": 935,
+        "mean_p_pred": 0.0472,
+        "observed_hit_rate": 0.0342,
+        "calibration_gap": 0.0129,
+        "weighted_ece_contribution": 0.0022,
+        "brier_score": 0.0335,
+        "wilson_ci_lower": 0.0226,
+        "wilson_ci_upper": 0.0459,
+        "wilson_passed": false
+      },
+      {
+        "strata_label": "[0.07, 0.12)",
+        "lower_p": 0.07,
+        "upper_p": 0.12,
+        "sample_count": 813,
+        "mean_p_pred": 0.0944,
+        "observed_hit_rate": 0.0849,
+        "calibration_gap": 0.0095,
+        "weighted_ece_contribution": 0.0014,
+        "brier_score": 0.0775,
+        "wilson_ci_lower": 0.0657,
+        "wilson_ci_upper": 0.104,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.12, 0.18)",
+        "lower_p": 0.12,
+        "upper_p": 0.18,
+        "sample_count": 851,
+        "mean_p_pred": 0.1502,
+        "observed_hit_rate": 0.1669,
+        "calibration_gap": 0.0167,
+        "weighted_ece_contribution": 0.0026,
+        "brier_score": 0.1388,
+        "wilson_ci_lower": 0.1418,
+        "wilson_ci_upper": 0.1919,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.18, 0.25)",
+        "lower_p": 0.18,
+        "upper_p": 0.25,
+        "sample_count": 1096,
+        "mean_p_pred": 0.2101,
+        "observed_hit_rate": 0.2089,
+        "calibration_gap": 0.0012,
+        "weighted_ece_contribution": 0.0002,
+        "brier_score": 0.1655,
+        "wilson_ci_lower": 0.1849,
+        "wilson_ci_upper": 0.233,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.25, 0.35)",
+        "lower_p": 0.25,
+        "upper_p": 0.35,
+        "sample_count": 364,
+        "mean_p_pred": 0.2648,
+        "observed_hit_rate": 0.2747,
+        "calibration_gap": 0.0099,
+        "weighted_ece_contribution": 0.0007,
+        "brier_score": 0.1993,
+        "wilson_ci_lower": 0.2289,
+        "wilson_ci_upper": 0.3206,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.35, 0.50)",
+        "lower_p": 0.35,
+        "upper_p": 0.5,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.50, 1.00]",
+        "lower_p": 0.5,
+        "upper_p": 1.0,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true
+      }
+    ]
+  },
+  "full_distribution_calibration": {
+    "subpopulation": "Full-Distribution (Model Honesty / All 11-bins)",
+    "total_event_records": 6600,
+    "weighted_ece": 0.0064,
+    "wilson_coverage_rate": 0.8333,
+    "monotonicity_violations": 0,
+    "strata": [
+      {
+        "strata_label": "[0.00, 0.03)",
+        "lower_p": 0.0,
+        "upper_p": 0.03,
+        "sample_count": 2540,
+        "mean_p_pred": 0.0097,
+        "observed_hit_rate": 0.011,
+        "calibration_gap": 0.0013,
+        "weighted_ece_contribution": 0.0005,
+        "brier_score": 0.0109,
+        "wilson_ci_lower": 0.007,
+        "wilson_ci_upper": 0.0151,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.03, 0.07)",
+        "lower_p": 0.03,
+        "upper_p": 0.07,
+        "sample_count": 936,
+        "mean_p_pred": 0.0472,
+        "observed_hit_rate": 0.0342,
+        "calibration_gap": 0.013,
+        "weighted_ece_contribution": 0.0018,
+        "brier_score": 0.0335,
+        "wilson_ci_lower": 0.0225,
+        "wilson_ci_upper": 0.0458,
+        "wilson_passed": false
+      },
+      {
+        "strata_label": "[0.07, 0.12)",
+        "lower_p": 0.07,
+        "upper_p": 0.12,
+        "sample_count": 813,
+        "mean_p_pred": 0.0944,
+        "observed_hit_rate": 0.0849,
+        "calibration_gap": 0.0095,
+        "weighted_ece_contribution": 0.0012,
+        "brier_score": 0.0775,
+        "wilson_ci_lower": 0.0657,
+        "wilson_ci_upper": 0.104,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.12, 0.18)",
+        "lower_p": 0.12,
+        "upper_p": 0.18,
+        "sample_count": 851,
+        "mean_p_pred": 0.1502,
+        "observed_hit_rate": 0.1669,
+        "calibration_gap": 0.0167,
+        "weighted_ece_contribution": 0.0021,
+        "brier_score": 0.1388,
+        "wilson_ci_lower": 0.1418,
+        "wilson_ci_upper": 0.1919,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.18, 0.25)",
+        "lower_p": 0.18,
+        "upper_p": 0.25,
+        "sample_count": 1096,
+        "mean_p_pred": 0.2101,
+        "observed_hit_rate": 0.2089,
+        "calibration_gap": 0.0012,
+        "weighted_ece_contribution": 0.0002,
+        "brier_score": 0.1655,
+        "wilson_ci_lower": 0.1849,
+        "wilson_ci_upper": 0.233,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.25, 0.35)",
+        "lower_p": 0.25,
+        "upper_p": 0.35,
+        "sample_count": 364,
+        "mean_p_pred": 0.2648,
+        "observed_hit_rate": 0.2747,
+        "calibration_gap": 0.0099,
+        "weighted_ece_contribution": 0.0005,
+        "brier_score": 0.1993,
+        "wilson_ci_lower": 0.2289,
+        "wilson_ci_upper": 0.3206,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.35, 0.50)",
+        "lower_p": 0.35,
+        "upper_p": 0.5,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true
+      },
+      {
+        "strata_label": "[0.50, 1.00]",
+        "lower_p": 0.5,
+        "upper_p": 1.0,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true
+      }
+    ]
+  },
+  "dual_tail_diagnostics": [
+    {
+      "tail_name": "Left-Tail (< Window Lower Bound)",
+      "sample_count": 600,
+      "expected_hits": 2.755,
+      "observed_hits": 1,
+      "mean_p_pred": 0.0046,
+      "observed_rate": 0.0017,
+      "calibration_gap": 0.0029,
+      "poisson_p_upper": 0.936388,
+      "poisson_p_lower": 0.23886,
+      "underflow_count": 0,
+      "status": "PASS"
+    },
+    {
+      "tail_name": "Right-Tail (>= Window Upper Bound)",
+      "sample_count": 600,
+      "expected_hits": 2.6658,
+      "observed_hits": 9,
+      "mean_p_pred": 0.0044,
+      "observed_rate": 0.015,
+      "calibration_gap": 0.0106,
+      "poisson_p_upper": 0.001758,
+      "poisson_p_lower": 0.999545,
+      "underflow_count": 0,
+      "status": "FLAG"
+    }
+  ],
+  "kurtosis_shape_diagnostics": {
+    "z_mean": 0.0201,
+    "z_std": 1.0233,
+    "skewness": 0.6026,
+    "excess_kurtosis": 1.3669,
+    "is_leptokurtic": true,
+    "is_right_skewed": true,
+    "fat_shoulder_low_peak_thin_tail_reproduced": true,
+    "exceedances": {
+      "abs_z_gt_2_0": {
+        "observed_count": 30,
+        "observed_rate": 0.05,
+        "gaussian_expected_rate": 0.0455
+      },
+      "abs_z_gt_2_5": {
+        "observed_count": 13,
+        "observed_rate": 0.0217,
+        "gaussian_expected_rate": 0.0124
+      },
+      "z_gt_pos_2_0": {
+        "observed_count": 21,
+        "observed_rate": 0.035,
+        "gaussian_expected_rate": 0.0228
+      },
+      "z_lt_neg_2_0": {
+        "observed_count": 9,
+        "observed_rate": 0.015,
+        "gaussian_expected_rate": 0.0228
+      }
+    }
+  }
+}
