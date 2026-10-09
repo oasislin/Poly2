@@ -70,4 +70,5 @@
 | **P4-v1.3b-3** | [`evidence/p4_audit_reliability_v13b_lineage.json`](evidence/p4_audit_reliability_v13b_lineage.json) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | 13,740 样本外验证日 100% 逐日数据血统映射与 SHA256 签名。 |
 | **P5-SCP-1** | [`evidence/p5_audit_scope_recon_memo.md`](evidence/p5_audit_scope_recon_memo.md) | **工单 P5-AUDIT-SCOPE** | 训练覆盖范围核实备忘：960 格模型已训练、20 折审计覆盖率 4/960 (0.42%)、Active 10 站真值修正、TMin 零审计定责。 |
 | **P5-SCP-2** | [`evidence/p5_audit_scope_recon.json`](evidence/p5_audit_scope_recon.json) | **工单 P5-AUDIT-SCOPE** | 覆盖范围核查结构化对账矩阵与台站缺口清单。 |
+| **P6-HDF-1** | [`evidence/handoff_p6_tmax_fullgrid.md`](evidence/handoff_p6_tmax_fullgrid.md) | **工单 P6-1-HANDOFF** | 双城 TMax 全网格验证与方法论封盘新会话交接协议，包含八节法定内容与 92 格执行路径。 |
 
