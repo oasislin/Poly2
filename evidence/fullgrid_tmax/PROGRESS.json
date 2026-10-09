@@ -50,11 +50,36 @@
       "evidence_fingerprints": {
         "status_note": "阶段一判别的事前指纹候选特征已获 5/5 实证支持",
         "top5_failure_quadruplets": [
-          {"date": "2002-11-17", "sigma_ens": 0.25, "z": -5.81, "weather_codes": "WT01 WT16"},
-          {"date": "2003-08-20", "sigma_ens": 0.29, "z": -4.98, "weather_codes": "WT01 WT03 WT16"},
-          {"date": "2008-10-29", "sigma_ens": 0.85, "z": 4.82, "weather_codes": "WT01 WT03 WT16"},
-          {"date": "2001-01-22", "sigma_ens": 0.47, "z": -4.61, "weather_codes": "WT01 WT16"},
-          {"date": "2011-07-07", "sigma_ens": 0.51, "z": -4.60, "weather_codes": "WT01 WT03 WT13 WT16"}
+          {
+            "date": "2002-11-17",
+            "sigma_ens": 0.25,
+            "z": -5.81,
+            "weather_codes": "WT01 WT16"
+          },
+          {
+            "date": "2003-08-20",
+            "sigma_ens": 0.29,
+            "z": -4.98,
+            "weather_codes": "WT01 WT03 WT16"
+          },
+          {
+            "date": "2008-10-29",
+            "sigma_ens": 0.85,
+            "z": 4.82,
+            "weather_codes": "WT01 WT03 WT16"
+          },
+          {
+            "date": "2001-01-22",
+            "sigma_ens": 0.47,
+            "z": -4.61,
+            "weather_codes": "WT01 WT16"
+          },
+          {
+            "date": "2011-07-07",
+            "sigma_ens": 0.51,
+            "z": -4.6,
+            "weather_codes": "WT01 WT03 WT13 WT16"
+          }
         ]
       },
       "red_line": "本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。"
@@ -62,62 +87,61 @@
   ],
   "KORD_72h": {
     "status": "COMPLETED",
-    "winner_family": "gaussian",
-    "in_win_ece": 0.003502855872380159,
-    "ks_p": 3.71668649664084e-14,
-    "is_edge_case": true
+    "winner_family": "gaussian"
   },
   "KORD_78h": {
     "status": "COMPLETED",
-    "winner_family": "gaussian",
-    "in_win_ece": 0.0015337734694345678,
-    "ks_p": 3.493637727946608e-05,
-    "is_edge_case": true
+    "winner_family": "gaussian"
   },
   "KMIA_12h": {
     "status": "COMPLETED_ECE_FLAGGED",
     "adjudication": "P6-KMIA-GATE (自动放行分支达成：数据五件套全绿，20折EVT碾压胜出，Top-5均为预报集体失效；法定ECE门槛0.0100，实测0.0183越线挂旗COMPLETED_ECE_FLAGGED；设下游触发器：若后续11格中≥2格ECE>0.0100则立项P6-KMIA-ECE)",
+    "winner_family": "evt_hybrid"
+  },
+  "KMIA_18h": {
+    "status": "COMPLETED_JSU",
+    "adjudication": "P6-KMIA-18H-GATE (自动放行分支达成：JSU 4参数稳定无贴界，20折碾压胜出中位数ΔBIC=-787.93，Top-5均为雷暴暴雨集体失准，ECE=0.0031优良达标)",
     "metrics": {
       "station": "KMIA",
-      "lead_hour": 12,
+      "lead_hour": 18,
       "variable": "tmax",
       "sample_size_days": 13740,
-      "winner_family": "evt_hybrid",
+      "winner_family": "johnsonsu",
       "family_counts": {
-        "evt_hybrid": 13740
+        "johnsonsu": 13740
       },
-      "in_window_weighted_ece": 0.018336829365990168,
-      "full_weighted_ece": 0.014981790382466196,
-      "pit_ks_statistic": 0.08202215363271281,
-      "pit_ks_p_value": 7.374133886880787e-81,
-      "probit_skewness": -0.10847654023147493,
-      "probit_excess_kurtosis": 0.6687071592880285,
-      "sharpness_max_p": 0.34792650633796096,
-      "sharpness_p50_p": 0.2894750607398549,
+      "in_window_weighted_ece": 0.0031249051008962704,
+      "full_weighted_ece": 0.002501630354208046,
+      "pit_ks_statistic": 0.018371655360090666,
+      "pit_ks_p_value": 0.0001850962632130159,
+      "probit_skewness": 0.010410624296082542,
+      "probit_excess_kurtosis": -0.14021586471579628,
+      "sharpness_max_p": 0.5519882487474777,
+      "sharpness_p50_p": 0.47498654178910577,
       "sharpness_quantiles": {
-        "P10": 0.21559029050810177,
-        "P25": 0.25440646200587047,
-        "P50": 0.2894750607398549,
-        "P75": 0.31095825051716464,
-        "P90": 0.3332570713382946,
-        "P99": 0.343380922055091,
-        "Max": 0.34792650633796096
+        "P10": 0.41603297098707315,
+        "P25": 0.44125501956756175,
+        "P50": 0.47498654178910577,
+        "P75": 0.5122845859242988,
+        "P90": 0.5282569587273145,
+        "P99": 0.541197390437079,
+        "Max": 0.5519882487474777
       },
-      "kurtosis_gate_distance": -1.0355152823366076,
-      "skew_gate_distance": 0.011663610019288562,
+      "kurtosis_gate_distance": -2.0445132841657063,
+      "skew_gate_distance": -0.5854867394736967,
       "gate_triggered": true,
       "is_edge_case": true,
       "tail_left": {
-        "hits": 115,
-        "expected": 109.90108656388999,
-        "poisson_p": 0.3258201476867171
+        "hits": 12,
+        "expected": 19.618396434849227,
+        "poisson_p": 0.9742135688498328
       },
       "tail_right": {
-        "hits": 40,
-        "expected": 48.283434428513445,
-        "poisson_p": 0.8998611776391692
+        "hits": 0,
+        "expected": 0.7109566069794251,
+        "poisson_p": 1.0
       },
-      "lineage_sha256": "2aaa9e7fb5e4ef0316475825dd7abfbc162f7c10db09e77089b7b4e6a755e19c"
+      "lineage_sha256": "ae48dc28d1319e9e62079328357c1d558d4fa6411de6c5eff577e7f2becb1a5f"
     }
   }
 }

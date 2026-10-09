@@ -7,7 +7,7 @@ updated: 2026-10-10 00:20:00
 > 📌 **封盘门禁与出域政策导航**：双城 TMax 全网格验证与方法论封盘九项清单，详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域通道与同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
 
 - **当前阶段**：Phase 6 双城 TMax 全网格验证与方法论封盘进行中。前序 Phase 4 复验闭环（`P4-AUDIT-RELIABILITY-v1.3b` KORD/18h/TMax）正式关门验收，确定以真分布 PIT 口径为法定基准，旧高斯尺结论作废；全库测试基线 970+ 项（基线 0 failed）。（修订依据：P4/P5 取证 / v1.3b 关门 2026-10-09）
-- **活跃工作流**：推进 P6 双城 TMax 全网格验证与机制诊断：工单 P6-KMIA-GATE 经委员会裁决验收通过，自动放行分支生效；KMIA_12h 状态更新为 COMPLETED_ECE_FLAGGED（实测 ECE 0.0183 越过法定门槛 0.0100 挂旗）；启动 KMIA 18h~78h 恢复派发。（修订依据：委员会裁决 2026-10-10）
+- **活跃工作流**：推进 P6 双城 TMax 全网格验证与机制诊断：完成工单 P6-KMIA-18H-GATE 取证与自动放行（J1参数稳定无贴界、J2 20折碾压胜出中位数 ΔBIC=-787.93、J3 Top-5预报集体失效、J4 ECE 0.0031优良达标），KMIA_18h 入账 COMPLETED_JSU；确立“JSU 胜出冻结格一律走 JSU-GATE”常设规则；恢复 KMIA 24h~78h 派发。（修订依据：委员会裁决 2026-10-10）
 - **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 全部工件冻结归档；1.28 深尾报价参考系数与 $\le 35\%$ 锋利度断言严格为 KORD/18h/TMax 专属，严禁跨格移植；Active 10 交易宇宙基准真值为 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`。（修订依据：P5 取证 / v1.3b 关门 / 委员会裁决 2026-10-09）
 - **EVT 存量资产隔离与解禁 (RELEASED)**：依据工单 `P6-EVT-FIX`，`KATL/Spring`、`KDAL/Autumn`、`KLAX/Autumn`、`KSFO/Spring` 四格分布形态资产在测试前曾挂 `QUARANTINED` 标记。经成对修补 `evaluate_evt_tail_cdf` 与 `evaluate_evt_tail_pdf` 为法定 Scheme B 条件高斯重标截断公式后，10 项扩展契约测试 100% 全绿，四格全域积分达到精确 `1.00000000`，边界跳跃彻底清零（$< 10^{-9}$），正式解除隔离并放行。（修订依据：P6-EVT-FIX 裁决验收 2026-10-09）
 - **KORD 42h 厚尾归因拆层记录**：
@@ -21,8 +21,9 @@ updated: 2026-10-10 00:20:00
     - **专属红线（最高铁律）**：本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。
     - （修订依据：委员会立项令 2026-10-09（P6-CALM-OUTLIER）及委员会裁决 2026-10-10）
   - **工单 P6-KMIA-GATE**：迈阿密站址数据五件套取证、海陆风对流机制审议与预注册自动放行裁决（状态：`VERIFIED_RELEASED`，ECE 挂旗入账 COMPLETED_ECE_FLAGGED；设下游 ≥2 格 ECE>0.0100 触发 P6-KMIA-ECE 机制）。
+  - **工单 P6-KMIA-18H-GATE**：KMIA 18h 轻量级 JSU 专用放行门禁与反差专项归档（状态：`VERIFIED_RELEASED`，自动放行入账 COMPLETED_JSU）。
   - **纪律条款修订**：零 push 纪律已按 P7-SYNC-BRIDGE 修订为“未验收不出域、验收必出域”，细则见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
-- **为什么处于当前节点**：P6-KMIA-GATE 验收通过并合法触发自动放行分支，ECE 0.0183 越线挂旗并建立下游触发哨兵；CALM-OUTLIER 证据栏预存 5 元组指纹，KMIA 18h~78h 派发恢复。
+- **为什么处于当前节点**：KMIA_18h 经 JSU-GATE 四项取证达成自动放行分支入账 COMPLETED_JSU，确立 JSU 胜出冻结格常设规则，准备恢复派发 KMIA 24h~78h。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-10-10 00:50）
+（最近更新：2026-10-10 01:10）

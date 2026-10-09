@@ -77,6 +77,7 @@
 | **P6-HTD-2** | [`evidence/p6_heavytail_diag_results.json`](evidence/p6_heavytail_diag_results.json) | **工单 P6-HEAVYTAIL-DIAG** | 机制诊断四件套结构化结果工件，包含 42h 目标格与 12h..36h 对照组完整统计数值。 |
 | **P6-CALM-1** | `evidence/p6_calm_outlier_precheck_report.md (待落盘)` | **工单 P6-CALM-OUTLIER** | 平静日极端失准的事前指纹判别与 Regime 条件模型评估报告（封盘后执行项，状态：REGISTERED_PENDING_MAINLINE；工件落盘后回填 SHA）。 |
 | **P6-KMIA-GATE-1** | [`evidence/kmia_12h_gate_report.md`](evidence/kmia_12h_gate_report.md)<br>[`evidence/kmia_12h_data_gate_audit.md`](evidence/kmia_12h_data_gate_audit.md) | **工单 P6-KMIA-GATE** | KMIA_12h 回溯门禁取证与预注册放行裁决报告：数据五件套全绿、20 折 EVT 碾压获胜（中位数 ΔBIC=-291.96）、Top-5 极端失准均为预报集体失效且集合极窄离散度、达成自动放行分支；加权 ECE 0.0183 越法定门槛 0.0100 挂旗 COMPLETED_ECE_FLAGGED 入账。 |
+| **P6-KMIA-18H-GATE-1** | [`evidence/kmia_18h_jsu_gate_report.md`](evidence/kmia_18h_jsu_gate_report.md) | **工单 P6-KMIA-18H-GATE** | KMIA_18h 轻量级 JSU 门禁取证与自动放行裁决报告：J1 参数稳定无贴界（CV<3.2%）、J2 20 折 JSU 全胜碾压（中位 ΔBIC=-787.93）、J3 Top-5 均为雷暴暴雨集体失准、J4 加权 ECE 0.0031 优良达标；达成自动放行分支入账 COMPLETED_JSU，确立 JSU 胜出冻结格常设规则。 |
 | **P7-SYNC-1** | [`evidence/p7_sync_bridge_audit.md`](evidence/p7_sync_bridge_audit.md)<br>[`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md) | **工单 P7-SYNC-BRIDGE**<br>*(别名备注：原 P7-SYNC-AUDIT-1)* | 受控出域通道建设、三方一致性核验与同步政策入册：172 采样文件 100% 一致 (0 mismatch)，Git 总体积 52.50 MiB，最大 blob 7.36 MiB；确立 Git LFS 分层与“未验收不出域、验收必出域”政策，主干 PR #128 关门合流。 |
 
 
