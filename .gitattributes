@@ -1,0 +1,8 @@
+# Git LFS tracking configuration (P7-SYNC-BRIDGE Statutory Baseline)
+# Scope: Future evidence, cell-level artifacts, and processed binary tables.
+# Note: Existing historical commits are strictly preserved without retrospective rewriting.
+
+evidence/**/*.parquet filter=lfs diff=lfs merge=lfs -text
+evidence/**/cells/**/*.parquet filter=lfs diff=lfs merge=lfs -text
+evidence/**/cells/**/*.json filter=lfs diff=lfs merge=lfs -text
+data/processed/**/*.parquet filter=lfs diff=lfs merge=lfs -text

@@ -14,7 +14,7 @@
 
 ---
 
-## 二、 封盘门禁八项检查表 (The 8 Sealing Gates)
+## 二、 封盘门禁九项检查表 (The 9 Sealing Gates)
 
 | 序号 | 门禁检查项 | 当前状态 | 状态确认文件路径 | 判定依据与核验口径 |
 | :---: | :--- | :---: | :--- | :--- |
@@ -26,6 +26,7 @@
 | **06** | **全量回归基线零变更证明**<br>(970 项历史测试无退化) | **✓ 已完成**<br>(Passed) | • 执行命令：`pytest tests/ -q`<br>• [`tests/unit/modeling/test_p6_zero_drift_gate.py`](../tests/unit/modeling/test_p6_zero_drift_gate.py) | 960 passed, 10 skipped, 0 failed；KORD 18h TMax 关键审计指标逐位无漂移（加权 ECE 0.0029，KS p 0.46915，偏度 0.0471，峰度 0.0667）。 |
 | **07** | **封盘文档条款落盘**<br>(EVT 完整叙事 / 厚尾拆层 / 已知限制) | **📝 待编制**<br>(Pending Full-Grid) | • `evidence/p6_tmax_methodology_closure.md` (待落盘)<br>• `evidence/p6_tmax_methodology_closure.json` (待落盘) | 待 92 格跑数与升级项闭环后编制。条款必须包含：Scheme B EVT 叙事、厚尾拆层措辞、以及已知限制（显式回填 P6-CALM-OUTLIER 结案结论）。 |
 | **08** | **尾单：P6-CALM-OUTLIER**<br>(平静日极端失准事前指纹与 Regime 模型) | **📌 已法定登记**<br>(Backlog Anti-Deletion) | • [`STATUS.md`](../STATUS.md) (待办事项第 15-20 行)<br>• [`EVIDENCE_INDEX.md`](../EVIDENCE_INDEX.md) (条目 P6-CALM-1)<br>• [`evidence/fullgrid_tmax/PROGRESS.json`](../evidence/fullgrid_tmax/PROGRESS.json) (backlog 字段) | 最高防删条款生效：完成 92 格主线后、封盘签署前，必须作为独立议题重新呈上委员会。全程只读生产工件，禁止引入剔除/补偿生产补丁。 |
+| **09** | **出域同步状态**<br>(远端 main 与本地账本一致性) | **✓ 已完成**<br>(Passed) | • [`docs/SYNC_POLICY.md`](SYNC_POLICY.md)<br>• [`evidence/p7_sync_bridge_audit.md`](../evidence/p7_sync_bridge_audit.md)<br>• PR #128 合流提交 (`4824edb`) | 172 采样文件本地↔远端 100% 一致 (0 mismatch)；主干 PR #128 经委员会核准合入；建立 Git LFS 分层存储与“未验收不出域、验收必出域”法定机制，封盘证据链具备外部审计完备性。 |
 
 ---
 

@@ -4,9 +4,9 @@ updated: 2026-10-10 00:20:00
 ---
 # 项目状态（唯一状态入口）
 
-> 📌 **封盘门禁总清单导航**：双城 TMax 全网格验证与方法论封盘八项清单，详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)。
+> 📌 **封盘门禁与出域政策导航**：双城 TMax 全网格验证与方法论封盘九项清单，详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域通道与同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
 
-- **当前阶段**：Phase 6 双城 TMax 全网格验证与方法论封盘进行中。前序 Phase 4 复验闭环（`P4-AUDIT-RELIABILITY-v1.3b` KORD/18h/TMax）正式关门验收，确定以真分布 PIT 口径为法定基准，旧高斯尺结论作废；全库测试基线 970+ 项全绿。（修订依据：P4/P5 取证 / v1.3b 关门 2026-10-09）
+- **当前阶段**：Phase 6 双城 TMax 全网格验证与方法论封盘进行中。前序 Phase 4 复验闭环（`P4-AUDIT-RELIABILITY-v1.3b` KORD/18h/TMax）正式关门验收，确定以真分布 PIT 口径为法定基准，旧高斯尺结论作废；全库测试基线 970+ 项（基线 0 failed）。（修订依据：P4/P5 取证 / v1.3b 关门 2026-10-09）
 - **活跃工作流**：推进 P6 双城 TMax 全网格验证与机制诊断：KORD 12 个提前期 100% 审计完成；KMIA_12h 触发 EVT 竞争胜出，已产出取证工件并挂起，待委员会审议 P6-KMIA-GATE 裁决后继续推进后续时效。（修订依据：工单 P6-KMIA-GATE 2026-10-10）
 - **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 全部工件冻结归档；1.28 深尾报价参考系数与 $\le 35\%$ 锋利度断言严格为 KORD/18h/TMax 专属，严禁跨格移植；Active 10 交易宇宙基准真值为 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`。（修订依据：P5 取证 / v1.3b 关门 / 委员会裁决 2026-10-09）
 - **EVT 存量资产隔离与解禁 (RELEASED)**：依据工单 `P6-EVT-FIX`，`KATL/Spring`、`KDAL/Autumn`、`KLAX/Autumn`、`KSFO/Spring` 四格分布形态资产在测试前曾挂 `QUARANTINED` 标记。经成对修补 `evaluate_evt_tail_cdf` 与 `evaluate_evt_tail_pdf` 为法定 Scheme B 条件高斯重标截断公式后，10 项扩展契约测试 100% 全绿，四格全域积分达到精确 `1.00000000`，边界跳跃彻底清零（$< 10^{-9}$），正式解除隔离并放行。（修订依据：P6-EVT-FIX 裁决验收 2026-10-09）
