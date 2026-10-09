@@ -71,4 +71,12 @@
 | **P5-SCP-1** | [`evidence/p5_audit_scope_recon_memo.md`](evidence/p5_audit_scope_recon_memo.md) | **工单 P5-AUDIT-SCOPE** | 训练覆盖范围核实备忘：960 格模型已训练、20 折审计覆盖率 4/960 (0.42%)、Active 10 站真值修正、TMin 零审计定责。 |
 | **P5-SCP-2** | [`evidence/p5_audit_scope_recon.json`](evidence/p5_audit_scope_recon.json) | **工单 P5-AUDIT-SCOPE** | 覆盖范围核查结构化对账矩阵与台站缺口清单。 |
 | **P6-HDF-1** | [`evidence/handoff_p6_tmax_fullgrid.md`](evidence/handoff_p6_tmax_fullgrid.md) | **工单 P6-1-HANDOFF** | 双城 TMax 全网格验证与方法论封盘新会话交接协议，包含八节法定内容与 92 格执行路径。 |
+| **P6-EVT-G1** | [`evidence/evt_path_validation_report.md`](evidence/evt_path_validation_report.md) | **工单 P6-EVT-GUARD** | EVT 代码路径离线预验证与缺陷审计报告：捕获经验分位数拼接负跳跃（-2.72%）与全域积分不归一（1.0545）重大缺陷，KATL/KDAL/KLAX/KSFO 四格隔离标记生效。 |
+| **P6-EVT-F1** | [`evidence/p6_evt_fix_remediation_report.md`](evidence/p6_evt_fix_remediation_report.md) | **工单 P6-EVT-FIX** | EVT 核心逻辑成对修补、四格受控重算与解禁验收报告：落地 Scheme B 条件高斯重标截断公式，扩展 10 项契约测试全绿，四格积分恢复 1.00000000 且解除隔离，零漂移基线 100% 守住。 |
+| **P6-HTD-1** | [`evidence/p6_heavytail_diag_report.md`](evidence/p6_heavytail_diag_report.md) | **工单 P6-HEAVYTAIL-DIAG** | KORD 42h 厚尾归因拆层与机制诊断四件套质检报告：完成锋面条件化、sigma_eff 离散度、留一法敏感度、折内季节构成四项实测与机械两步判定。 |
+| **P6-HTD-2** | [`evidence/p6_heavytail_diag_results.json`](evidence/p6_heavytail_diag_results.json) | **工单 P6-HEAVYTAIL-DIAG** | 机制诊断四件套结构化结果工件，包含 42h 目标格与 12h..36h 对照组完整统计数值。 |
+| **P6-CALM-1** | `evidence/p6_calm_outlier_precheck_report.md (待落盘)` | **工单 P6-CALM-OUTLIER** | 平静日极端失准的事前指纹判别与 Regime 条件模型评估报告（封盘后执行项，状态：REGISTERED_PENDING_MAINLINE；工件落盘后回填 SHA）。 |
+| **P6-KMIA-GATE-1** | [`evidence/kmia_12h_gate_report.md`](evidence/kmia_12h_gate_report.md) | **工单 P6-KMIA-GATE** | KMIA_12h 回溯门禁取证与预注册放行裁决报告：数据五件套全绿、20 折 EVT 碾压获胜（中位数 ΔBIC=-291.96）、Top-5 极端失准均为预报集体失效且集合极窄离散度、达成自动放行分支。 |
+
+
 

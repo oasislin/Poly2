@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "weighted_ece": 0.006957718722301483,
+  "ece_ci_lower": 0.001622743779361496,
+  "ece_ci_upper": 0.015190119379359643,
+  "bss": 0.0015070537336628886,
+  "ks_stat": 0.02968137051890163,
+  "ks_pvalue": 0.000394368927259263,
+  "wilson_coverage_rate": 1.0,
+  "is_degenerate": false,
+  "error_message": null,
+  "s_ladder_status": {
+    "S1_input_defense": true,
+    "S2_calibration_ece": true,
+    "S3_monotonicity": true,
+    "S4_wilson_coverage": true,
+    "S5_ks_goodness": true
+  },
+  "metadata": {
+    "sample_count": 4830,
+    "monotonicity_violations": 0,
+    "alarms": [],
+    "decision_bins_count": 2
+  }
+}

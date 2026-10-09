@@ -1,0 +1,55 @@
+{
+  "round_id": 18,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=60, seasonal_emos_params={'Winter': (8.14689285833813, 1.0, 6.396989453085192, 0.5), 'Spring': (12.161619044712609, 1.0, 8.172409365300675, 0.5), 'Summer': (12.936235925231514, 1.0, 5.426642678852999, 0.5), 'Autumn': (9.866399232627352, 1.0, 6.357515435223739, 0.5)}, seasonal_c_train={'Winter': 0.9844570486615232, 'Spring': 1.0139737464177565, 'Summer': 0.993093889217514, 'Autumn': 0.9934999126193862}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': -0.07368857496852699, 'kurtosis_fisher': 0.009339948427950606, 'jsu_triggered': False, 'evt_triggered': False, 'bic_gaussian': 17730.631027191965, 'bic_jsu': None, 'bic_evt': None, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 60,
+    "seasonal_emos_params": {
+      "Winter": [
+        8.14689285833813,
+        1.0,
+        6.396989453085192,
+        0.5
+      ],
+      "Spring": [
+        12.161619044712609,
+        1.0,
+        8.172409365300675,
+        0.5
+      ],
+      "Summer": [
+        12.936235925231514,
+        1.0,
+        5.426642678852999,
+        0.5
+      ],
+      "Autumn": [
+        9.866399232627352,
+        1.0,
+        6.357515435223739,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9844570486615232,
+      "Spring": 1.0139737464177565,
+      "Summer": 0.993093889217514,
+      "Autumn": 0.9934999126193862
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": -0.07368857496852699,
+      "kurtosis_fisher": 0.009339948427950606,
+      "jsu_triggered": false,
+      "evt_triggered": false,
+      "bic_gaussian": 17730.631027191965,
+      "bic_jsu": null,
+      "bic_evt": null,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

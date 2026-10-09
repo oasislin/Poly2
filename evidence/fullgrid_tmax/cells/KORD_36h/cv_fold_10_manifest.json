@@ -1,0 +1,17 @@
+{
+  "round_id": 10,
+  "artifacts": {
+    "model": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/fullgrid_tmax/cells/KORD_36h/cv_fold_10_model.json",
+      "sha256": "efa066136ae73f6bfb7420bbafefdd77114d1c3a8a1ae03f6be218878918aa2f"
+    },
+    "predictions": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/fullgrid_tmax/cells/KORD_36h/cv_fold_10_predictions.parquet",
+      "sha256": "d3fd05d57e72db8444caa43b5ea403228f09475de7d823677e74ee745ac560ee"
+    },
+    "gate_report": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/fullgrid_tmax/cells/KORD_36h/cv_fold_10_report.json",
+      "sha256": "f14f33a0c7a6512c7b017a4d5f5999b5a4e979da58c7d46497077b752f0443a5"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "round_id": 11,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=66, seasonal_emos_params={'Winter': (4.839932221761806, 1.0, 3.658871318179254, 0.5), 'Spring': (4.489627882140994, 1.0, 5.232474064214467, 0.5), 'Summer': (2.8424212530448045, 1.0, 3.858372199010632, 0.5), 'Autumn': (3.587691006681311, 1.0, 3.6313593335186014, 0.5)}, seasonal_c_train={'Winter': 1.146805044409306, 'Spring': 0.9641598070434333, 'Summer': 0.9363800607008734, 'Autumn': 0.9732225770188364}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6268, 'skewness': 0.009943768035467733, 'kurtosis_fisher': 1.5586633726249657, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17684.916104158976, 'bic_jsu': None, 'bic_evt': 17780.536164255285, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 66,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.839932221761806,
+        1.0,
+        3.658871318179254,
+        0.5
+      ],
+      "Spring": [
+        4.489627882140994,
+        1.0,
+        5.232474064214467,
+        0.5
+      ],
+      "Summer": [
+        2.8424212530448045,
+        1.0,
+        3.858372199010632,
+        0.5
+      ],
+      "Autumn": [
+        3.587691006681311,
+        1.0,
+        3.6313593335186014,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 1.146805044409306,
+      "Spring": 0.9641598070434333,
+      "Summer": 0.9363800607008734,
+      "Autumn": 0.9732225770188364
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6268,
+      "skewness": 0.009943768035467733,
+      "kurtosis_fisher": 1.5586633726249657,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17684.916104158976,
+      "bic_jsu": null,
+      "bic_evt": 17780.536164255285,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

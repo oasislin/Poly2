@@ -1,0 +1,55 @@
+{
+  "round_id": 17,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=66, seasonal_emos_params={'Winter': (4.829568775314769, 1.0, 4.339289965793814, 0.5), 'Spring': (4.571191175298708, 1.0, 5.268191596798898, 0.5), 'Summer': (2.894637640854583, 1.0, 3.8296615274737795, 0.5), 'Autumn': (3.495700651018808, 1.0, 3.5903470969268754, 0.5)}, seasonal_c_train={'Winter': 0.9802073316635725, 'Spring': 0.9610483077263903, 'Summer': 0.9382177995869221, 'Autumn': 0.9704723163578962}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': -0.004252050652680148, 'kurtosis_fisher': 1.3075179903883907, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17629.482480281946, 'bic_jsu': None, 'bic_evt': 17698.033301169038, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 66,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.829568775314769,
+        1.0,
+        4.339289965793814,
+        0.5
+      ],
+      "Spring": [
+        4.571191175298708,
+        1.0,
+        5.268191596798898,
+        0.5
+      ],
+      "Summer": [
+        2.894637640854583,
+        1.0,
+        3.8296615274737795,
+        0.5
+      ],
+      "Autumn": [
+        3.495700651018808,
+        1.0,
+        3.5903470969268754,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9802073316635725,
+      "Spring": 0.9610483077263903,
+      "Summer": 0.9382177995869221,
+      "Autumn": 0.9704723163578962
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": -0.004252050652680148,
+      "kurtosis_fisher": 1.3075179903883907,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17629.482480281946,
+      "bic_jsu": null,
+      "bic_evt": 17698.033301169038,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

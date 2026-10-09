@@ -1,0 +1,55 @@
+{
+  "round_id": 14,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=66, seasonal_emos_params={'Winter': (4.788748100135244, 1.0, 4.2429017051248, 0.5), 'Spring': (4.515140836916032, 1.0, 5.209965934078687, 0.5), 'Summer': (2.9521478858505645, 1.0, 3.8128700601568, 0.5), 'Autumn': (3.604635159890833, 1.0, 3.6438032336293245, 0.5)}, seasonal_c_train={'Winter': 0.9786041627924151, 'Spring': 0.9598014129854019, 'Summer': 0.9361648185192635, 'Autumn': 0.9743194554139797}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': -0.03052105632645593, 'kurtosis_fisher': 1.3981498697571126, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17626.854914826596, 'bic_jsu': None, 'bic_evt': 17711.119954514943, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 66,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.788748100135244,
+        1.0,
+        4.2429017051248,
+        0.5
+      ],
+      "Spring": [
+        4.515140836916032,
+        1.0,
+        5.209965934078687,
+        0.5
+      ],
+      "Summer": [
+        2.9521478858505645,
+        1.0,
+        3.8128700601568,
+        0.5
+      ],
+      "Autumn": [
+        3.604635159890833,
+        1.0,
+        3.6438032336293245,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9786041627924151,
+      "Spring": 0.9598014129854019,
+      "Summer": 0.9361648185192635,
+      "Autumn": 0.9743194554139797
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": -0.03052105632645593,
+      "kurtosis_fisher": 1.3981498697571126,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17626.854914826596,
+      "bic_jsu": null,
+      "bic_evt": 17711.119954514943,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

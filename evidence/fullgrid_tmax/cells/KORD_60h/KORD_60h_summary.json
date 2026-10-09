@@ -1,0 +1,42 @@
+{
+  "station": "KORD",
+  "lead_hour": 60,
+  "variable": "tmax",
+  "sample_size_days": 13738,
+  "winner_family": "gaussian",
+  "family_counts": {
+    "gaussian": 13738
+  },
+  "in_window_weighted_ece": 0.003096790157925082,
+  "full_weighted_ece": 0.0025346491278494137,
+  "pit_ks_statistic": 0.017907510431201035,
+  "pit_ks_p_value": 0.0002944939763916353,
+  "probit_skewness": -0.011254031668744483,
+  "probit_excess_kurtosis": -0.0036354362662254225,
+  "sharpness_max_p": 0.19705873847663496,
+  "sharpness_p50_p": 0.1262068097743102,
+  "sharpness_quantiles": {
+    "P10": 0.12317215657244687,
+    "P25": 0.12421846404267588,
+    "P50": 0.1262068097743102,
+    "P75": 0.14769627394100984,
+    "P90": 0.15584316275938861,
+    "P99": 0.16856298756104052,
+    "Max": 0.19705873847663496
+  },
+  "kurtosis_gate_distance": 0.9520960511853112,
+  "skew_gate_distance": 0.31862454711498633,
+  "gate_triggered": false,
+  "is_edge_case": false,
+  "tail_left": {
+    "hits": 1137,
+    "expected": 1174.2061994004257,
+    "poisson_p": 0.8646503051882826
+  },
+  "tail_right": {
+    "hits": 1087,
+    "expected": 1173.1727327997858,
+    "poisson_p": 0.9947316796937411
+  },
+  "lineage_sha256": "f9ff27576da47141eba5f42b857ba6dd0d1f0957f08e0cff9316d673f73f045b"
+}

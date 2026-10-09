@@ -1,0 +1,55 @@
+{
+  "round_id": 9,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=42, seasonal_emos_params={'Winter': (4.74026514613621, 1.0, 4.016119729663693, 0.5), 'Spring': (4.660321403171707, 1.0, 4.725041863021239, 0.5), 'Summer': (2.8650357455766056, 1.0, 3.4703505992154233, 0.5), 'Autumn': (3.5301729749140023, 1.0, 3.3587691105253157, 0.5)}, seasonal_c_train={'Winter': 0.9822159940195447, 'Spring': 0.9704930776715777, 'Summer': 0.9539792928010247, 'Autumn': 0.983719049120859}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': 0.10168749157455426, 'kurtosis_fisher': 1.6486810446004103, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17634.679729414347, 'bic_jsu': None, 'bic_evt': 17630.47517823908, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 42,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.74026514613621,
+        1.0,
+        4.016119729663693,
+        0.5
+      ],
+      "Spring": [
+        4.660321403171707,
+        1.0,
+        4.725041863021239,
+        0.5
+      ],
+      "Summer": [
+        2.8650357455766056,
+        1.0,
+        3.4703505992154233,
+        0.5
+      ],
+      "Autumn": [
+        3.5301729749140023,
+        1.0,
+        3.3587691105253157,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9822159940195447,
+      "Spring": 0.9704930776715777,
+      "Summer": 0.9539792928010247,
+      "Autumn": 0.983719049120859
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": 0.10168749157455426,
+      "kurtosis_fisher": 1.6486810446004103,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17634.679729414347,
+      "bic_jsu": null,
+      "bic_evt": 17630.47517823908,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

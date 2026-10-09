@@ -1,0 +1,66 @@
+{
+  "round_id": 14,
+  "model_str": "StatutoryFoldModel(station='KMIA', variable='tmax', lead_hour=12, seasonal_emos_params={'Winter': (8.185342239068476, 1.0, 3.6891753543824994, 0.5), 'Spring': (9.546511525402451, 1.0, 2.9169141826580693, 0.5), 'Summer': (7.501658541189045, 1.0, 1.7621224440771073, 0.5), 'Autumn': (7.154980603508065, 1.0, 2.57536888324545, 0.5)}, seasonal_c_train={'Winter': 0.9811302148912349, 'Spring': 0.9858762597008708, 'Summer': 1.2882594207191498, 'Autumn': 0.9990583603075603}, selected_family='evt_hybrid', shape_params={'u_left': -1.7855093978650909, 'u_right': 1.5961360549729038, 'gpd_left': {'shape_xi': -0.15227649337496138, 'scale_beta': 0.7895953170980222}, 'gpd_right': {'shape_xi': -0.032810826132373364, 'scale_beta': 0.5684722919331837}}, selection_audit={'n_samples': 6250, 'skewness': -0.3067715253741507, 'kurtosis_fisher': 1.8580499792322245, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17741.583501627167, 'bic_jsu': None, 'bic_evt': 17457.90949621197, 'delta_bic_winner': -283.674005415196, 'selected_family': 'evt_hybrid'})",
+  "model": {
+    "station": "KMIA",
+    "variable": "tmax",
+    "lead_hour": 12,
+    "seasonal_emos_params": {
+      "Winter": [
+        8.185342239068476,
+        1.0,
+        3.6891753543824994,
+        0.5
+      ],
+      "Spring": [
+        9.546511525402451,
+        1.0,
+        2.9169141826580693,
+        0.5
+      ],
+      "Summer": [
+        7.501658541189045,
+        1.0,
+        1.7621224440771073,
+        0.5
+      ],
+      "Autumn": [
+        7.154980603508065,
+        1.0,
+        2.57536888324545,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9811302148912349,
+      "Spring": 0.9858762597008708,
+      "Summer": 1.2882594207191498,
+      "Autumn": 0.9990583603075603
+    },
+    "selected_family": "evt_hybrid",
+    "shape_params": {
+      "u_left": -1.7855093978650909,
+      "u_right": 1.5961360549729038,
+      "gpd_left": {
+        "shape_xi": -0.15227649337496138,
+        "scale_beta": 0.7895953170980222
+      },
+      "gpd_right": {
+        "shape_xi": -0.032810826132373364,
+        "scale_beta": 0.5684722919331837
+      }
+    },
+    "selection_audit": {
+      "n_samples": 6250,
+      "skewness": -0.3067715253741507,
+      "kurtosis_fisher": 1.8580499792322245,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17741.583501627167,
+      "bic_jsu": null,
+      "bic_evt": 17457.90949621197,
+      "delta_bic_winner": -283.674005415196,
+      "selected_family": "evt_hybrid"
+    }
+  }
+}
