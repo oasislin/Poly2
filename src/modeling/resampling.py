@@ -442,6 +442,10 @@ class StatutoryFoldModel:
     shape_params: Dict[str, Any]
     selection_audit: Dict[str, Any]
 
+    def to_dict(self) -> Dict[str, Any]:
+        from dataclasses import asdict
+        return asdict(self)
+
 
 def fit_statutory_pipeline_fold(
     train_df: pd.DataFrame,

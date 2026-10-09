@@ -143,6 +143,8 @@ def test_e2e_real_fold0_dry_run_artifacts():
             "obs": val_work["obs_tmax_f"].values,
             "mu": mu_pred,
             "sigma": sig_pred,
+            "selected_family": model.selected_family,
+            "family_shape_params": json.dumps(model.shape_params),
         })
         mae = float(np.mean(np.abs(pred_df["obs"] - pred_df["mu"])))
         return {"mae": mae, "predictions": pred_df}

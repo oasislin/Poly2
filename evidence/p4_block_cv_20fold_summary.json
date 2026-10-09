@@ -2,7 +2,7 @@
   "station": "KORD",
   "n_rounds": 20,
   "seed": 20260923,
-  "total_duration_seconds": 14.09,
+  "total_duration_seconds": 14.81,
   "gate_passed_count": 17,
   "screening_records_count": 20,
   "pooled_gate": {
@@ -154,7 +154,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.153657845456724,
       "clim_crps": 5.818584067008618,
-      "artifact_manifest_sha256": "90550ba86c8f9bf5e683b125d37a945f89fa3910adce2190c94feb7e8505f0aa"
+      "artifact_manifest_sha256": "3f8ad79fc00a9a6265ca39a7f51d2e2ff251c1084532a3cf7ec374c33dde3217"
     },
     {
       "fold_idx": 1,
@@ -176,7 +176,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.970533527677075,
       "clim_crps": 5.650366289938643,
-      "artifact_manifest_sha256": "5285f82f7b0c95ab59f1c6ec7c62f188129f68f2c5665eaede99704f779123ec"
+      "artifact_manifest_sha256": "467b98070dede969b923f9329db6857015ec8fb0a9adfde897b25be156631fef"
     },
     {
       "fold_idx": 2,
@@ -198,7 +198,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.00706114264718,
       "clim_crps": 5.5942103291700915,
-      "artifact_manifest_sha256": "4a874000c6beef49aede7ca8aa16827e1b04cb2818bcfb5eb1fa049887415342"
+      "artifact_manifest_sha256": "c8459d24b24b2534a9aca3eca1821bda477fc09567ad05bf66fe3440b8e017f9"
     },
     {
       "fold_idx": 3,
@@ -220,7 +220,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.96030197091607,
       "clim_crps": 5.5765390138475395,
-      "artifact_manifest_sha256": "987bf824bd90347582d5646ef71ceb91905521d54c6962818a436acfadf9bc95"
+      "artifact_manifest_sha256": "34cecc7821a2f85f0035109594cc6c8f68da5a419702300875fda3d15af769aa"
     },
     {
       "fold_idx": 4,
@@ -242,7 +242,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.596242431625383,
       "clim_crps": 6.114360294079455,
-      "artifact_manifest_sha256": "09b706643b6b3ef1f4335481d81d82d55317c574c30de2997929bdaf917661e2"
+      "artifact_manifest_sha256": "1c0aaeb8e9df6c17aea31489cdcbf169baf5a2f44c5392cda45ec070f727770b"
     },
     {
       "fold_idx": 5,
@@ -264,7 +264,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.998963831279719,
       "clim_crps": 5.649825592578199,
-      "artifact_manifest_sha256": "45e0637c04baf8e5eac813a95185ae6c4efb5de0bd5e09c393b70023c6d63051"
+      "artifact_manifest_sha256": "f337124cc77237c1eb59f0909a78bdc62294912a06fc9f4e79780b8375c3a711"
     },
     {
       "fold_idx": 6,
@@ -286,7 +286,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.75934022952576,
       "clim_crps": 5.49153274121132,
-      "artifact_manifest_sha256": "6033008aebd4b528ee1df9ca8e1af9cfeb949642622f9388488a0dc0a99c0e66"
+      "artifact_manifest_sha256": "47e4bc09f110eb14c507ba5d12b6dfc145d88f8fafb7a8c998eb5edeeb60436f"
     },
     {
       "fold_idx": 7,
@@ -308,7 +308,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.7151384258531115,
       "clim_crps": 5.437101173650497,
-      "artifact_manifest_sha256": "742b85eb2c69823a48c010491dd3fb5fb6580fb93b91f2d302c824f7e8c0e9a2"
+      "artifact_manifest_sha256": "05531071158a00c61ca9b8d8b9b92af351987174efe2eb1e2db519dcb5b9db97"
     },
     {
       "fold_idx": 8,
@@ -330,7 +330,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.350720640121935,
       "clim_crps": 5.916121103895238,
-      "artifact_manifest_sha256": "919628f909fd0018f1c12f25e25a6dc2b80e3d5155968aa17576704273d60764"
+      "artifact_manifest_sha256": "86f8dd15625ae4a94b14c6da0d40cd87db6f2a40967f54fbf0799d94d7704654"
     },
     {
       "fold_idx": 9,
@@ -352,7 +352,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.298177068290697,
       "clim_crps": 5.125366560484208,
-      "artifact_manifest_sha256": "50d9983701ce8a1194c60967802982b7b813c68ba0be981b4b4521a4ba0bfe9b"
+      "artifact_manifest_sha256": "9f861c9bdcf7d863128eab91af258bca880078671e7436ad66819ae5ffd3276a"
     },
     {
       "fold_idx": 10,
@@ -374,7 +374,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.627242679551803,
       "clim_crps": 5.429958249831017,
-      "artifact_manifest_sha256": "e416ed32bfd086e65ebe8d052bdcc6ff7f29e35b155ed044a491c65c4cc03168"
+      "artifact_manifest_sha256": "c82b955edfa7d6d187da59bfaa238bb993c7e052c0af5255f786b45eeddb58d5"
     },
     {
       "fold_idx": 11,
@@ -396,7 +396,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.228084305148574,
       "clim_crps": 5.7369016229858865,
-      "artifact_manifest_sha256": "8db1b6cb51cc17e79a79d16fa2bea8f27142ec27ea6dd58d3e400c60da340cc2"
+      "artifact_manifest_sha256": "cbcc057304547dbecbc68c1f5305f5ad0c8b0363b57ca731f8318a19014981f6"
     },
     {
       "fold_idx": 12,
@@ -418,7 +418,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.19341267600116,
       "clim_crps": 5.76479719482296,
-      "artifact_manifest_sha256": "a1e54714d287e59a523f9f70811465ef9f87eb4bad5401b4b4e6e31a49f5825a"
+      "artifact_manifest_sha256": "93ad5396c06b098f29688a1674d297864787ed0265b38df284282394c707d60a"
     },
     {
       "fold_idx": 13,
@@ -440,7 +440,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.92793907954636,
       "clim_crps": 5.5192121890405454,
-      "artifact_manifest_sha256": "5a3107191f7a4d3cc70a51540bd94930f0f60b006baf7ed4f74f073a4f2120a1"
+      "artifact_manifest_sha256": "3470d855fb9f4c88a2b53fe0f5198b80fd83ead26459a61daa21269a48dedea6"
     },
     {
       "fold_idx": 14,
@@ -462,7 +462,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.464327713447865,
       "clim_crps": 5.90486701827754,
-      "artifact_manifest_sha256": "8b2d599ed6d25adf9be2c548ac332f09e2b848abbef76262290bc66bf89780ed"
+      "artifact_manifest_sha256": "6bbc99affafc929ac5f26513223c95f1fea03532791c1abbf780b370bab92605"
     },
     {
       "fold_idx": 15,
@@ -484,7 +484,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.925194163290215,
       "clim_crps": 5.624019707919631,
-      "artifact_manifest_sha256": "84e6ae555cf0c44333b436ae3588b4a00aef154068f9f45b769b616a0b82bc0a"
+      "artifact_manifest_sha256": "516305e9687a36a56abb2fd75bf8f887afcd202f6e6df3fb0a2f912708e24a4f"
     },
     {
       "fold_idx": 16,
@@ -506,7 +506,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.735590626880222,
       "clim_crps": 5.465421088939948,
-      "artifact_manifest_sha256": "7a9903a19561653669560b84d650f072ca15326a8a962d4f07bf52b9297b39fa"
+      "artifact_manifest_sha256": "47d876cf17dfc4d225e15fec7e84d705dfc1c7fe2ca2a823ab2d2ad56a8bb869"
     },
     {
       "fold_idx": 17,
@@ -528,7 +528,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 8.01291392186029,
       "clim_crps": 5.6489433234992195,
-      "artifact_manifest_sha256": "510c03c475b01b0a2c968d8226b012979f0d8866b6cf776d419f68834c7cc4e5"
+      "artifact_manifest_sha256": "6a8d7f08f8e0e6a541b15358a0f9866bf20ffbf505e82959abfab7e9406739fc"
     },
     {
       "fold_idx": 18,
@@ -550,7 +550,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.561511784381543,
       "clim_crps": 5.334045543487325,
-      "artifact_manifest_sha256": "2b48eaec2bc226bde01ef2d9605034b973da80a4b2b6b1df5380777cdb3c5d1c"
+      "artifact_manifest_sha256": "0ebfc93f58e8cea759e27921c3949942c6b8fcf5627491d5658abd16c0bba2a9"
     },
     {
       "fold_idx": 19,
@@ -572,7 +572,7 @@
       "selected_family": "johnsonsu",
       "clim_mae": 7.9875998886558,
       "clim_crps": 5.6274801995751265,
-      "artifact_manifest_sha256": "521159e67d618100d2f5e5ff5979d4072e784b2355412f9484f96c6c40982fb4"
+      "artifact_manifest_sha256": "e713b1d1982164fdc5db423d65cad6f7dfc99b5a55c594f362f0e7fe1f434818"
     }
   ]
 }
