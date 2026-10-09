@@ -85,9 +85,12 @@ def _extract_prediction_df(
     if df.empty:
         raise DataAssetError("Input predictions dataset cannot be empty.")
 
-    # Format A: Direct p_pred and hit columns
+    # Format A: Direct p_pred and hit columns (preserves optional continuous pit track for S5)
     if "p_pred" in df.columns and "hit" in df.columns:
-        return df[["p_pred", "hit"]].copy()
+        cols = ["p_pred", "hit"]
+        if "pit" in df.columns:
+            cols.append("pit")
+        return df[cols].copy()
 
     # Format B: Forecast parameter columns (obs, mu, sigma)
     obs_col = next((c for c in ["obs", "obs_tmax_f", "obs_tmin_f"] if c in df.columns), None)

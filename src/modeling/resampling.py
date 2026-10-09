@@ -260,6 +260,7 @@ def run_block_cv(
     )
 
     round_results: List[Dict[str, Any]] = []
+    all_val_preds: List[pd.DataFrame] = []
 
     for round_id, train_df, val_df in cv.split_dataframe(df, date_col=date_col):
         # 1. Refit model STRICTLY inside the loop on train_df (90% blocks)
@@ -268,7 +269,7 @@ def run_block_cv(
         # 2. Evaluate model on val_df (10% holdout blocks)
         metrics = eval_fn(model, val_df)
 
-        # Statutory Hook 1: Call P5 reliability gate
+        # Statutory Hook 1: Call P5 reliability gate (Screening Level under ADR-0018)
         from src.verification.p5_gate import GateReport, run_reliability_gate
 
         pred_source = val_df
@@ -279,6 +280,9 @@ def run_block_cv(
                 pred_source = metrics["predictions_df"]
 
         gate_report: GateReport = run_reliability_gate(pred_source)
+
+        if isinstance(pred_source, pd.DataFrame):
+            all_val_preds.append(pred_source.copy())
 
         # Statutory Hook 2: Export fold artifacts and sha256 manifest if requested
         artifact_paths: Dict[str, str] = {}
@@ -351,6 +355,47 @@ def run_block_cv(
         }
         round_results.append(result_entry)
 
+    # ADR-0018 Binding Level: Pooled Reliability Gate across all validation folds
+    pooled_gate_report = None
+    pooled_artifact_paths: Dict[str, str] = {}
+    pooled_artifact_hashes: Dict[str, str] = {}
+    if all_val_preds:
+        pooled_df = pd.concat(all_val_preds, ignore_index=True)
+        from src.verification.p5_gate import run_reliability_gate
+        pooled_gate_report = run_reliability_gate(pooled_df)
+
+        if export_evidence:
+            out_dir = Path(evidence_dir) if evidence_dir else Path("evidence")
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            pooled_pred_file = out_dir / "cv_pooled_predictions.parquet"
+            pooled_df.to_parquet(pooled_pred_file, index=False)
+            pooled_artifact_paths["predictions"] = str(pooled_pred_file)
+
+            pooled_report_file = out_dir / "cv_pooled_report.json"
+            with open(pooled_report_file, "w", encoding="utf-8") as f:
+                json.dump(pooled_gate_report.to_dict(), f, indent=2, default=str)
+            pooled_artifact_paths["gate_report"] = str(pooled_report_file)
+
+            for art_name, art_path in list(pooled_artifact_paths.items()):
+                p = Path(art_path)
+                with open(p, "rb") as f:
+                    pooled_artifact_hashes[art_name] = hashlib.sha256(f.read()).hexdigest()
+
+            pooled_manifest_file = out_dir / "cv_pooled_manifest.json"
+            pooled_manifest_data = {
+                "round_id": "pooled",
+                "artifacts": {
+                    k: {"path": pooled_artifact_paths[k], "sha256": pooled_artifact_hashes[k]}
+                    for k in pooled_artifact_paths
+                },
+            }
+            with open(pooled_manifest_file, "w", encoding="utf-8") as f:
+                json.dump(pooled_manifest_data, f, indent=2)
+            pooled_artifact_paths["manifest"] = str(pooled_manifest_file)
+            with open(pooled_manifest_file, "rb") as f:
+                pooled_artifact_hashes["manifest"] = hashlib.sha256(f.read()).hexdigest()
+
     # Aggregate metric summary across rounds
     non_summary_keys = {"round_id", "train_samples", "val_samples", "gate_report", "artifact_paths", "artifact_hashes"}
     metric_keys = [k for k in round_results[0].keys() if k not in non_summary_keys]
@@ -372,6 +417,9 @@ def run_block_cv(
         "holdout_ratio": holdout_ratio,
         "round_results": round_results,
         "summary": summary,
+        "pooled_gate_report": pooled_gate_report,
+        "pooled_artifact_paths": pooled_artifact_paths,
+        "pooled_artifact_hashes": pooled_artifact_hashes,
     }
 
 
