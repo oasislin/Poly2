@@ -1,0 +1,55 @@
+{
+  "round_id": 7,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=36, seasonal_emos_params={'Winter': (8.034222344970708, 1.0, 6.196173381234205, 0.5), 'Spring': (12.467046781288282, 1.0, 7.996916202277981, 0.5), 'Summer': (12.833168077146595, 1.0, 5.294645814931583, 0.5), 'Autumn': (10.027597620242794, 1.0, 6.250791361159519, 0.5)}, seasonal_c_train={'Winter': 0.9910723526467599, 'Spring': 1.0175720184784005, 'Summer': 0.9954835361250713, 'Autumn': 0.9997407333372217}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6268, 'skewness': -0.04853338744301744, 'kurtosis_fisher': -0.05799935906327258, 'jsu_triggered': False, 'evt_triggered': False, 'bic_gaussian': 17797.229823769645, 'bic_jsu': None, 'bic_evt': None, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 36,
+    "seasonal_emos_params": {
+      "Winter": [
+        8.034222344970708,
+        1.0,
+        6.196173381234205,
+        0.5
+      ],
+      "Spring": [
+        12.467046781288282,
+        1.0,
+        7.996916202277981,
+        0.5
+      ],
+      "Summer": [
+        12.833168077146595,
+        1.0,
+        5.294645814931583,
+        0.5
+      ],
+      "Autumn": [
+        10.027597620242794,
+        1.0,
+        6.250791361159519,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9910723526467599,
+      "Spring": 1.0175720184784005,
+      "Summer": 0.9954835361250713,
+      "Autumn": 0.9997407333372217
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6268,
+      "skewness": -0.04853338744301744,
+      "kurtosis_fisher": -0.05799935906327258,
+      "jsu_triggered": false,
+      "evt_triggered": false,
+      "bic_gaussian": 17797.229823769645,
+      "bic_jsu": null,
+      "bic_evt": null,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

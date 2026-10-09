@@ -1,0 +1,338 @@
+{
+  "spec_version": "P4-AUDIT-RELIABILITY-v1.1",
+  "total_days_evaluated": 600,
+  "stations_evaluated": [
+    "KORD",
+    "KMIA",
+    "KSFO"
+  ],
+  "grid_specification": {
+    "step_size": "2\u00b0F",
+    "grid_lines": "strictly even integers",
+    "window_bins_count": 9,
+    "total_bins_count": 11,
+    "center_slot": 5
+  },
+  "metrics": {
+    "in_window_pricing": {
+      "total_events": 5400,
+      "weighted_ece": 0.012349501384519684,
+      "wilson_coverage_rate": 0.625,
+      "monotonicity": {
+        "valid_strata_count": 7,
+        "monotonicity_violations": 0,
+        "is_strictly_monotonic": true
+      },
+      "strata_table": [
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.00, 0.03)",
+          "stratum_range": [
+            0.0,
+            0.03
+          ],
+          "sample_count_N": 1643,
+          "p_mean": 0.009239109005849615,
+          "o_mean": 0.009738283627510651,
+          "calibration_gap": 0.0004991746216610367,
+          "weighted_ece_contrib": 0.00015187850062760804,
+          "brier_score": 0.009546528042273489,
+          "wilson_ci_lower": 0.004989815864031323,
+          "wilson_ci_upper": 0.014486751390989979,
+          "wilson_covered": true
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.03, 0.07)",
+          "stratum_range": [
+            0.03,
+            0.07
+          ],
+          "sample_count_N": 854,
+          "p_mean": 0.04831509748878278,
+          "o_mean": 0.03395784543325527,
+          "calibration_gap": 0.014357252055527507,
+          "weighted_ece_contrib": 0.0022705728250778687,
+          "brier_score": 0.03270872541173318,
+          "wilson_ci_lower": 0.021810112412763316,
+          "wilson_ci_upper": 0.04610557845374723,
+          "wilson_covered": false
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.07, 0.12)",
+          "stratum_range": [
+            0.07,
+            0.12
+          ],
+          "sample_count_N": 764,
+          "p_mean": 0.09427576613266239,
+          "o_mean": 0.06413612565445026,
+          "calibration_gap": 0.030139640478212132,
+          "weighted_ece_contrib": 0.0042642009861766795,
+          "brier_score": 0.060455756509379746,
+          "wilson_ci_lower": 0.046763434683227946,
+          "wilson_ci_upper": 0.08150881662567258,
+          "wilson_covered": false
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.12, 0.18)",
+          "stratum_range": [
+            0.12,
+            0.18
+          ],
+          "sample_count_N": 911,
+          "p_mean": 0.15149656111653637,
+          "o_mean": 0.15477497255762898,
+          "calibration_gap": 0.0032784114410926157,
+          "weighted_ece_contrib": 0.0005530801523769209,
+          "brier_score": 0.13008592808036898,
+          "wilson_ci_lower": 0.1312876547210874,
+          "wilson_ci_upper": 0.17826229039417057,
+          "wilson_covered": true
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.18, 0.25)",
+          "stratum_range": [
+            0.18,
+            0.25
+          ],
+          "sample_count_N": 739,
+          "p_mean": 0.20882151023051945,
+          "o_mean": 0.21515561569688768,
+          "calibration_gap": 0.006334105466368228,
+          "weighted_ece_contrib": 0.0008668340628974298,
+          "brier_score": 0.1690059700863293,
+          "wilson_ci_lower": 0.18552764047976408,
+          "wilson_ci_upper": 0.24478359091401128,
+          "wilson_covered": true
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.25, 0.35)",
+          "stratum_range": [
+            0.25,
+            0.35
+          ],
+          "sample_count_N": 250,
+          "p_mean": 0.2867214502737445,
+          "o_mean": 0.312,
+          "calibration_gap": 0.025278549726255484,
+          "weighted_ece_contrib": 0.0011703032280673835,
+          "brier_score": 0.21635910091025842,
+          "wilson_ci_lower": 0.25456751826361673,
+          "wilson_ci_upper": 0.36943248173638327,
+          "wilson_covered": true
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.35, 0.50)",
+          "stratum_range": [
+            0.35,
+            0.5
+          ],
+          "sample_count_N": 236,
+          "p_mean": 0.4149210372707421,
+          "o_mean": 0.4830508474576271,
+          "calibration_gap": 0.06812981018688502,
+          "weighted_ece_contrib": 0.002977525037797197,
+          "brier_score": 0.24981305486794853,
+          "wilson_ci_lower": 0.41929494347452323,
+          "wilson_ci_upper": 0.546806751440731,
+          "wilson_covered": false
+        },
+        {
+          "scope": "In-Window (Pricing / 9 Bins)",
+          "stratum_label": "[0.50, 1.00]",
+          "stratum_range": [
+            0.5,
+            1.0
+          ],
+          "sample_count_N": 3,
+          "p_mean": 0.5045251980308083,
+          "o_mean": 0.3333333333333333,
+          "calibration_gap": 0.171191864697475,
+          "weighted_ece_contrib": 9.510659149859722e-05,
+          "brier_score": 0.24862133620609572,
+          "wilson_ci_lower": 0.0,
+          "wilson_ci_upper": 0.8667777662061142,
+          "wilson_covered": true
+        }
+      ]
+    },
+    "full_distribution_honesty": {
+      "total_events": 6600,
+      "weighted_ece": 0.010873149543542718,
+      "wilson_coverage_rate": 0.625,
+      "monotonicity": {
+        "valid_strata_count": 7,
+        "monotonicity_violations": 0,
+        "is_strictly_monotonic": true
+      },
+      "strata_table": [
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.00, 0.03)",
+          "stratum_range": [
+            0.0,
+            0.03
+          ],
+          "sample_count_N": 2797,
+          "p_mean": 0.007573977799234624,
+          "o_mean": 0.009653199856989631,
+          "calibration_gap": 0.0020792220577550077,
+          "weighted_ece_contrib": 0.000881149105384963,
+          "brier_score": 0.009450166581067664,
+          "wilson_ci_lower": 0.006029609139910843,
+          "wilson_ci_upper": 0.01327679057406842,
+          "wilson_covered": true
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.03, 0.07)",
+          "stratum_range": [
+            0.03,
+            0.07
+          ],
+          "sample_count_N": 895,
+          "p_mean": 0.04789191651987416,
+          "o_mean": 0.034636871508379886,
+          "calibration_gap": 0.01325504501149427,
+          "weighted_ece_contrib": 0.0017974644371647535,
+          "brier_score": 0.03335888314970381,
+          "wilson_ci_lower": 0.02265680479433459,
+          "wilson_ci_upper": 0.046616938222425186,
+          "wilson_covered": false
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.07, 0.12)",
+          "stratum_range": [
+            0.07,
+            0.12
+          ],
+          "sample_count_N": 769,
+          "p_mean": 0.09428420365970241,
+          "o_mean": 0.06371911573472042,
+          "calibration_gap": 0.030565087924982,
+          "weighted_ece_contrib": 0.0035612958506532058,
+          "brier_score": 0.060123194357079336,
+          "wilson_ci_lower": 0.04645553620276763,
+          "wilson_ci_upper": 0.0809826952666732,
+          "wilson_covered": false
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.12, 0.18)",
+          "stratum_range": [
+            0.12,
+            0.18
+          ],
+          "sample_count_N": 911,
+          "p_mean": 0.15149656111653637,
+          "o_mean": 0.15477497255762898,
+          "calibration_gap": 0.0032784114410926157,
+          "weighted_ece_contrib": 0.0004525201246720262,
+          "brier_score": 0.13008592808036898,
+          "wilson_ci_lower": 0.1312876547210874,
+          "wilson_ci_upper": 0.17826229039417057,
+          "wilson_covered": true
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.18, 0.25)",
+          "stratum_range": [
+            0.18,
+            0.25
+          ],
+          "sample_count_N": 739,
+          "p_mean": 0.20882151023051945,
+          "o_mean": 0.21515561569688768,
+          "calibration_gap": 0.006334105466368228,
+          "weighted_ece_contrib": 0.0007092278696433516,
+          "brier_score": 0.1690059700863293,
+          "wilson_ci_lower": 0.18552764047976408,
+          "wilson_ci_upper": 0.24478359091401128,
+          "wilson_covered": true
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.25, 0.35)",
+          "stratum_range": [
+            0.25,
+            0.35
+          ],
+          "sample_count_N": 250,
+          "p_mean": 0.2867214502737445,
+          "o_mean": 0.312,
+          "calibration_gap": 0.025278549726255484,
+          "weighted_ece_contrib": 0.0009575208229642229,
+          "brier_score": 0.21635910091025842,
+          "wilson_ci_lower": 0.25456751826361673,
+          "wilson_ci_upper": 0.36943248173638327,
+          "wilson_covered": true
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.35, 0.50)",
+          "stratum_range": [
+            0.35,
+            0.5
+          ],
+          "sample_count_N": 236,
+          "p_mean": 0.4149210372707421,
+          "o_mean": 0.4830508474576271,
+          "calibration_gap": 0.06812981018688502,
+          "weighted_ece_contrib": 0.002436156849106798,
+          "brier_score": 0.24981305486794853,
+          "wilson_ci_lower": 0.41929494347452323,
+          "wilson_ci_upper": 0.546806751440731,
+          "wilson_covered": false
+        },
+        {
+          "scope": "Full-Distribution (Honesty / 11 Bins)",
+          "stratum_label": "[0.50, 1.00]",
+          "stratum_range": [
+            0.5,
+            1.0
+          ],
+          "sample_count_N": 3,
+          "p_mean": 0.5045251980308083,
+          "o_mean": 0.3333333333333333,
+          "calibration_gap": 0.171191864697475,
+          "weighted_ece_contrib": 7.781448395339773e-05,
+          "brier_score": 0.24862133620609572,
+          "wilson_ci_lower": 0.0,
+          "wilson_ci_upper": 0.8667777662061142,
+          "wilson_covered": true
+        }
+      ]
+    },
+    "dual_tail_diagnostics": {
+      "left_tail": {
+        "tail_name": "Left Exterior Tail (< E_start)",
+        "sample_count_N": 600,
+        "expected_events_sum_p": 4.08728669837845,
+        "actual_hits_sum_o": 2,
+        "mean_p": 0.006812144497297417,
+        "mean_o": 0.0033333333333333335,
+        "calibration_gap": 0.0034788111639640833,
+        "underflow_zero_variance_count": 0,
+        "is_sound": true
+      },
+      "right_tail": {
+        "tail_name": "Right Exterior Tail (>= E_end+2)",
+        "sample_count_N": 600,
+        "expected_events_sum_p": 3.9973124282938532,
+        "actual_hits_sum_o": 11,
+        "mean_p": 0.006662187380489755,
+        "mean_o": 0.018333333333333333,
+        "calibration_gap": 0.01167114595284358,
+        "underflow_zero_variance_count": 0,
+        "is_sound": true
+      }
+    }
+  }
+}

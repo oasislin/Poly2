@@ -1,0 +1,27 @@
+{
+  "passed": false,
+  "weighted_ece": 0.009174360364877766,
+  "ece_ci_lower": 0.0031957783650124064,
+  "ece_ci_upper": 0.01617251766334688,
+  "bss": -0.0008523138027034527,
+  "ks_stat": 0.060777243551268595,
+  "ks_pvalue": 5.950194000756737e-16,
+  "wilson_coverage_rate": 0.0,
+  "is_degenerate": false,
+  "error_message": "Reliability gate thresholds not satisfied",
+  "s_ladder_status": {
+    "S1_input_defense": true,
+    "S2_calibration_ece": true,
+    "S3_monotonicity": true,
+    "S4_wilson_coverage": false,
+    "S5_ks_goodness": true
+  },
+  "metadata": {
+    "sample_count": 4830,
+    "monotonicity_violations": 0,
+    "alarms": [
+      "CONSECUTIVE-MISCALIBRATION-ALARM"
+    ],
+    "decision_bins_count": 2
+  }
+}

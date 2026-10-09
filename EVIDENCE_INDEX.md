@@ -58,3 +58,26 @@
 | **R-4A** | [`r4_ece_definition_audit.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r4_ece_definition_audit.md) | **修复令 R-4** | 离散 7 档位加权 ECE 功效审计报告，维持硬门禁 $\le 3.0\%$，论证多档位分布与第一轮中心档位假象病灶。 |
 | **R-4B** | [`r4_gate_calibration_protocol.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/r4_gate_calibration_protocol.md) | **修复令 R-4** | 《门禁标定与变更管理协议》：解析推导外生变量（$\sigma_{\text{inst}}$, $\sigma^*$, 方差比），确立预注册与防篡改规则。 |
 | **R-5** | [`recompute_settlement_report.md`](https://raw.githubusercontent.com/oasislin/Poly2/feat/r2-r3-ghcn-retraining-and-budget/evidence/recompute_settlement_report.md) | **修复令 R-5** | 基于 GHCN-Daily 官方气候真值重算结算报告：加权 ECE 全绿（0.46%~2.39% $\le 3.0\%$），十分位闭包全绿，如实记录 KMIA KS-test。 |
+
+---
+
+### 五、P4 可靠度审计与 P5 范围核查工件清单 (P4-AUDIT-RELIABILITY & P5-AUDIT-SCOPE)
+
+| 编号 | 工件名称与路径 | 协议与任务条款 | 核心内容摘要 |
+| :--- | :--- | :--- | :--- |
+| **P4-v1.3b-1** | [`evidence/p4_audit_reliability_v13b_report.md`](evidence/p4_audit_reliability_v13b_report.md) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | TMax KORD 关门审计法定报告：PIT 均匀性 $p=0.46915 \gg 0.05$、残差偏度 0.0471、超额峰度 0.0667、实质分档（全部微小偏差）、峰值桶断言 $\le 35\%$ 全绿（Max 31.77%）、1.28 深尾系数。 |
+| **P4-v1.3b-2** | [`evidence/p4_audit_reliability_v13b_summary.json`](evidence/p4_audit_reliability_v13b_summary.json) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | v1.3b 关门法定统计结构化数据，含前置三声明与审计范围声明。 |
+| **P4-v1.3b-3** | [`evidence/p4_audit_reliability_v13b_lineage.json`](evidence/p4_audit_reliability_v13b_lineage.json) | **工单 P4-AUDIT-RELIABILITY-v1.3b** | 13,740 样本外验证日 100% 逐日数据血统映射与 SHA256 签名。 |
+| **P5-SCP-1** | [`evidence/p5_audit_scope_recon_memo.md`](evidence/p5_audit_scope_recon_memo.md) | **工单 P5-AUDIT-SCOPE** | 训练覆盖范围核实备忘：960 格模型已训练、20 折审计覆盖率 4/960 (0.42%)、Active 10 站真值修正、TMin 零审计定责。 |
+| **P5-SCP-2** | [`evidence/p5_audit_scope_recon.json`](evidence/p5_audit_scope_recon.json) | **工单 P5-AUDIT-SCOPE** | 覆盖范围核查结构化对账矩阵与台站缺口清单。 |
+| **P6-HDF-1** | [`evidence/handoff_p6_tmax_fullgrid.md`](evidence/handoff_p6_tmax_fullgrid.md) | **工单 P6-1-HANDOFF** | 双城 TMax 全网格验证与方法论封盘新会话交接协议，包含八节法定内容与 92 格执行路径。 |
+| **P6-EVT-G1** | [`evidence/evt_path_validation_report.md`](evidence/evt_path_validation_report.md) | **工单 P6-EVT-GUARD** | EVT 代码路径离线预验证与缺陷审计报告：捕获经验分位数拼接负跳跃（-2.72%）与全域积分不归一（1.0545）重大缺陷，KATL/KDAL/KLAX/KSFO 四格隔离标记生效。 |
+| **P6-EVT-F1** | [`evidence/p6_evt_fix_remediation_report.md`](evidence/p6_evt_fix_remediation_report.md) | **工单 P6-EVT-FIX** | EVT 核心逻辑成对修补、四格受控重算与解禁验收报告：落地 Scheme B 条件高斯重标截断公式，扩展 10 项契约测试全绿，四格积分恢复 1.00000000 且解除隔离，零漂移基线 100% 守住。 |
+| **P6-HTD-1** | [`evidence/p6_heavytail_diag_report.md`](evidence/p6_heavytail_diag_report.md) | **工单 P6-HEAVYTAIL-DIAG** | KORD 42h 厚尾归因拆层与机制诊断四件套质检报告：完成锋面条件化、sigma_eff 离散度、留一法敏感度、折内季节构成四项实测与机械两步判定。 |
+| **P6-HTD-2** | [`evidence/p6_heavytail_diag_results.json`](evidence/p6_heavytail_diag_results.json) | **工单 P6-HEAVYTAIL-DIAG** | 机制诊断四件套结构化结果工件，包含 42h 目标格与 12h..36h 对照组完整统计数值。 |
+| **P6-CALM-1** | `evidence/p6_calm_outlier_precheck_report.md (待落盘)` | **工单 P6-CALM-OUTLIER** | 平静日极端失准的事前指纹判别与 Regime 条件模型评估报告（封盘后执行项，状态：REGISTERED_PENDING_MAINLINE；工件落盘后回填 SHA）。 |
+| **P6-KMIA-GATE-1** | [`evidence/kmia_12h_gate_report.md`](evidence/kmia_12h_gate_report.md) | **工单 P6-KMIA-GATE** | KMIA_12h 回溯门禁取证与预注册放行裁决报告：数据五件套全绿、20 折 EVT 碾压获胜（中位数 ΔBIC=-291.96）、Top-5 极端失准均为预报集体失效且集合极窄离散度、达成自动放行分支。 |
+| **P7-SYNC-AUDIT-1** | [`evidence/p7_sync_bridge_audit.md`](evidence/p7_sync_bridge_audit.md) | **工单 P7-SYNC-BRIDGE** | 推送完整性核验与仓库体检报告：172 采样文件本地↔远端 100% 一致 (0 mismatch)，Git 总体积 52.50 MiB << 500 MiB，最大 blob 7.36 MiB << 50 MiB，判定通道可信走分支 A。 |
+
+
+

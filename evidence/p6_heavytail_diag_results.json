@@ -1,0 +1,191 @@
+{
+  "station": "KORD",
+  "diagnostic_suite": "P6-HEAVYTAIL-DIAG",
+  "delta_t24_threshold": 9.0,
+  "lead_hours_analyzed": [
+    42,
+    66
+  ],
+  "leads": {
+    "42h": {
+      "lead_hour": 42,
+      "evt_winner_folds": [
+        1,
+        10,
+        11,
+        16
+      ],
+      "diag_1": {
+        "diagnostic_id": "DIAG_1_FRONTAL_CONDITIONING",
+        "threshold_delta_t24": 9.0,
+        "calm_kurtosis_mean": 1.9376818866406478,
+        "calm_kurtosis_min": 1.1985329323566924,
+        "calm_kurtosis_max": 2.16691415149252,
+        "front_kurtosis_mean": 0.898308786256177,
+        "front_kurtosis_min": 0.711196845202684,
+        "front_kurtosis_max": 1.0411181076971472,
+        "kurtosis_diff_mean": -1.0393731003844706,
+        "decision": "PARTIALLY_SUPPORTED_INSUFFICIENT",
+        "decision_description": "假说部分支持但不足以完全解释：平静日子集峰度仍 >= 1.0，提示存在更基础的机制（非仅由锋面主导）",
+        "calm_exceeds_threshold": true
+      },
+      "diag_2": {
+        "diagnostic_id": "DIAG_2_DISPERSION_CALIBRATION",
+        "mean_variance_ratio": 1.0027362066956012,
+        "min_variance_ratio": 1.0015090114714729,
+        "max_variance_ratio": 1.004067811083075,
+        "quartile_variance_ratios": {
+          "Q1": 0.8596286798068711,
+          "Q2": 1.088434395343131,
+          "Q3": 0.9879122283165096,
+          "Q4": 1.0264317785553876
+        },
+        "decision": "PASS_EXCLUDE_SCALE_MISCALIBRATION",
+        "decision_description": "匹配良好：方差比在 [0.85, 1.15] 内，排除尺度误标，厚尾属真实形状特性",
+        "in_band": true
+      },
+      "diag_3": {
+        "diagnostic_id": "DIAG_3_LEAVE_OUT_SENSITIVITY",
+        "drop_means": {
+          "0": 1.6413404650862198,
+          "1": 1.3081352384289449,
+          "3": 1.1251404441597441,
+          "5": 0.9768359042797107,
+          "10": 0.7759131920545388
+        },
+        "drop_mins": {
+          "0": 1.259151781930819,
+          "1": 1.1569762688393093,
+          "3": 0.9872143053473357,
+          "5": 0.8706188652274118,
+          "10": 0.6959946174202303
+        },
+        "drop_maxs": {
+          "0": 1.7858307406803133,
+          "1": 1.41290585339443,
+          "3": 1.2263085758863745,
+          "5": 1.067413333226619,
+          "10": 0.8685476383814414
+        },
+        "decision": "TRANSITIONAL_BOUNDARY",
+        "decision_description": "临界转折：剔除 3 个样本峰度仍为 1.1251 > 1.0，但剔除 5 个样本降至 0.9768 <= 1.0"
+      },
+      "diag_4": {
+        "diagnostic_id": "DIAG_4_SEASONAL_COMPOSITION",
+        "evt_folds": [
+          1,
+          10,
+          11,
+          16
+        ],
+        "train_evt_transition_ratio": 0.49643771137587256,
+        "train_gauss_transition_ratio": 0.5009768067552006,
+        "train_diff": 0.004539095379328062,
+        "val_evt_transition_ratio": 0.5423696733722692,
+        "val_gauss_transition_ratio": 0.5014787275523688,
+        "val_diff": 0.04089094581990038,
+        "decision": "PASS_EXCLUDE_SEASONAL_BIAS",
+        "decision_description": "排除季节构成偶然偏倚：触发折与未触发折过渡季比例差值 <= 15%",
+        "passed": true
+      }
+    },
+    "66h": {
+      "lead_hour": 66,
+      "evt_winner_folds": [],
+      "diag_1": {
+        "diagnostic_id": "DIAG_1_FRONTAL_CONDITIONING",
+        "threshold_delta_t24": 9.0,
+        "calm_kurtosis_mean": 1.5636613842321503,
+        "calm_kurtosis_min": 1.1665774959879052,
+        "calm_kurtosis_max": 1.7742958179287935,
+        "front_kurtosis_mean": 0.8260327146318469,
+        "front_kurtosis_min": 0.6116016182365356,
+        "front_kurtosis_max": 0.9721948027532172,
+        "kurtosis_diff_mean": -0.7376286696003034,
+        "decision": "PARTIALLY_SUPPORTED_INSUFFICIENT",
+        "decision_description": "假说部分支持但不足以完全解释：平静日子集峰度仍 >= 1.0，提示存在更基础的机制（非仅由锋面主导）",
+        "calm_exceeds_threshold": true
+      },
+      "diag_2": {
+        "diagnostic_id": "DIAG_2_DISPERSION_CALIBRATION",
+        "mean_variance_ratio": 1.0025571897345535,
+        "min_variance_ratio": 1.0014705469016172,
+        "max_variance_ratio": 1.0035947239703347,
+        "quartile_variance_ratios": {
+          "Q1": 0.8888129661519587,
+          "Q2": 1.061755236220884,
+          "Q3": 1.014653742883055,
+          "Q4": 1.0072305676112423
+        },
+        "decision": "PASS_EXCLUDE_SCALE_MISCALIBRATION",
+        "decision_description": "匹配良好：方差比在 [0.85, 1.15] 内，排除尺度误标，厚尾属真实形状特性",
+        "in_band": true
+      },
+      "diag_3": {
+        "diagnostic_id": "DIAG_3_LEAVE_OUT_SENSITIVITY",
+        "drop_means": {
+          "0": 1.4179999023501213,
+          "1": 1.1833918007616868,
+          "3": 0.9888407810380417,
+          "5": 0.8769013162102033,
+          "10": 0.6966554447556228
+        },
+        "drop_mins": {
+          "0": 1.2114255408620753,
+          "1": 1.045173708685513,
+          "3": 0.8585882219667118,
+          "5": 0.7628621387769634,
+          "10": 0.6237068852918237
+        },
+        "drop_maxs": {
+          "0": 1.5828210604059976,
+          "1": 1.3369163298232998,
+          "3": 1.1273153194743646,
+          "5": 1.0151568751000841,
+          "10": 0.8022376510008331
+        },
+        "decision": "SPARSE_EXTREME_DOMINATED",
+        "decision_description": "稀疏极端日支配：剔除 <= 3 个样本峰度即跌破 1.0，属非连续厚尾，易受个别异常日影响"
+      },
+      "diag_4": {
+        "diagnostic_id": "DIAG_4_SEASONAL_COMPOSITION",
+        "evt_folds": [],
+        "decision": "NOT_APPLICABLE_NO_EVT_WINNERS",
+        "decision_description": "本格 20 折无一被 EVT 录取（全部为高斯获胜），不存在折间 EVT 季节构成偏差",
+        "passed": true
+      }
+    }
+  },
+  "control_lead_times": {
+    "12h": {
+      "all_kurtosis_mean": -0.1422349522873449,
+      "calm_kurtosis_mean": -0.20301658229750935,
+      "front_kurtosis_mean": -0.9996698178925977,
+      "diff_mean": -0.7966532355950884
+    },
+    "18h": {
+      "all_kurtosis_mean": 1.8838466792856117,
+      "calm_kurtosis_mean": 2.447790851850594,
+      "front_kurtosis_mean": 0.7884361890002763,
+      "diff_mean": -1.6593546628503177
+    },
+    "24h": {
+      "all_kurtosis_mean": 0.7440263578935531,
+      "calm_kurtosis_mean": 0.03148565727650321,
+      "front_kurtosis_mean": -1.1793879670188265,
+      "diff_mean": -1.2108736242953297
+    },
+    "30h": {
+      "all_kurtosis_mean": 0.504328100583429,
+      "calm_kurtosis_mean": 0.0844492225279803,
+      "front_kurtosis_mean": -1.073990893474386,
+      "diff_mean": -1.1584401160023663
+    },
+    "36h": {
+      "all_kurtosis_mean": -0.058363247139886346,
+      "calm_kurtosis_mean": 0.017893751084479104,
+      "front_kurtosis_mean": -0.8510095057765531,
+      "diff_mean": -0.8689032568610322
+    }
+  }
+}

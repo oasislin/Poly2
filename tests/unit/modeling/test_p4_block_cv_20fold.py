@@ -117,7 +117,7 @@ def test_execute_formal_p4_block_cv_20folds():
                 p_k = compute_cdf_val(bk + 0.5, m_i, s_i, model) - compute_cdf_val(bk - 0.5, m_i, s_i, model)
                 p_k = float(np.clip(p_k, 0.0, 1.0))
                 h_k = 1.0 if (bk - 0.5 <= y_i < bk + 0.5) else 0.0
-                records.append({
+                rec = {
                     "target_date": val_work["target_date"].iloc[i],
                     "obs": y_i,
                     "mu": m_i,
@@ -126,7 +126,22 @@ def test_execute_formal_p4_block_cv_20folds():
                     "p_pred": p_k,
                     "hit": h_k,
                     "pit": pit_i,
-                })
+                    "selected_family": model.selected_family,
+                    "family_shape_params": json.dumps(model.shape_params),
+                }
+                if model.selected_family == "johnsonsu":
+                    rec["jsu_gamma"] = float(model.shape_params.get("gamma", 0.0))
+                    rec["jsu_delta"] = float(model.shape_params.get("delta", 1.0))
+                    rec["jsu_xi"] = float(model.shape_params.get("xi", 0.0))
+                    rec["jsu_lambda"] = float(model.shape_params.get("lambda", 1.0))
+                elif model.selected_family == "evt_hybrid":
+                    rec["evt_u_left"] = float(model.shape_params.get("u_left", -1.645))
+                    rec["evt_u_right"] = float(model.shape_params.get("u_right", 1.645))
+                    rec["evt_gpd_left_xi"] = float(model.shape_params.get("gpd_left", {}).get("shape_xi", 0.0))
+                    rec["evt_gpd_left_beta"] = float(model.shape_params.get("gpd_left", {}).get("scale_beta", 1.0))
+                    rec["evt_gpd_right_xi"] = float(model.shape_params.get("gpd_right", {}).get("shape_xi", 0.0))
+                    rec["evt_gpd_right_beta"] = float(model.shape_params.get("gpd_right", {}).get("scale_beta", 1.0))
+                records.append(rec)
 
         pred_df = pd.DataFrame(records)
         pit_arr = np.array(pit_list)

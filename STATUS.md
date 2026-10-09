@@ -1,14 +1,27 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-09-22 21:55:00
+updated: 2026-10-10 00:20:00
 ---
 # 项目状态（唯一状态入口）
 
-- **当前阶段**：Phase 2 Task 07 缺陷归正闭环（Issue [#100](https://github.com/oasislin/Poly2/issues/100) 及 Tickets [#101](https://github.com/oasislin/Poly2/issues/101) ~ [#104](https://github.com/oasislin/Poly2/issues/104) 全部完成）—— 确立“Tier 1 48h工程端到端冒烟 + Tier 2 2019高保真样本外量化回测”双轨解耦架构，彻底消除合成测试虚假套利。
-- **活跃工作流**：2019 全年 365 天 Active 10 站历史回测全量跑通（`data/reports/historical_backtest_2019_report.json`），日独立结算真实年化夏普 13.06，MDD 0.09%，胜率 52.5%，零非物理违规且资金守恒；48h 工程冒烟零穿仓全绿，全库 819+ 测试 100% 绿灯！
-- **冻结产物**：`docs/frozen/phase1/`（只读），`data/processed/calib-dataset-v2.0/`，`data/models/`（200 模型矩阵），`specs/phase2-task07-paper-trading-and-full-risk-spec.md`（含 Addendum 1）
-- **隔离区**：`data/legacy-v1-suspect/`（Wunderground 等旧版疑似污染数据已物理隔离，SUPERSEDED）
-- **为什么处于当前节点**：Phase 2 全部 7 个主任务与双轨量化归正均已闭环，完成对抗做市商与高保真 2019 全年日结算金融检验，系统具备生产级实盘量化投注能力。
+> 📌 **封盘门禁总清单导航**：双城 TMax 全网格验证与方法论封盘八项清单，详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)。
+
+- **当前阶段**：Phase 6 双城 TMax 全网格验证与方法论封盘进行中。前序 Phase 4 复验闭环（`P4-AUDIT-RELIABILITY-v1.3b` KORD/18h/TMax）正式关门验收，确定以真分布 PIT 口径为法定基准，旧高斯尺结论作废；全库测试基线 970+ 项全绿。（修订依据：P4/P5 取证 / v1.3b 关门 2026-10-09）
+- **活跃工作流**：推进 P6 双城 TMax 全网格验证与机制诊断：KORD 12 个提前期 100% 审计完成；KMIA_12h 触发 EVT 竞争胜出，已产出取证工件并挂起，待委员会审议 P6-KMIA-GATE 裁决后继续推进后续时效。（修订依据：工单 P6-KMIA-GATE 2026-10-10）
+- **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 全部工件冻结归档；1.28 深尾报价参考系数与 $\le 35\%$ 锋利度断言严格为 KORD/18h/TMax 专属，严禁跨格移植；Active 10 交易宇宙基准真值为 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`。（修订依据：P5 取证 / v1.3b 关门 / 委员会裁决 2026-10-09）
+- **EVT 存量资产隔离与解禁 (RELEASED)**：依据工单 `P6-EVT-FIX`，`KATL/Spring`、`KDAL/Autumn`、`KLAX/Autumn`、`KSFO/Spring` 四格分布形态资产在测试前曾挂 `QUARANTINED` 标记。经成对修补 `evaluate_evt_tail_cdf` 与 `evaluate_evt_tail_pdf` 为法定 Scheme B 条件高斯重标截断公式后，10 项扩展契约测试 100% 全绿，四格全域积分达到精确 `1.00000000`，边界跳跃彻底清零（$< 10^{-9}$），正式解除隔离并放行。（修订依据：P6-EVT-FIX 裁决验收 2026-10-09）
+- **KORD 42h 厚尾归因拆层记录**：
+  - **事实层（保留并入账）**：KORD 站残差超额峰度随提前期系统性增长（12–36h 未触发门槛，42h 全折 1.26–1.79），形态对称（偏度 < 0.15），提示远时效预报误差呈混合态。
+  - **假说层（标注状态，不得写成结论）**：锋面转换时机误差为候选机制，待条件化诊断检验（诊断单另附）；在检验完成前，不将该机制写为结论。
+  - （修订依据：委员会裁决 2026-10-09（厚尾归因拆层））
+- **待办事项（Backlog）**：
+  - **工单 P6-CALM-OUTLIER**：平静日极端失准的事前指纹判别与 Regime 条件模型评估（状态：`REGISTERED_PENDING_MAINLINE`）。
+    - **优先级与防删条款**：重要 / 不紧急 / 不可忽略 / 不可删除。完成 92 格主线条线后、方法论封盘签署前，必须作为独立议题重新呈上委员会。任何“清单瘦身”“任务合并”“主线超期顺延导致删单”的操作均无效，本单删除或降级视为流程违规。
+    - **专属红线（最高铁律）**：本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。
+    - （修订依据：委员会立项令 2026-10-09（P6-CALM-OUTLIER））
+  - **工单 P6-KMIA-GATE**：迈阿密站址数据五件套取证、海陆风对流机制审议与预注册自动放行裁决（状态：`PENDING_COMMITTEE_DECISION`，工件见 `evidence/kmia_12h_gate_report.md`）。
+  - **纪律条款修订**：零 push 纪律已按 P7-SYNC-BRIDGE 修订为“未验收不出域、验收必出域”，细则见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
+- **为什么处于当前节点**：已完成 KORD 全时效审计、EVT 路径成对修复、厚尾机制归因拆层入账及 KMIA 数据覆盖取证；当前 KMIA_12h 挂起待委员会终审放行，同时建立受控出域通道（P7-SYNC-BRIDGE）以合流 main。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-09-22 21:55）
+（最近更新：2026-10-10 00:20）

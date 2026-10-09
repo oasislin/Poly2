@@ -1,0 +1,55 @@
+{
+  "round_id": 0,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=42, seasonal_emos_params={'Winter': (4.814806348878214, 1.0, 4.095326143512354, 0.5), 'Spring': (4.579512548828127, 1.0, 4.640058670273487, 0.5), 'Summer': (2.8488471626596095, 1.0, 3.4294467901129617, 0.5), 'Autumn': (3.573505829735616, 1.0, 3.327371491364506, 0.5)}, seasonal_c_train={'Winter': 0.9916865690155641, 'Spring': 0.9762138498788255, 'Summer': 0.9537045228957454, 'Autumn': 0.9831314274168171}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': 0.12314499887394494, 'kurtosis_fisher': 1.6742467241839787, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17647.69631231027, 'bic_jsu': None, 'bic_evt': 17639.40839420005, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 42,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.814806348878214,
+        1.0,
+        4.095326143512354,
+        0.5
+      ],
+      "Spring": [
+        4.579512548828127,
+        1.0,
+        4.640058670273487,
+        0.5
+      ],
+      "Summer": [
+        2.8488471626596095,
+        1.0,
+        3.4294467901129617,
+        0.5
+      ],
+      "Autumn": [
+        3.573505829735616,
+        1.0,
+        3.327371491364506,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9916865690155641,
+      "Spring": 0.9762138498788255,
+      "Summer": 0.9537045228957454,
+      "Autumn": 0.9831314274168171
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": 0.12314499887394494,
+      "kurtosis_fisher": 1.6742467241839787,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17647.69631231027,
+      "bic_jsu": null,
+      "bic_evt": 17639.40839420005,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

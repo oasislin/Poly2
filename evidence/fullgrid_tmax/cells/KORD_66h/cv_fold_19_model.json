@@ -1,0 +1,55 @@
+{
+  "round_id": 19,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=66, seasonal_emos_params={'Winter': (4.906836054044703, 1.0, 4.345097567440695, 0.5), 'Spring': (4.49768828113627, 1.0, 5.286617464888558, 0.5), 'Summer': (2.84793482656697, 1.0, 3.835059432143869, 0.5), 'Autumn': (3.5312189374651197, 1.0, 3.460521481272844, 0.5)}, seasonal_c_train={'Winter': 0.9762487397978552, 'Spring': 0.9639211800747092, 'Summer': 0.9372006590754608, 'Autumn': 1.014458334483342}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': -0.0013368060341604644, 'kurtosis_fisher': 1.4153071717365462, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17630.027211642446, 'bic_jsu': None, 'bic_evt': 17737.702185891718, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 66,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.906836054044703,
+        1.0,
+        4.345097567440695,
+        0.5
+      ],
+      "Spring": [
+        4.49768828113627,
+        1.0,
+        5.286617464888558,
+        0.5
+      ],
+      "Summer": [
+        2.84793482656697,
+        1.0,
+        3.835059432143869,
+        0.5
+      ],
+      "Autumn": [
+        3.5312189374651197,
+        1.0,
+        3.460521481272844,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9762487397978552,
+      "Spring": 0.9639211800747092,
+      "Summer": 0.9372006590754608,
+      "Autumn": 1.014458334483342
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": -0.0013368060341604644,
+      "kurtosis_fisher": 1.4153071717365462,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17630.027211642446,
+      "bic_jsu": null,
+      "bic_evt": 17737.702185891718,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

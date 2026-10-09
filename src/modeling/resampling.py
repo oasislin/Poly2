@@ -442,6 +442,10 @@ class StatutoryFoldModel:
     shape_params: Dict[str, Any]
     selection_audit: Dict[str, Any]
 
+    def to_dict(self) -> Dict[str, Any]:
+        from dataclasses import asdict
+        return asdict(self)
+
 
 def fit_statutory_pipeline_fold(
     train_df: pd.DataFrame,
@@ -670,7 +674,9 @@ def fit_statutory_pipeline_fold(
 def evaluate_evt_tail_cdf(z: float, st_params: Dict[str, Any]) -> float:
     """
     Evaluate hybrid core Gaussian + EVT GPD tail cumulative distribution function F(z).
-    Enforces 0.05 tail mass weighting: F(u_l) = 0.05, F(u_r) = 0.95.
+    Enforces statutory Scheme B rescaled Gaussian core:
+        F_core(z) = 0.05 + 0.90 * (Phi(z) - Phi(u_l)) / (Phi(u_r) - Phi(u_l))
+    Enforces 0.05 tail mass weighting and continuous splicing: F(u_l) = 0.05, F(u_r) = 0.95.
     """
     from scipy import stats
 
@@ -687,12 +693,20 @@ def evaluate_evt_tail_cdf(z: float, st_params: Dict[str, Any]) -> float:
     elif z > u_r:
         val = 1.0 + xi_r * (z - u_r) / beta_r
         return 1.0 if val <= 0 else float(1.0 - 0.05 * (val ** (-1.0 / xi_r)))
-    return float(stats.norm.cdf(z))
+
+    # Statutory Scheme B conditionally rescaled Gaussian core
+    phi_ul = stats.norm.cdf(u_l)
+    phi_ur = stats.norm.cdf(u_r)
+    denom = max(1e-12, phi_ur - phi_ul)
+    core_prob = (stats.norm.cdf(z) - phi_ul) / denom
+    return float(0.05 + 0.90 * core_prob)
 
 
 def evaluate_evt_tail_pdf(z: float, st_params: Dict[str, Any]) -> float:
     """
     Evaluate hybrid core Gaussian + EVT GPD tail probability density function f(z).
+    Enforces statutory Scheme B rescaled Gaussian core:
+        f_core(z) = 0.90 * phi(z) / (Phi(u_r) - Phi(u_l))
     Analytically consistent with evaluate_evt_tail_cdf.
     """
     from scipy import stats
@@ -711,6 +725,12 @@ def evaluate_evt_tail_pdf(z: float, st_params: Dict[str, Any]) -> float:
         if val <= 0:
             return 0.0
         return float(0.05 * (1.0 / beta_r) * (val ** (-1.0 / xi_r - 1.0)))
-    return float(stats.norm.pdf(z))
+
+    # Statutory Scheme B conditionally rescaled Gaussian core density
+    phi_ul = stats.norm.cdf(u_l)
+    phi_ur = stats.norm.cdf(u_r)
+    denom = max(1e-12, phi_ur - phi_ul)
+    return float(0.90 * stats.norm.pdf(z) / denom)
+
 
 

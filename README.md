@@ -4,6 +4,8 @@
 > **CRITICAL NOTICE (Phase 2 Review Gate)**:
 > Metrics fixed at commit `67d668b`. All pre-existing metric-dependent conclusions (including Phase 2 Task 07 signoff, 813-test pass claims, and 2019 backtest results) are **VOID pending `--recompute`** with verified statistical closure metrics.
 
+> 📌 **封盘门禁总清单导航**：双城 TMax 全网格验证与方法论封盘八项检查表，详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；实时项目状态详见 [`STATUS.md`](STATUS.md)。
+
 本项目旨在构建一个高精度的物理概率模型，用于预测 Polymarket 气温市场的日最高和最低气温概率分布。系统以高斯 EMOS（Ensemble Model Output Statistics）模型为核心，采用“全球再预报特征提取 $\to$ 12 站全池模型矩阵训练 $\to$ 实时动态截断与物理约束 $\to$ Polymarket 离散盘口概率转换 $\to$ 严格样本外三重验收门禁回测与监控告警 $\to$ 状态机流水线编排”的全链路量化架构。
 
 当前项目执行规范以 **《Phase 1.5 执行文件 v1.1：数据管道重建与校准语料库》** 及 **《工作指导文件：GEFS 数据补全、站点提取与质量验证（GEFS-WI-v1.1）》** 为准；业务需求来源为 **《项目方案：Polymarket 温度市场量化投注系统 (v2.6)》**。
@@ -49,8 +51,11 @@
 2. **Tier 1 主力站**：`KLGA`（纽约拉瓜迪亚）、`KATL`（亚特兰大哈兹菲尔德）、`KDAL`（达拉斯爱田）
 3. **Tier 2 扩展站**：`KSEA`（西雅图塔科马）、`KLAX`（洛杉矶）、`KHOU`（休斯顿霍比）
 4. **微气候重点站**：`KMIA`（迈阿密）、`KSFO`（旧金山）
-5. **特许结算站**：`KBKF`（丹佛巴克利太空军基地，Polymarket 丹佛法定结算站）
+5. **特许结算站**：`KBKF`（丹佛巴克利太空军基地，Polymarket 丹佛法定结算站；注：因微气候警示排除在 Active 10 校准矩阵之外）
 6. **扩充主力站**：`KAUS`（奥斯汀，活跃日盘）
+
+> **【Active 10 法定模型校准与交易宇宙（基准真值）】**（排除 KBKF）：  
+> `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`（共 10 站，真值定义以代码 `src/data_processing/constants.py:395-406` 及配置文件 `configs/climate_floor_v2.json` 为准）。（修订依据：P5 取证 / 委员会裁决 2026-10-09）
 
 ---
 
@@ -60,8 +65,12 @@
 | :--- | :--- | :---: | :--- |
 | **Phase 1 基线封存** | **Git Tag `phase1-final` (Commit 53b1024)**<br>• 18 份 M0' 审计产物移入 `docs/frozen/phase1/`（只读）<br>• Wunderground 等旧数据物理隔离至 `data/legacy-v1-suspect/` | **100%** | 封存清单、只读声明头与隔离区 |
 | **Phase 1.5: Task 09** | **GEFS 补全与 11 站特征提取**<br>• 外部冷存储 292,200 个 GRIB2 全球场补全与内容去重<br>• 11 站 × 20 年 (2000–2019) 因子长表提取（共 9,641,830 行）<br>• V1~V13 全部 13 项门禁 100% 验收通过 | **100%** | `gefs_factors/` (220 个 Parquet)<br>`gefs_task09_qc_v1.0.md`<br>`manifest.json` |
-| **Phase 1.5: Task 01~08** | **数据管道重建与校准语料库**<br>• Task 01 封存基线 (已闭环)<br>• Task 02 IEM 管道正式化 (进行中)<br>• Task 03 挂账清账 (特报语义 ADR 与 19 年探针)<br>• Task 04~08 观测全量重取、Floor 重建与数据集发布 | **进行中** | `STATUS.md`<br>IEM 管道代码<br>校准数据集 v2.0 |
-| **Phase 2: 生产投注系统** | 待 Task 08 与 Phase 2 前置 ADR 裁决后开工 | 待启动 | 交易引擎与自动化下注中枢 |
+| **Phase 4: 重训与可靠度** | **20 折 Block-CV 与分桶可靠度审计**<br>• 生产模型库落盘 960 格模型（480 Max + 480 Min）<br>• `P4-AUDIT-RELIABILITY-v1.3b` (KORD/18h/TMax) 正式关门（PIT 均匀性 $p=0.469 \gg 0.05$，残差对称性恢复，旧高斯尺结论作废存档）<br>• 当前审计覆盖率：960 格中已完成 4 格（**0.417%**），TMin 480 格零审计（**0.0%**） | **本格已关门<br>(全网格 0.42%)** | `evidence/p4_audit_reliability_v13b_*`<br>`scripts/audit_p4_reliability_v13b.py`<br>（修订依据：v1.3b 关门 / P5 取证 2026-10-09） |
+| **Phase 6: 全网格审计与方法论封盘** | **双城 TMax 全网格验证 + 方法论封盘（当前活跃）**<br>• 一期抽检：KORD + KMIA × TMax × 12 提前期 × 4 季（96 格，复用 4 格，新跑 92 格）<br>• 方法论封盘：逐格独立 BIC 选型，锁定分布族与衰减曲线，产出封盘文档<br>• 下一步规划：方法论封盘后接入真实盘预测管道，再行扩展其余 8 站；TMin 与其余 8 站暂缓 | **工单推进中** | `evidence/handoff_p6_tmax_fullgrid.md`<br>92 格逐格审计报告与汇总表<br>（修订依据：委员会裁决 2026-10-09） |
+| **生产投注系统** | 待 Phase 6 双城全网格方法论封盘及真实盘预测管道接入后开工 | 待启动 | 交易引擎与自动化下注中枢 |
+
+> **【专属参数与红线约束声明】**：  
+> 1.28 深尾报价参考系数、$\le 35\%$ 锋利度断言严格为 **KORD/18h/TMax 格专属**，严禁跨格推断或跨站套用。（修订依据：v1.3b 关门 / 委员会裁决 2026-10-09）
 
 ---
 

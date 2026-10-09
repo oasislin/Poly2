@@ -138,12 +138,20 @@ def test_e2e_real_fold0_dry_run_artifacts():
             mu_pred[idx] = m
             sig_pred[idx] = max(0.90, np.sqrt(max(0.90 ** 2, v)) * c_factor)
 
-        pred_df = pd.DataFrame({
+        pred_dict = {
             "target_date": val_work["target_date"],
             "obs": val_work["obs_tmax_f"].values,
             "mu": mu_pred,
             "sigma": sig_pred,
-        })
+            "selected_family": model.selected_family,
+            "family_shape_params": json.dumps(model.shape_params),
+        }
+        if model.selected_family == "johnsonsu":
+            pred_dict["jsu_gamma"] = float(model.shape_params.get("gamma", 0.0))
+            pred_dict["jsu_delta"] = float(model.shape_params.get("delta", 1.0))
+            pred_dict["jsu_xi"] = float(model.shape_params.get("xi", 0.0))
+            pred_dict["jsu_lambda"] = float(model.shape_params.get("lambda", 1.0))
+        pred_df = pd.DataFrame(pred_dict)
         mae = float(np.mean(np.abs(pred_df["obs"] - pred_df["mu"])))
         return {"mae": mae, "predictions": pred_df}
 

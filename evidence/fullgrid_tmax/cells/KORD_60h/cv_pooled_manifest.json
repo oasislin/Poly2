@@ -1,0 +1,13 @@
+{
+  "round_id": "pooled",
+  "artifacts": {
+    "predictions": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/fullgrid_tmax/cells/KORD_60h/cv_pooled_predictions.parquet",
+      "sha256": "6b70fdb57203770ca8cf9e9fa267a6b87da555423f6fafad57c51ec719845ee3"
+    },
+    "gate_report": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/fullgrid_tmax/cells/KORD_60h/cv_pooled_report.json",
+      "sha256": "c7c83be9b29e03f242265d7b7ac680f7230782e4a2edd828f07b6b18e6723615"
+    }
+  }
+}

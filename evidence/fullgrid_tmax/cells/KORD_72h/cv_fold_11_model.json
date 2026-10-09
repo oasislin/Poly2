@@ -1,0 +1,55 @@
+{
+  "round_id": 11,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=72, seasonal_emos_params={'Winter': (3.612457323537292, 1.0, 7.378786655839055, 0.5), 'Spring': (3.0401077710570092, 1.0, 9.614564312530536, 0.5), 'Summer': (1.311339099724492, 1.0, 6.156550508126656, 0.5), 'Autumn': (1.8286730623453735, 1.0, 6.849454145512224, 0.5)}, seasonal_c_train={'Winter': 1.1225402445449015, 'Spring': 1.0009004196846227, 'Summer': 0.9874965397882843, 'Autumn': 1.0497705669467785}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6267, 'skewness': -0.29062169962566436, 'kurtosis_fisher': 0.6162268552207477, 'jsu_triggered': False, 'evt_triggered': False, 'bic_gaussian': 17745.07276121533, 'bic_jsu': None, 'bic_evt': None, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 72,
+    "seasonal_emos_params": {
+      "Winter": [
+        3.612457323537292,
+        1.0,
+        7.378786655839055,
+        0.5
+      ],
+      "Spring": [
+        3.0401077710570092,
+        1.0,
+        9.614564312530536,
+        0.5
+      ],
+      "Summer": [
+        1.311339099724492,
+        1.0,
+        6.156550508126656,
+        0.5
+      ],
+      "Autumn": [
+        1.8286730623453735,
+        1.0,
+        6.849454145512224,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 1.1225402445449015,
+      "Spring": 1.0009004196846227,
+      "Summer": 0.9874965397882843,
+      "Autumn": 1.0497705669467785
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6267,
+      "skewness": -0.29062169962566436,
+      "kurtosis_fisher": 0.6162268552207477,
+      "jsu_triggered": false,
+      "evt_triggered": false,
+      "bic_gaussian": 17745.07276121533,
+      "bic_jsu": null,
+      "bic_evt": null,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

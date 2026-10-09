@@ -1,0 +1,55 @@
+{
+  "round_id": 2,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=66, seasonal_emos_params={'Winter': (4.8284935089340735, 1.0, 4.360875229956898, 0.5), 'Spring': (4.576428103911944, 1.0, 5.204495023274728, 0.5), 'Summer': (2.858285765364087, 1.0, 3.912843150001089, 0.5), 'Autumn': (3.541233511081529, 1.0, 3.6077709371397986, 0.5)}, seasonal_c_train={'Winter': 0.9781641632353958, 'Spring': 0.9600196945805477, 'Summer': 0.938625985081165, 'Autumn': 0.967467065717868}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': 0.012139346262980279, 'kurtosis_fisher': 1.466510295781534, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17640.40230037732, 'bic_jsu': None, 'bic_evt': 17725.082856121127, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 66,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.8284935089340735,
+        1.0,
+        4.360875229956898,
+        0.5
+      ],
+      "Spring": [
+        4.576428103911944,
+        1.0,
+        5.204495023274728,
+        0.5
+      ],
+      "Summer": [
+        2.858285765364087,
+        1.0,
+        3.912843150001089,
+        0.5
+      ],
+      "Autumn": [
+        3.541233511081529,
+        1.0,
+        3.6077709371397986,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9781641632353958,
+      "Spring": 0.9600196945805477,
+      "Summer": 0.938625985081165,
+      "Autumn": 0.967467065717868
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": 0.012139346262980279,
+      "kurtosis_fisher": 1.466510295781534,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17640.40230037732,
+      "bic_jsu": null,
+      "bic_evt": 17725.082856121127,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

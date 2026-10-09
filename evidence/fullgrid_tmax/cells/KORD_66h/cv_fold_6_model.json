@@ -1,0 +1,55 @@
+{
+  "round_id": 6,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=66, seasonal_emos_params={'Winter': (4.851571387251958, 1.0, 4.302361991075634, 0.5), 'Spring': (4.650658994778041, 1.0, 5.262162863224708, 0.5), 'Summer': (2.8868485065397635, 1.0, 3.8431611276110296, 0.5), 'Autumn': (3.606981975208633, 1.0, 3.627588097883043, 0.5)}, seasonal_c_train={'Winter': 0.9746673587440032, 'Spring': 0.9657616340715692, 'Summer': 0.9387336763366488, 'Autumn': 0.9688559987529966}, selected_family='gaussian', shape_params={}, selection_audit={'n_samples': 6248, 'skewness': 0.015532171865520878, 'kurtosis_fisher': 1.489145223419282, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17635.058815577035, 'bic_jsu': None, 'bic_evt': 17727.767632888594, 'delta_bic_winner': 0.0, 'selected_family': 'gaussian'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 66,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.851571387251958,
+        1.0,
+        4.302361991075634,
+        0.5
+      ],
+      "Spring": [
+        4.650658994778041,
+        1.0,
+        5.262162863224708,
+        0.5
+      ],
+      "Summer": [
+        2.8868485065397635,
+        1.0,
+        3.8431611276110296,
+        0.5
+      ],
+      "Autumn": [
+        3.606981975208633,
+        1.0,
+        3.627588097883043,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9746673587440032,
+      "Spring": 0.9657616340715692,
+      "Summer": 0.9387336763366488,
+      "Autumn": 0.9688559987529966
+    },
+    "selected_family": "gaussian",
+    "shape_params": {},
+    "selection_audit": {
+      "n_samples": 6248,
+      "skewness": 0.015532171865520878,
+      "kurtosis_fisher": 1.489145223419282,
+      "jsu_triggered": false,
+      "evt_triggered": true,
+      "bic_gaussian": 17635.058815577035,
+      "bic_jsu": null,
+      "bic_evt": 17727.767632888594,
+      "delta_bic_winner": 0.0,
+      "selected_family": "gaussian"
+    }
+  }
+}

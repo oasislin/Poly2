@@ -1,0 +1,13 @@
+{
+  "round_id": "pooled",
+  "artifacts": {
+    "predictions": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/cv_pooled_predictions.parquet",
+      "sha256": "5f917087cfca5971d899a08436682779d2e5a3e1e24dc86317c942f8ada6e4ee"
+    },
+    "gate_report": {
+      "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/cv_pooled_report.json",
+      "sha256": "4ef51c42d65e93039a70604198c4de333a50e542744890dcebc35db0d8cdb9ce"
+    }
+  }
+}

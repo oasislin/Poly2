@@ -1,0 +1,454 @@
+{
+  "specification_version": "P4-AUDIT-RELIABILITY-v1.3b",
+  "methodology": "Full 13,740 Validation Station-Days Deterministic Replay on True Distribution F (PIT Probit Closure)",
+  "sample_size": 13740,
+  "n_folds": 20,
+  "mandatory_header_declarations": {
+    "declaration_1_backcasting_assumption": "Historical validation period (2000-2018) objectively has no live Polymarket orderbook assets. All bin evaluations and settlement verdicts deterministically replay the 0.35 semantic routing specification (DiscreteBinEngine v1.3) and statutory Half-Up settlement rounding (ADR-0012) against full 13,740 validation station-days extracted strictly from 20-fold Block-CV out-of-fold prediction artifacts.",
+    "declaration_2_rule_version_dependency": "This audit strictly depends on specification P4-AUDIT-RELIABILITY-v1.3b (2\u00b0F step size, even-integer grid lines, X.5 half-degree boundaries, 9-bin adsorbed window with center bin at slot 5, 11-bin mutually exclusive and collectively exhaustive structure). Any market structure change requires spec bump.",
+    "declaration_3_ground_truth_vs_audit_lens": "The underlying physics probability model is the non-linear distribution family F(y; mu, sigma, theta) winning the statutory in-fold competition (selected as the Johnson SU 4-parameter family, modulating higher-order skewness and kurtosis via Z = gamma + delta * asinh((z - xi)/lambda)). The 11-bin discrete grid probabilities are strictly integrated via analytical differencing over the true distribution function F, entirely eliminating any Gaussian symmetric degradation approximation. Production trading pricing integrates directly over F. \u5f62\u6001\u8bca\u65ad\u4ee5 PIT\uff08\u771f\u6a21\u578b CDF \u53d8\u6362\uff09\u53e3\u5f84\u4e3a\u51c6\uff0c\u9ad8\u65af\u5c3a\u4ec5\u4f5c\u5bf9\u6bd4\u3002"
+  },
+  "audit_scope_declaration": "\u672c\u5ba1\u8ba1\u4ec5\u8986\u76d6 KORD \u7ad9 \u00d7 18h \u63d0\u524d\u671f \u00d7 TMax \u00d7 \u56db\u5b63\uff08\u5bf9\u5e94\u751f\u4ea7\u6a21\u578b\u5e93 960 \u683c\u4e2d\u7684 4 \u683c\uff0c\u8986\u76d6\u7387 0.42%\uff09\u3002\u5176\u4f59 956 \u683c\uff08\u542b\u5168\u90e8 TMin 480 \u683c\u3001\u5176\u4f59 9 \u7ad9\u3001\u5176\u4f59\u63d0\u524d\u671f\uff09\u672a\u7ecf 20 \u6298 Block-CV \u4e0e\u53ef\u9760\u5ea6\u5ba1\u8ba1\uff0c\u4e0d\u5c5e\u4e8e\u672c\u5ba1\u8ba1\u7ed3\u8bba\u9002\u7528\u8303\u56f4\u3002\u8de8\u683c\u63a8\u65ad\u672a\u7ecf\u68c0\u9a8c\uff0c\u5b9e\u76d8\u6295\u6ce8\u524d\u987b\u5b8c\u6210\u5404\u672c\u683c\u5ba1\u8ba1\u3002",
+  "in_window_calibration": {
+    "subpopulation": "In-Window (Pricing / Tradeable 9-bins / True Model F)",
+    "total_event_records": 123660,
+    "weighted_ece": 0.0029,
+    "wilson_coverage_rate": 0.5,
+    "monotonicity_violations": 0,
+    "strata": [
+      {
+        "strata_label": "[0.00, 0.03)",
+        "lower_p": 0.0,
+        "upper_p": 0.03,
+        "sample_count": 35374,
+        "mean_p_pred": 0.0152,
+        "observed_hit_rate": 0.017,
+        "calibration_gap": 0.0019,
+        "weighted_ece_contribution": 0.0005,
+        "brier_score": 0.0167,
+        "wilson_ci_lower": 0.0157,
+        "wilson_ci_upper": 0.0184,
+        "wilson_passed": false,
+        "substantive_classification": "FAIL (\u663e\u8457\u4f46\u5fae\u5c0f / \u504f\u5dee 0.19% < 2.0%)"
+      },
+      {
+        "strata_label": "[0.03, 0.07)",
+        "lower_p": 0.03,
+        "upper_p": 0.07,
+        "sample_count": 22561,
+        "mean_p_pred": 0.0476,
+        "observed_hit_rate": 0.0443,
+        "calibration_gap": 0.0033,
+        "weighted_ece_contribution": 0.0006,
+        "brier_score": 0.0422,
+        "wilson_ci_lower": 0.0416,
+        "wilson_ci_upper": 0.047,
+        "wilson_passed": false,
+        "substantive_classification": "FAIL (\u663e\u8457\u4f46\u5fae\u5c0f / \u504f\u5dee 0.33% < 2.0%)"
+      },
+      {
+        "strata_label": "[0.07, 0.12)",
+        "lower_p": 0.07,
+        "upper_p": 0.12,
+        "sample_count": 16592,
+        "mean_p_pred": 0.0936,
+        "observed_hit_rate": 0.0917,
+        "calibration_gap": 0.002,
+        "weighted_ece_contribution": 0.0003,
+        "brier_score": 0.083,
+        "wilson_ci_lower": 0.0873,
+        "wilson_ci_upper": 0.0961,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.12, 0.18)",
+        "lower_p": 0.12,
+        "upper_p": 0.18,
+        "sample_count": 15671,
+        "mean_p_pred": 0.1496,
+        "observed_hit_rate": 0.1561,
+        "calibration_gap": 0.0065,
+        "weighted_ece_contribution": 0.0008,
+        "brier_score": 0.1312,
+        "wilson_ci_lower": 0.1504,
+        "wilson_ci_upper": 0.1618,
+        "wilson_passed": false,
+        "substantive_classification": "FAIL (\u663e\u8457\u4f46\u5fae\u5c0f / \u504f\u5dee 0.65% < 2.0%)"
+      },
+      {
+        "strata_label": "[0.18, 0.25)",
+        "lower_p": 0.18,
+        "upper_p": 0.25,
+        "sample_count": 21813,
+        "mean_p_pred": 0.2169,
+        "observed_hit_rate": 0.2168,
+        "calibration_gap": 0.0001,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.1692,
+        "wilson_ci_lower": 0.2113,
+        "wilson_ci_upper": 0.2223,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.25, 0.35)",
+        "lower_p": 0.25,
+        "upper_p": 0.35,
+        "sample_count": 11649,
+        "mean_p_pred": 0.2826,
+        "observed_hit_rate": 0.2756,
+        "calibration_gap": 0.007,
+        "weighted_ece_contribution": 0.0007,
+        "brier_score": 0.1994,
+        "wilson_ci_lower": 0.2674,
+        "wilson_ci_upper": 0.2837,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.35, 0.50)",
+        "lower_p": 0.35,
+        "upper_p": 0.5,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.50, 1.00]",
+        "lower_p": 0.5,
+        "upper_p": 1.0,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      }
+    ]
+  },
+  "full_distribution_calibration": {
+    "subpopulation": "Full-Distribution (Model Honesty / All 11-bins / True Model F)",
+    "total_event_records": 151140,
+    "weighted_ece": 0.0025,
+    "wilson_coverage_rate": 0.5,
+    "monotonicity_violations": 0,
+    "strata": [
+      {
+        "strata_label": "[0.00, 0.03)",
+        "lower_p": 0.0,
+        "upper_p": 0.03,
+        "sample_count": 62795,
+        "mean_p_pred": 0.0118,
+        "observed_hit_rate": 0.0133,
+        "calibration_gap": 0.0014,
+        "weighted_ece_contribution": 0.0006,
+        "brier_score": 0.013,
+        "wilson_ci_lower": 0.0124,
+        "wilson_ci_upper": 0.0142,
+        "wilson_passed": false,
+        "substantive_classification": "FAIL (\u663e\u8457\u4f46\u5fae\u5c0f / \u504f\u5dee 0.14% < 2.0%)"
+      },
+      {
+        "strata_label": "[0.03, 0.07)",
+        "lower_p": 0.03,
+        "upper_p": 0.07,
+        "sample_count": 22620,
+        "mean_p_pred": 0.0476,
+        "observed_hit_rate": 0.0443,
+        "calibration_gap": 0.0033,
+        "weighted_ece_contribution": 0.0005,
+        "brier_score": 0.0422,
+        "wilson_ci_lower": 0.0416,
+        "wilson_ci_upper": 0.0469,
+        "wilson_passed": false,
+        "substantive_classification": "FAIL (\u663e\u8457\u4f46\u5fae\u5c0f / \u504f\u5dee 0.33% < 2.0%)"
+      },
+      {
+        "strata_label": "[0.07, 0.12)",
+        "lower_p": 0.07,
+        "upper_p": 0.12,
+        "sample_count": 16592,
+        "mean_p_pred": 0.0936,
+        "observed_hit_rate": 0.0917,
+        "calibration_gap": 0.002,
+        "weighted_ece_contribution": 0.0002,
+        "brier_score": 0.083,
+        "wilson_ci_lower": 0.0873,
+        "wilson_ci_upper": 0.0961,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.12, 0.18)",
+        "lower_p": 0.12,
+        "upper_p": 0.18,
+        "sample_count": 15671,
+        "mean_p_pred": 0.1496,
+        "observed_hit_rate": 0.1561,
+        "calibration_gap": 0.0065,
+        "weighted_ece_contribution": 0.0007,
+        "brier_score": 0.1312,
+        "wilson_ci_lower": 0.1504,
+        "wilson_ci_upper": 0.1618,
+        "wilson_passed": false,
+        "substantive_classification": "FAIL (\u663e\u8457\u4f46\u5fae\u5c0f / \u504f\u5dee 0.65% < 2.0%)"
+      },
+      {
+        "strata_label": "[0.18, 0.25)",
+        "lower_p": 0.18,
+        "upper_p": 0.25,
+        "sample_count": 21813,
+        "mean_p_pred": 0.2169,
+        "observed_hit_rate": 0.2168,
+        "calibration_gap": 0.0001,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.1692,
+        "wilson_ci_lower": 0.2113,
+        "wilson_ci_upper": 0.2223,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.25, 0.35)",
+        "lower_p": 0.25,
+        "upper_p": 0.35,
+        "sample_count": 11649,
+        "mean_p_pred": 0.2826,
+        "observed_hit_rate": 0.2756,
+        "calibration_gap": 0.007,
+        "weighted_ece_contribution": 0.0005,
+        "brier_score": 0.1994,
+        "wilson_ci_lower": 0.2674,
+        "wilson_ci_upper": 0.2837,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.35, 0.50)",
+        "lower_p": 0.35,
+        "upper_p": 0.5,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      },
+      {
+        "strata_label": "[0.50, 1.00]",
+        "lower_p": 0.5,
+        "upper_p": 1.0,
+        "sample_count": 0,
+        "mean_p_pred": 0.0,
+        "observed_hit_rate": 0.0,
+        "calibration_gap": 0.0,
+        "weighted_ece_contribution": 0.0,
+        "brier_score": 0.0,
+        "wilson_ci_lower": 0.0,
+        "wilson_ci_upper": 0.0,
+        "wilson_passed": true,
+        "substantive_classification": "PASS (\u4e0d\u663e\u8457 / \u826f\u597d\u6821\u51c6)"
+      }
+    ]
+  },
+  "dual_tail_diagnostics": [
+    {
+      "tail_name": "Left-Tail (< Window Lower Bound) [True Model F]",
+      "sample_count": 13740,
+      "expected_hits": 59.74,
+      "observed_hits": 40,
+      "mean_p_pred": 0.0043,
+      "observed_rate": 0.0029,
+      "observed_to_expected_ratio": 0.67,
+      "calibration_gap": 0.0014,
+      "poisson_p_upper": 0.997188,
+      "poisson_p_lower": 0.004377,
+      "underflow_count": 0,
+      "status": "PASS"
+    },
+    {
+      "tail_name": "Right-Tail (>= Window Upper Bound) [True Model F]",
+      "sample_count": 13740,
+      "expected_hits": 148.97,
+      "observed_hits": 191,
+      "mean_p_pred": 0.0108,
+      "observed_rate": 0.0139,
+      "observed_to_expected_ratio": 1.28,
+      "calibration_gap": 0.0031,
+      "poisson_p_upper": 0.000531,
+      "poisson_p_lower": 0.999594,
+      "underflow_count": 0,
+      "status": "FLAG"
+    }
+  ],
+  "dual_tail_gaussian_proxy": [
+    {
+      "tail_name": "Left-Tail (< Window Lower Bound) [Gaussian Proxy]",
+      "sample_count": 13740,
+      "expected_hits": 62.88,
+      "observed_hits": 40,
+      "mean_p_pred": 0.0046,
+      "observed_rate": 0.0029,
+      "observed_to_expected_ratio": 0.64,
+      "calibration_gap": 0.0017,
+      "poisson_p_upper": 0.999169,
+      "poisson_p_lower": 0.001356,
+      "underflow_count": 0,
+      "status": "PASS"
+    },
+    {
+      "tail_name": "Right-Tail (>= Window Upper Bound) [Gaussian Proxy]",
+      "sample_count": 13740,
+      "expected_hits": 62.26,
+      "observed_hits": 191,
+      "mean_p_pred": 0.0045,
+      "observed_rate": 0.0139,
+      "observed_to_expected_ratio": 3.07,
+      "calibration_gap": 0.0094,
+      "poisson_p_upper": 0.0,
+      "poisson_p_lower": 1.0,
+      "underflow_count": 0,
+      "status": "FLAG"
+    }
+  ],
+  "comparative_tail_impact": {
+    "observed_hits": 191,
+    "true_model_f_expected_hits": 148.97,
+    "gaussian_proxy_expected_hits": 62.26,
+    "true_model_f_ratio": 1.28,
+    "gaussian_proxy_ratio": 3.07,
+    "true_model_f_poisson_p": 0.000531,
+    "gaussian_proxy_poisson_p": 0.0,
+    "true_model_status": "FLAG",
+    "gaussian_proxy_status": "FLAG"
+  },
+  "pit_shape_diagnostics": {
+    "ks_uniformity_test": {
+      "statistic": 0.00722,
+      "p_value": 0.46915,
+      "is_uniform": true
+    },
+    "probit_rescaled_moments": {
+      "z_star_mean": 0.01,
+      "z_star_std": 1.0097,
+      "skewness": 0.0471,
+      "excess_kurtosis": 0.0667
+    },
+    "old_gaussian_ruler_moments": {
+      "z_gauss_mean": 0.0174,
+      "z_gauss_std": 1.0154,
+      "skewness": 0.6043,
+      "excess_kurtosis": 2.4612
+    },
+    "exceedances_comparison": {
+      "abs_z_gt_2_0": {
+        "gaussian_ruler_count": 735,
+        "gaussian_ruler_rate": 0.0535,
+        "pit_probit_count": 694,
+        "pit_probit_rate": 0.0505,
+        "theoretical_rate": 0.0455
+      },
+      "abs_z_gt_2_5": {
+        "gaussian_ruler_count": 287,
+        "gaussian_ruler_rate": 0.0209,
+        "pit_probit_count": 182,
+        "pit_probit_rate": 0.0132,
+        "theoretical_rate": 0.0124
+      },
+      "z_gt_pos_2_0": {
+        "gaussian_ruler_count": 469,
+        "gaussian_ruler_rate": 0.0341,
+        "pit_probit_count": 356,
+        "pit_probit_rate": 0.0259,
+        "theoretical_rate": 0.0228
+      },
+      "z_lt_neg_2_0": {
+        "gaussian_ruler_count": 266,
+        "gaussian_ruler_rate": 0.0194,
+        "pit_probit_count": 338,
+        "pit_probit_rate": 0.0246,
+        "theoretical_rate": 0.0228
+      }
+    },
+    "evt_activation_assessment": {
+      "skew_threshold": 0.4,
+      "excess_kurtosis_threshold": 1.0,
+      "skew_exceeds": false,
+      "kurtosis_exceeds": false,
+      "evt_triggered": false,
+      "verdict": "EVT NOT TRIGGERED (Johnson SU fully absorbs shape; Gaussian anomalies invalidated)"
+    }
+  },
+  "sharpness_diagnostics": {
+    "sample_size": 13740,
+    "quantiles": {
+      "P10": 0.2264,
+      "P25": 0.2375,
+      "P50": 0.2766,
+      "P75": 0.2964,
+      "P90": 0.3038,
+      "P99": 0.3118,
+      "Max": 0.3177,
+      "Min": 0.1698
+    },
+    "histogram": [
+      {
+        "bin_range": "[0.15, 0.18)",
+        "count": 3,
+        "frequency": 0.0002
+      },
+      {
+        "bin_range": "[0.18, 0.21)",
+        "count": 54,
+        "frequency": 0.0039
+      },
+      {
+        "bin_range": "[0.21, 0.24)",
+        "count": 3705,
+        "frequency": 0.2697
+      },
+      {
+        "bin_range": "[0.24, 0.27)",
+        "count": 2802,
+        "frequency": 0.2039
+      },
+      {
+        "bin_range": "[0.27, 0.30)",
+        "count": 4764,
+        "frequency": 0.3467
+      },
+      {
+        "bin_range": "[0.30, 0.33)",
+        "count": 2412,
+        "frequency": 0.1755
+      },
+      {
+        "bin_range": "[0.33, 0.36)",
+        "count": 0,
+        "frequency": 0.0
+      }
+    ],
+    "assertion_max_p_le_35pct": {
+      "assertion": "daily_peak_bin_probability <= 0.35",
+      "passed": true,
+      "max_observed": 0.3177
+    },
+    "houston_market_contrast_note": "Houston \u5b9e\u76d8\u76d8\u53e3\u5e38\u89c1\u5355\u6876\u96c6\u4e2d\u5ea6\u9ad8\u8fbe ~67%\uff0c\u5176\u672c\u8d28\u539f\u56e0\u662f\u4e9a\u70ed\u5e26\u590f\u79cb\u5b63\u6c14\u8c61\u65b9\u5dee\u6781\u4f4e\uff08\u5386\u53f2\u6c14\u6e29\u6781\u5ea6\u5e73\u7a33\uff09\uff0c\u9884\u6d4b\u6807\u51c6\u5dee sigma \u5f88\u5c0f\uff0c\u5bfc\u81f4\u6982\u7387\u8d28\u91cf\u9ad8\u5ea6\u6c47\u805a\u4e8e\u5355\u6876\u3002\u800c\u829d\u52a0\u54e5 KORD \u7ad9\u8de8\u79cb\u51ac\u6625\u4e09\u5b63\uff0c\u6c14\u8c61\u950b\u9762\u4e0e\u51b7\u6696\u5bf9\u6d41\u5267\u70c8\uff0c\u9884\u6d4b\u6807\u51c6\u5dee sigma \u901a\u5e38\u5728 3~6\u00b0F \u4e4b\u95f4\uff0c\u5728 2\u00b0F \u6b65\u957f\u7f51\u683c\u4e0b\u81ea\u7136\u5206\u6563\u4e8e 4~6 \u4e2a\u6863\u4f4d\uff0c\u65e5\u5cf0\u503c\u6876\u6700\u9ad8\u4ec5 25%~32%\u3002\u4e24\u7ad9\u96c6\u4e2d\u5ea6\u5dee\u5f02\u5b8c\u5168\u6e90\u4e8e\u53f0\u7ad9\u56fa\u6709\u7684\u7269\u7406\u6c14\u5019\u5b66\u65b9\u5dee\u5dee\u5f02\uff0c\u800c\u975e\u6a21\u578b\u5931\u51c6\u6216\u5e73\u6ed1\u8fc7\u5ea6\u3002"
+  }
+}
