@@ -1,0 +1,60 @@
+{
+  "round_id": 13,
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=18, seasonal_emos_params={'Winter': (4.714699799382139, 1.0, 3.543023594058494, 0.5), 'Spring': (4.481783954976073, 1.0, 3.952888849074178, 0.5), 'Summer': (2.497839206127395, 1.0, 2.8392252208367723, 0.5), 'Autumn': (3.506983554288265, 1.0, 2.9345336551496173, 0.5)}, seasonal_c_train={'Winter': 0.9960554448213247, 'Spring': 0.9711951433109941, 'Summer': 0.9748712556432498, 'Autumn': 0.9842223950005724}, selected_family='johnsonsu', shape_params={'gamma': -0.5429888896065582, 'delta': 2.123457554088423, 'xi': -0.5193377585701846, 'lambda': 1.8178152505855798}, selection_audit={'n_samples': 6250, 'skewness': 0.5101726069092989, 'kurtosis_fisher': 2.0083792776860054, 'jsu_triggered': True, 'evt_triggered': True, 'bic_gaussian': 17710.69073213025, 'bic_jsu': 17434.457871575574, 'bic_evt': 17687.684085328623, 'delta_bic_winner': -276.2328605546754, 'selected_family': 'johnsonsu'})",
+  "model": {
+    "station": "KORD",
+    "variable": "tmax",
+    "lead_hour": 18,
+    "seasonal_emos_params": {
+      "Winter": [
+        4.714699799382139,
+        1.0,
+        3.543023594058494,
+        0.5
+      ],
+      "Spring": [
+        4.481783954976073,
+        1.0,
+        3.952888849074178,
+        0.5
+      ],
+      "Summer": [
+        2.497839206127395,
+        1.0,
+        2.8392252208367723,
+        0.5
+      ],
+      "Autumn": [
+        3.506983554288265,
+        1.0,
+        2.9345336551496173,
+        0.5
+      ]
+    },
+    "seasonal_c_train": {
+      "Winter": 0.9960554448213247,
+      "Spring": 0.9711951433109941,
+      "Summer": 0.9748712556432498,
+      "Autumn": 0.9842223950005724
+    },
+    "selected_family": "johnsonsu",
+    "shape_params": {
+      "gamma": -0.5429888896065582,
+      "delta": 2.123457554088423,
+      "xi": -0.5193377585701846,
+      "lambda": 1.8178152505855798
+    },
+    "selection_audit": {
+      "n_samples": 6250,
+      "skewness": 0.5101726069092989,
+      "kurtosis_fisher": 2.0083792776860054,
+      "jsu_triggered": true,
+      "evt_triggered": true,
+      "bic_gaussian": 17710.69073213025,
+      "bic_jsu": 17434.457871575574,
+      "bic_evt": 17687.684085328623,
+      "delta_bic_winner": -276.2328605546754,
+      "selected_family": "johnsonsu"
+    }
+  }
+}
