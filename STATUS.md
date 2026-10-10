@@ -5,7 +5,7 @@ updated: 2026-10-10 17:00:00
 # 项目状态（唯一状态入口）
 
 > 📌 **法定长线规划与新会话交接导航**：项目长线路线图详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁总清单详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
-> 📚 **核心宪法文档指针**：顶层方案已对账升级至 [`项目方案 (v2.8).md`](项目方案%20(v2.8).md)；Phase 2 执行文件已对账升级至 [`Phase 2 执行文件 v2.1.md`](Phase%202%20执行文件%20v2.1.md)（历史 v2.7/v2.0 保持冻结，修订依据：工单 P7-DOC-RECON / PR #131 / 批文 P7-DOC-RECON-GO-MERGE）。
+> 📚 **核心宪法文档指针**：顶层方案已对账升级至 [`项目方案 (v2.8)`](docs/项目方案和执行文档/项目方案%20(v2.8)：Polymarket%20温度市场量化投注系统.md)；Phase 2 执行文件已对账升级至 [`Phase 2 执行文件 v2.1`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.1：盘口定价、套利与执行引擎.md)（历史 v2.7/v2.0 保持冻结，修订依据：工单 P7-DOC-RECON / PR #131 / 批文 P7-DOC-RECON-GO-MERGE）。
 
 > 🚩 **【双重法定运行旗持续生效（下游强制带旗）】**：  
 > 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（交易窗口加权 ECE = `0.018318` 越线 0.0100，触发器计数 1/2 未达立项门槛；双城 24 格中 23 格 ECE 达标率 95.83%）；  
