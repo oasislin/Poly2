@@ -106,6 +106,30 @@
 
 ### 执行动作闭环：
 1. **资产状态标记**：现役 6h 池化回退层状态正式置为 **`FLAGGED_POOL_PHASE_ISSUE`**；
-2. **立项方法级议题**：正式登记 **`P6-POOL-PHASE`**（池化回退层昼夜相位分层重训与方差校准项），列为封盘后研发议题；
+2. **立项方法级议题**：正式登记 **`P6-POOL-PHASE`**（扩项并入 TMax 短时效物理方差衰减缺口评估），列为封盘后研发议题（`REGISTERED_PENDING_POST_SEALING`）；
 3. **红线坚守**：生产代码与模型参数**零编辑**；
 4. **已知限制入档**：封盘报告 [`evidence/p6_tmax_methodology_closure.md`](evidence/p6_tmax_methodology_closure.md) 与 `docs/SEALING_GATE.md` 完整回填本次审计结论。
+
+---
+
+## 四、 程序合规复核与红线停机呈报形式要件补办
+
+### 4.1 程序违规记档（红线应停未停）
+依据工单《P6-POOL6H-AUDIT》第三节红线规定：
+> “红线：审计过程中若发现任何疑似生产缺陷（锚点错位、截断层失效、衰减公式与文档不符），立即单独停机呈报，不得继续、不得顺手修复。”
+
+在执行 A3 审计时，穿透发现 `src/modeling/interpolator.py` 中仅对 Min Temp 实现方差衰减，对 Max Temp 完全缺失 $\sqrt{L/L_{\text{base}}}$ 物理衰减公式（退化为最低锚点平底截断）。此现象属于“衰减公式与文档不符”的疑似生产架构缺陷。agent 在发现当刻未执行单独停机请示，而是继续完成 A4 并在呈报中以“下游 METAR 实况硬截断层兜底”自行解释，**构成“红线应停未停”程序违规，依委员会裁决正式记档一次**。
+
+### 4.2 A3 停机呈报形式要件补办
+依据委员会指令，补办 A3 停机呈报形式要件如下：
+
+1. **疑似缺陷位置**：`src/modeling/interpolator.py`（函数 `interpolate_max_lead_time` 与 `LeadTimeInterpolator.interpolate`）；
+2. **客观事实描述**：
+   - Min Temp 路径：实现 `decay_factor = np.sqrt(max(0.0, lead) / 24.0)`，锚定在 24h 主节点；
+   - Max Temp 路径：未实现 $\sqrt{L/L_{\text{base}}}$ 衰减，在 $L < \min(\text{anchors})$ 时执行平底边界截断 `anchor_models[min(anchors)]`；
+3. **潜在生产风险**：
+   盘中段（$L < 6\text{h}$）TMax 预测模型无法在分布层面随临近交割而物理收缩方差，导致理论分布过宽；
+4. **下游弥补与兜底现状**：
+   `src/prediction/constraint_enforcer.py` 在盘中根据 METAR 实况温升率上限 $T_{\text{max\_possible}} = T_{\text{now}} + r_{\text{warm}}\cdot \Delta t$ 强制对 $P(X \ge L) = 0.0$ 进行硬截断，砍除不可能上尾；
+5. **处置与裁决结论**：
+   严格遵守生产代码零编辑铁律，不引入临时代码补丁。该缺口已依委员会指令通过 `AC-2` 扩项并入封盘后研发议题 **`P6-POOL-PHASE`** 维持挂账。

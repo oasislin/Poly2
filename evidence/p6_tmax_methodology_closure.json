@@ -1050,8 +1050,8 @@
   "known_limitations": [
     "Calm-day overconfidence with sigma_ens < 0.50F at morning neutral phase (P6-CALM-OUTLIER)",
     "Discrete 2-deg F boundary discretization artifact with delta_bound < 0.04F",
-    "KMIA near-term calibration flags (KMIA 12h full ECE=0.0183, KMIA 36h EVT subset ECE=0.0196)",
-    "6h pooled fallback over-dispersion in diurnal harmonic morning valley (P6-POOL6H-AUDIT: KMIA ECE=0.019657 FLAGGED_POOL_PHASE_ISSUE)"
+    "KMIA near-term calibration flags (KMIA 12h full ECE=0.0183 flagged, cumulative trigger counter 1/2 below 2-cell threshold; 23/24 cells ECE <= 0.0100 compliant; KMIA 36h EVT subset ECE=0.0196 flagged)",
+    "6h pooled fallback over-dispersion in diurnal harmonic morning valley (P6-POOL6H-AUDIT: KMIA ECE=0.019657 FLAGGED_POOL_PHASE_ISSUE; interpolator Max Temp decay gap with constraint_enforcer METAR cap fallback)"
   ],
   "post_sealing_backlog": [
     "P6-CALM-OUTLIER",
@@ -1065,6 +1065,9 @@
     "status": "FLAGGED_POOL_PHASE_ISSUE",
     "kord_ece": 0.005128,
     "kmia_ece": 0.019657,
+    "ac1_ece_compliance": "23/24 cells (95.83%), KMIA_12h trigger 1/2",
+    "ac2_pool_phase_expanded": true,
+    "ac3_methodology_note_added": true,
     "artifact_ref": "evidence/p6_pool6h_audit_report.md"
   }
 }

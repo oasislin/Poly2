@@ -100,10 +100,10 @@
     },
     {
       "work_order": "P6-POOL-PHASE",
-      "title": "6h 池化回退层按验证时刻昼夜相位分层重训与方差校准",
+      "title": "6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估",
       "status": "REGISTERED_PENDING_POST_SEALING",
       "priority": "封盘后研发议题",
-      "rationale": "P6-POOL6H-AUDIT 实测证实 80 套 6h 池化模型在晨谷时刻存在预测方差系统性过宽（KMIA ECE=0.019657 越线 0.0100），需按验证时刻昼夜相位进行分层重训或引入谐波方差校正项。"
+      "rationale": "P6-POOL6H-AUDIT 实测证实 80 套 6h 池化模型在晨谷时刻存在预测方差系统性过宽（KMIA ECE=0.019657 越线 0.0100），且 interpolator.py 缺失 Max Temp 短时效 sqrt(L/24) 方差衰减公式（退化为边界截断，盘中段下游依赖 constraint_enforcer 的 METAR 实况温升上限硬截断兜底）。需按验证时刻昼夜相位进行分层重训或引入谐波方差校正项，并系统评估补全 TMax 短时效方差衰减机制。"
     }
   ],
   "KORD_72h": {
