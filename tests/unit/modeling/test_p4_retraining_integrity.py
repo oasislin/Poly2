@@ -1,5 +1,11 @@
 """
 tests/unit/modeling/test_p4_retraining_integrity.py: Comprehensive 7-Gate Verification for P4 Retrained Models & Evidence.
+
+[P7-W1-B-C5-RULING-R1 立碑注记]:
+P4 历史语义由 P7-W1-B 演进，经委员会裁决授权修改，修改范围以本裁决 B-3 三条为限：
+1. 960 计数完备性断言由 manifest 版本号驱动期望表 (<= 2.1.x 期望 960; 2.2.0-phase 期望 1200)；
+2. 状态一致性断言在 2.2.0-phase 下与 p7_w1_model_inventory_audit.csv 对账；
+3. 多起点确定性断言抽样域改为 STATUTORY_TRADING_MASTER 主节点，并增补断言 9 (W1-B 分簇确定性复现)。
 """
 
 import json
@@ -30,26 +36,41 @@ ROUND3_ANCHORS = {
 
 
 def test_p4_universe_960_node_completeness():
-    """断言 1: 960 格计数完备性断言 (800 法定交易主节点 + 160 补全辅助节点)."""
+    """断言 1: 矩阵计数完备性断言 (P4: 960 格 / P7-W1: 1200 格)."""
+    # [P7-W1-B-C5-RULING-R1: B-3.1] 版本号驱动期望表：P4 历史语义由 P7-W1-B 演进，经委员会裁决授权修改
     manifest_path = MODELS_DIR / "manifest.json"
     assert manifest_path.exists(), f"{manifest_path} must exist"
 
     with open(manifest_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    assert data["manifest_version"] == "2.2.0"
-    assert data["status"] == "PRODUCTION_RETRAINED_V2"
-    assert data["fitting_protocol"] == "STATUTORY_5_GUESS_MULTI_START"
-    assert data["total_models"] == 960
-    assert data["statutory_trading_nodes_count"] == 800
-    assert data["auxiliary_nodes_count"] == 160
-    assert len(data["models"]) == 960
+    if data.get("manifest_version") == "2.2.0-phase":
+        assert data["total_models"] == 1200
+        assert data["statutory_trading_nodes_count"] == 720
+        assert data["auxiliary_nodes_count"] == 160
+        assert data["phase_cluster_primary_count"] == 240
+        assert data["phase_cluster_failsafe_count"] == 80
+        assert len(data["models"]) == 1200
 
-    # Categorization count check
-    statuses = [m["status"] for m in data["models"].values()]
-    assert statuses.count("STATUTORY_TRADING_MASTER") == 720
-    assert statuses.count("POOLED-FALLBACK") == 80
-    assert statuses.count("AUXILIARY_POOLED_FALLBACK") == 160
+        statuses = [m["status"] for m in data["models"].values()]
+        assert statuses.count("STATUTORY_TRADING_MASTER") == 720
+        assert statuses.count("AUXILIARY_POOLED_FALLBACK") == 160
+        assert statuses.count("PHASE-CLUSTER-PRIMARY") == 240
+        assert statuses.count("PHASE-CLUSTER-FAILSAFE") == 80
+    else:
+        assert data["manifest_version"] == "2.2.0"
+        assert data["status"] == "PRODUCTION_RETRAINED_V2"
+        assert data["fitting_protocol"] == "STATUTORY_5_GUESS_MULTI_START"
+        assert data["total_models"] == 960
+        assert data["statutory_trading_nodes_count"] == 800
+        assert data["auxiliary_nodes_count"] == 160
+        assert len(data["models"]) == 960
+
+        # Categorization count check
+        statuses = [m["status"] for m in data["models"].values()]
+        assert statuses.count("STATUTORY_TRADING_MASTER") == 720
+        assert statuses.count("POOLED-FALLBACK") == 80
+        assert statuses.count("AUXILIARY_POOLED_FALLBACK") == 160
 
 
 def test_p4_per_cell_physical_floors_and_no_interpolation():
@@ -83,24 +104,43 @@ def test_p4_per_cell_physical_floors_and_no_interpolation():
 
 
 def test_p4_pooled_fallback_and_inventory_consistency():
-    """断言 3: POOLED-FALLBACK 标注与模型普查清册 100% 一致性断言."""
+    """断言 3: POOLED-FALLBACK / PHASE-CLUSTER 标注与模型普查清册 100% 一致性断言."""
     manifest_path = MODELS_DIR / "manifest.json"
-    inv_path = EVIDENCE_DIR / "model_inventory_audit.csv"
 
     with open(manifest_path, "r", encoding="utf-8") as f:
         mf = json.load(f)
-    df_inv = pd.read_csv(inv_path)
 
-    assert len(df_inv) == 960, f"Inventory must have 960 rows, got {len(df_inv)}"
-    inv_map = {row["model_filename"].replace("data/models/", ""): row["status"] for _, row in df_inv.iterrows()}
+    # [P7-W1-B-C5-RULING-R1: B-3.2] 版本门控：2.2.0-phase 下与新 P7 清册对账，P4 历史语义由 P7-W1-B 演进，经委员会裁决授权修改
+    if mf.get("manifest_version") == "2.2.0-phase":
+        inv_path = EVIDENCE_DIR / "p7_w1_model_inventory_audit.csv"
+        assert inv_path.exists(), f"P7 inventory must exist: {inv_path}"
+        df_inv = pd.read_csv(inv_path)
 
-    for rel_path, info in mf["models"].items():
-        assert rel_path in inv_map, f"Model {rel_path} not found in inventory audit"
-        assert info["status"] == inv_map[rel_path], f"Status mismatch for {rel_path}: {info['status']} vs {inv_map[rel_path]}"
+        assert len(df_inv) == 1200, f"P7 Inventory must have 1200 rows, got {len(df_inv)}"
+        inv_map = {row["model_filename"].replace("data/models/", ""): row["status"] for _, row in df_inv.iterrows()}
 
-    assert (df_inv["status"] == "STATUTORY_TRADING_MASTER").sum() == 720
-    assert (df_inv["status"] == "POOLED-FALLBACK").sum() == 80
-    assert (df_inv["status"] == "AUXILIARY_POOLED_FALLBACK").sum() == 160
+        for rel_path, info in mf["models"].items():
+            assert rel_path in inv_map, f"Model {rel_path} not found in P7 inventory audit"
+            assert info["status"] == inv_map[rel_path], f"Status mismatch for {rel_path}: {info['status']} vs {inv_map[rel_path]}"
+
+        assert (df_inv["status"] == "STATUTORY_TRADING_MASTER").sum() == 720
+        assert (df_inv["status"] == "AUXILIARY_POOLED_FALLBACK").sum() == 160
+        assert (df_inv["status"] == "PHASE-CLUSTER-PRIMARY").sum() == 240
+        assert (df_inv["status"] == "PHASE-CLUSTER-FAILSAFE").sum() == 80
+    else:
+        inv_path = EVIDENCE_DIR / "model_inventory_audit.csv"
+        df_inv = pd.read_csv(inv_path)
+
+        assert len(df_inv) == 960, f"Inventory must have 960 rows, got {len(df_inv)}"
+        inv_map = {row["model_filename"].replace("data/models/", ""): row["status"] for _, row in df_inv.iterrows()}
+
+        for rel_path, info in mf["models"].items():
+            assert rel_path in inv_map, f"Model {rel_path} not found in inventory audit"
+            assert info["status"] == inv_map[rel_path], f"Status mismatch for {rel_path}: {info['status']} vs {inv_map[rel_path]}"
+
+        assert (df_inv["status"] == "STATUTORY_TRADING_MASTER").sum() == 720
+        assert (df_inv["status"] == "POOLED-FALLBACK").sum() == 80
+        assert (df_inv["status"] == "AUXILIARY_POOLED_FALLBACK").sum() == 160
 
 
 def test_p4_distribution_selection_competition_audit():
@@ -164,8 +204,10 @@ def test_p4_multistart_determinism():
     with open(manifest_path, "r", encoding="utf-8") as f:
         mf = json.load(f)
 
-    # Deterministically sample 5 disparate cells across matrix
-    sample_keys = list(mf["models"].keys())[::200][:5]
+    # [P7-W1-B-C5-RULING-R1: B-3.3] 抽样域改为非 lead6h 节点的主节点：P4 历史语义由 P7-W1-B 演进，经委员会裁决授权修改
+    # 筛选保持不变的 STATUTORY_TRADING_MASTER 主节点进行多起点确定性校验
+    master_keys = [k for k, m in mf["models"].items() if m.get("status") == "STATUTORY_TRADING_MASTER"]
+    sample_keys = master_keys[::140][:5]
 
     for k in sample_keys:
         info = mf["models"][k]
@@ -280,4 +322,51 @@ def test_p4_evt_cdf_analytical_boundary_and_weights():
                 assert pass_normalization, f"{st} {season}: EVT CDF normalization failed (F(+inf)={f_inf}, F(z_max)={f_zmax})"
 
     assert evt_found == 4, f"Expected 4 EVT units, found {evt_found}"
+
+
+def test_p7_w1_phase_cluster_multistart_determinism():
+    """
+    断言 9 [P7-W1-B-C5-RULING-R1: B-3.3]: W1-B 专属确定性测试.
+    对分簇资产用分簇多起点算法重抽样重拟合作对照，确定性纪律不得因契约演进而出现覆盖盲区 (阈值 < 1e-9).
+    P4 历史语义由 P7-W1-B 演进，经委员会裁决授权修改，修改范围以本裁决 B-3 三条为限.
+    """
+    manifest_path = MODELS_DIR / "manifest.json"
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        mf = json.load(f)
+
+    if mf.get("manifest_version") != "2.2.0-phase":
+        pytest.skip("Not 2.2.0-phase manifest")
+
+    from scripts.train_p7_w1_pooled_phase import (
+        fit_emos_crps,
+        extract_matched_cluster_data,
+        load_station_training_data as load_phase_data,
+    )
+
+    primary_keys = [k for k, m in mf["models"].items() if m.get("status") == "PHASE-CLUSTER-PRIMARY"]
+    # Deterministically sample 3 disparate phase cluster models across stations/seasons/clusters
+    sample_keys = primary_keys[::75][:3]
+
+    for k in sample_keys:
+        info = mf["models"][k]
+        st = info["station"]
+        season = info["season"]
+        var = "Max" if info["variable"] == "max" else "Min"
+        cluster = info["phase_cluster"]
+
+        df_ghcn, df_gefs = load_phase_data(st)
+        cluster_dfs = extract_matched_cluster_data(df_ghcn, df_gefs, st, season, var)
+        c_df = cluster_dfs[cluster]
+        a, b, c, d = fit_emos_crps(c_df)
+        saved_p = info["params"]
+
+        diff_a = abs(a - saved_p["a"])
+        diff_b = abs(b - saved_p["b"])
+        diff_c = abs(c - saved_p["c"])
+        diff_d = abs(d - saved_p["d"])
+
+        assert max(diff_a, diff_b, diff_c, diff_d) < 1e-9, (
+            f"W1-B phase determinism failed on {k}: diffs=({diff_a:.2e}, {diff_b:.2e}, {diff_c:.2e}, {diff_d:.2e})"
+        )
+
 

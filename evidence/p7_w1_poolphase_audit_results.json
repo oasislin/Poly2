@@ -1,0 +1,393 @@
+{
+  "work_order": "P7-W1-POOLPHASE",
+  "serial_position": "3/4 (W1-B Retraining)",
+  "c1_variance_inflation": {
+    "passed": true,
+    "threshold": "[1.00, 1.20]",
+    "results": {
+      "KORD": {
+        "Winter": {
+          "params": {
+            "a": 12.39858192442434,
+            "b": 0.795056085362318,
+            "c": 5.936493592207934,
+            "d": 1.3967348831441817,
+            "c_train": 1.031885866545668,
+            "distribution": "gaussian"
+          },
+          "n_samples": 10281,
+          "pred_mean_variance": 42.838,
+          "emp_residual_variance": 42.838,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08034,
+          "c2_pass": true
+        },
+        "Spring": {
+          "params": {
+            "a": 14.139166306716868,
+            "b": 0.9166833528160003,
+            "c": 8.10116964680608,
+            "d": 1.674716813567926,
+            "c_train": 0.981221549390414,
+            "distribution": "gaussian"
+          },
+          "n_samples": 10488,
+          "pred_mean_variance": 73.192,
+          "emp_residual_variance": 73.192,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08571,
+          "c2_pass": true
+        },
+        "Summer": {
+          "params": {
+            "a": 37.24455427947102,
+            "b": 0.6231859826516138,
+            "c": 5.286633373146439,
+            "d": 1.129494108254862,
+            "c_train": 1.0134011175618942,
+            "distribution": "gaussian"
+          },
+          "n_samples": 10488,
+          "pred_mean_variance": 31.828,
+          "emp_residual_variance": 31.828,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08197,
+          "c2_pass": true
+        },
+        "Autumn": {
+          "params": {
+            "a": 8.30895116639187,
+            "b": 0.9977739529535942,
+            "c": 6.331422431047307,
+            "d": 1.7558056571971503,
+            "c_train": 0.9788848571281429,
+            "distribution": "gaussian"
+          },
+          "n_samples": 10371,
+          "pred_mean_variance": 43.748,
+          "emp_residual_variance": 43.748,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08591,
+          "c2_pass": true
+        }
+      },
+      "KMIA": {
+        "Winter": {
+          "params": {
+            "a": 25.22844977739789,
+            "b": 0.7531563328702634,
+            "c": 2.655551533706382,
+            "d": 1.56357593871031,
+            "c_train": 1.1978226257471303,
+            "distribution": "johnsonsu"
+          },
+          "n_samples": 10281,
+          "pred_mean_variance": 14.469,
+          "emp_residual_variance": 14.469,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08293,
+          "c2_pass": true
+        },
+        "Spring": {
+          "params": {
+            "a": 25.774739263901534,
+            "b": 0.7736046650465329,
+            "c": 2.3880644148243646,
+            "d": 1.0564620373861797,
+            "c_train": 1.1637286428790121,
+            "distribution": "johnsonsu"
+          },
+          "n_samples": 10488,
+          "pred_mean_variance": 9.044,
+          "emp_residual_variance": 9.044,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08287,
+          "c2_pass": true
+        },
+        "Summer": {
+          "params": {
+            "a": 40.88334024366122,
+            "b": 0.5926635553142142,
+            "c": 1.8888582434272159,
+            "d": 0.8759773365694116,
+            "c_train": 1.1461817119417699,
+            "distribution": "johnsonsu"
+          },
+          "n_samples": 10488,
+          "pred_mean_variance": 5.138,
+          "emp_residual_variance": 5.138,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08282,
+          "c2_pass": true
+        },
+        "Autumn": {
+          "params": {
+            "a": 20.07092120518397,
+            "b": 0.8331633830507716,
+            "c": 1.9632917162213,
+            "d": 1.05913624727038,
+            "c_train": 1.1857635178395316,
+            "distribution": "johnsonsu"
+          },
+          "n_samples": 10371,
+          "pred_mean_variance": 6.48,
+          "emp_residual_variance": 6.48,
+          "variance_ratio": 1.0,
+          "c1_pass": true,
+          "pit_variance": 0.08271,
+          "c2_pass": true
+        }
+      }
+    }
+  },
+  "c2_pit_variance": {
+    "passed": true,
+    "threshold": ">= 0.0700 (KMIA)",
+    "results": {
+      "KORD": {
+        "Winter": 0.08034,
+        "Spring": 0.08571,
+        "Summer": 0.08197,
+        "Autumn": 0.08591
+      },
+      "KMIA": {
+        "Winter": 0.08293,
+        "Spring": 0.08287,
+        "Summer": 0.08282,
+        "Autumn": 0.08271
+      }
+    }
+  },
+  "c3_weighted_ece": {
+    "passed": true,
+    "threshold": "<= 0.0100",
+    "results": {
+      "KORD": {
+        "evaluation_window": "12h Morning Valley Block-CV Folds (06:00-08:00 LT)",
+        "sample_size_eval": 96180,
+        "in_window_weighted_ece": 0.005128,
+        "full_weighted_ece": 0.003606,
+        "baseline_12h_in_window_ece": 0.005105,
+        "statutory_threshold": 0.01,
+        "ece_pass": true,
+        "sharpness_p50_mean": 0.14,
+        "sharpness_p50_median": 0.1338
+      },
+      "KMIA": {
+        "evaluation_window": "12h Morning Valley Block-CV Folds (06:00-08:00 LT)",
+        "sample_size_eval": 96180,
+        "in_window_weighted_ece": 0.005977,
+        "full_weighted_ece": 0.00457,
+        "baseline_12h_in_window_ece": 0.018318,
+        "statutory_threshold": 0.01,
+        "ece_pass": true,
+        "sharpness_p50_mean": 0.3514,
+        "sharpness_p50_median": 0.3499
+      }
+    }
+  },
+  "c4_12h_invariance": {
+    "passed": true,
+    "note": "Bit-level invariant via test_12h_statutory_master_node_bit_invariance"
+  },
+  "c6_cluster_security": {
+    "passed": true,
+    "results": {
+      "KORD": {
+        "peak": {
+          "Winter": {
+            "n_samples": 10281,
+            "in_window_weighted_ece": 0.019036,
+            "delta_ece_vs_baseline": 0.013908,
+            "pit_ks_stat": 0.1078,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": false,
+            "ece_pass": false,
+            "ks_pass": false,
+            "overall_pass": false
+          },
+          "Spring": {
+            "n_samples": 10488,
+            "in_window_weighted_ece": 0.009103,
+            "delta_ece_vs_baseline": 0.003975,
+            "pit_ks_stat": 0.0539,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": false,
+            "ece_pass": true,
+            "ks_pass": false,
+            "overall_pass": false
+          },
+          "Summer": {
+            "n_samples": 10488,
+            "in_window_weighted_ece": 0.004318,
+            "delta_ece_vs_baseline": -0.00081,
+            "pit_ks_stat": 0.0093,
+            "pit_ks_p_value": 0.3285,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": true,
+            "overall_pass": true
+          },
+          "Autumn": {
+            "n_samples": 10371,
+            "in_window_weighted_ece": 0.005474,
+            "delta_ece_vs_baseline": 0.000346,
+            "pit_ks_stat": 0.0192,
+            "pit_ks_p_value": 0.0009,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": false,
+            "overall_pass": true
+          }
+        },
+        "transition": {
+          "Winter": {
+            "n_samples": 5142,
+            "in_window_weighted_ece": 0.001646,
+            "delta_ece_vs_baseline": -0.003482,
+            "pit_ks_stat": 0.007,
+            "pit_ks_p_value": 0.9625,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": true,
+            "overall_pass": true
+          },
+          "Spring": {
+            "n_samples": 5244,
+            "in_window_weighted_ece": 0.002026,
+            "delta_ece_vs_baseline": -0.003102,
+            "pit_ks_stat": 0.0841,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": false,
+            "overall_pass": true
+          },
+          "Summer": {
+            "n_samples": 5244,
+            "in_window_weighted_ece": 0.018412,
+            "delta_ece_vs_baseline": 0.013284,
+            "pit_ks_stat": 0.187,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": false,
+            "ece_pass": false,
+            "ks_pass": false,
+            "overall_pass": false
+          },
+          "Autumn": {
+            "n_samples": 5186,
+            "in_window_weighted_ece": 0.005246,
+            "delta_ece_vs_baseline": 0.000118,
+            "pit_ks_stat": 0.0574,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": false,
+            "overall_pass": true
+          }
+        }
+      },
+      "KMIA": {
+        "peak": {
+          "Winter": {
+            "n_samples": 10281,
+            "in_window_weighted_ece": 0.005363,
+            "delta_ece_vs_baseline": -0.014294,
+            "pit_ks_stat": 0.0154,
+            "pit_ks_p_value": 0.015,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": false,
+            "overall_pass": true
+          },
+          "Spring": {
+            "n_samples": 10488,
+            "in_window_weighted_ece": 0.004084,
+            "delta_ece_vs_baseline": -0.015573,
+            "pit_ks_stat": 0.0157,
+            "pit_ks_p_value": 0.0114,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": false,
+            "overall_pass": true
+          },
+          "Summer": {
+            "n_samples": 10488,
+            "in_window_weighted_ece": 0.003045,
+            "delta_ece_vs_baseline": -0.016612,
+            "pit_ks_stat": 0.0078,
+            "pit_ks_p_value": 0.5446,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": true,
+            "overall_pass": true
+          },
+          "Autumn": {
+            "n_samples": 10371,
+            "in_window_weighted_ece": 0.003154,
+            "delta_ece_vs_baseline": -0.016503,
+            "pit_ks_stat": 0.0118,
+            "pit_ks_p_value": 0.1088,
+            "deg_pass": true,
+            "ece_pass": true,
+            "ks_pass": true,
+            "overall_pass": true
+          }
+        },
+        "transition": {
+          "Winter": {
+            "n_samples": 5142,
+            "in_window_weighted_ece": 0.012739,
+            "delta_ece_vs_baseline": -0.006918,
+            "pit_ks_stat": 0.2872,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": true,
+            "ece_pass": false,
+            "ks_pass": false,
+            "overall_pass": true
+          },
+          "Spring": {
+            "n_samples": 5244,
+            "in_window_weighted_ece": 0.017627,
+            "delta_ece_vs_baseline": -0.00203,
+            "pit_ks_stat": 0.2568,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": true,
+            "ece_pass": false,
+            "ks_pass": false,
+            "overall_pass": true
+          },
+          "Summer": {
+            "n_samples": 5244,
+            "in_window_weighted_ece": 0.011183,
+            "delta_ece_vs_baseline": -0.008474,
+            "pit_ks_stat": 0.2292,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": true,
+            "ece_pass": false,
+            "ks_pass": false,
+            "overall_pass": true
+          },
+          "Autumn": {
+            "n_samples": 5186,
+            "in_window_weighted_ece": 0.012668,
+            "delta_ece_vs_baseline": -0.006989,
+            "pit_ks_stat": 0.2945,
+            "pit_ks_p_value": 0.0,
+            "deg_pass": true,
+            "ece_pass": false,
+            "ks_pass": false,
+            "overall_pass": true
+          }
+        }
+      }
+    }
+  }
+}
