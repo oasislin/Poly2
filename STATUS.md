@@ -4,34 +4,30 @@ updated: 2026-10-10 00:20:00
 ---
 # 项目状态（唯一状态入口）
 
-> 📌 **封盘门禁与出域政策导航**：双城 TMax 全网格验证与方法论封盘九项清单，详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域通道与同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
+---
+created: 2026-09-04 14:07:02
+updated: 2026-10-10 14:00:00
+---
+# 项目状态（唯一状态入口）
 
-- **当前阶段**：Phase 6 双城 TMax 全网格验证与方法论封盘进入最终收口阶段。前序 Phase 4 复验闭环（`P4-AUDIT-RELIABILITY-v1.3b` KORD/18h/TMax）正式关门验收，确定以真分布 PIT 口径为法定基准，旧高斯尺结论作废；全网格 24 格（96 季节格）Block-CV 运算已 100% 全部完成（KORD 12 格 + KMIA 12 格全量收口），全库基线测试 987 项全绿（987 passed, 10 skipped, 0 failed）。（修订依据：全网格汇聚运行日志与全量测试 2026-10-10）
-- **活跃工作流**：编制法定方法论封盘文档与全景总表：① 完成 P6-WINDOW-FORENSIC 验收与如实双录留痕；② 落地委员会常设 J2 修订条款（混合胜出标准：全池 JSU >=60% 追认、全池加权 ECE <=0.0100、子集 ECE 越线单列挂旗但不计入全格违规计数）；③ KMIA_36h 入账 `COMPLETED_HYBRID_SPLIT_SUBSET_FLAGGED` 附三层真相注；④ KMIA 42h~78h 顺利放行入账 `COMPLETED_JSU`，24 格总表工件 `p6_fullgrid_96cells_summary.json` 落盘；⑤ 封盘文档 4.2 节重写完成（昼夜谐波 + 正午峰度周期统一解释，附双站对账全景表）。（修订依据：委员会裁决令与全网格收口 2026-10-10）
-- **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 全部工件冻结归档；1.28 深尾报价参考系数与 $\le 35\%$ 锋利度断言严格为 KORD/18h/TMax 专属，严禁跨格移植；Active 10 交易宇宙基准真值为 `KATL, KAUS, KDAL, KHOU, KLAX, KLGA, KMIA, KORD, KSEA, KSFO`。（修订依据：P5 取证 / v1.3b 关门 / 委员会裁决 2026-10-09）
-- **EVT 存量资产隔离与解禁 (RELEASED)**：依据工单 `P6-EVT-FIX`，`KATL/Spring`、`KDAL/Autumn`、`KLAX/Autumn`、`KSFO/Spring` 四格分布形态资产在测试前曾挂 `QUARANTINED` 标记。经成对修补 `evaluate_evt_tail_cdf` 与 `evaluate_evt_tail_pdf` 为法定 Scheme B 条件高斯重标截断公式后，10 项扩展契约测试 100% 全绿，四格全域积分达到精确 `1.00000000`，边界跳跃彻底清零（$< 10^{-9}$），正式解除隔离并放行。（修订依据：P6-EVT-FIX 裁决验收 2026-10-09）
-- **KORD 42h 厚尾归因拆层记录**：
-  - **事实层（保留并入账）**：KORD 站残差超额峰度随提前期系统性增长（12–36h 未触发门槛，42h 全折 1.26–1.79），形态对称（偏度 < 0.15），提示远时效预报误差呈混合态。
-  - **假说层（标注状态，不得写成结论）**：锋面转换时机误差为候选机制，待条件化诊断检验（诊断单另附）；在检验完成前，不将该机制写为结论。
-  - （修订依据：委员会裁决 2026-10-09（厚尾归因拆层））
-- **待办事项（Backlog）**：
-  - **工单 P6-CALM-OUTLIER**：平静日极端失准的事前指纹判别与 Regime 条件模型评估（状态：`REGISTERED_PENDING_MAINLINE`）。
-    - **优先级与防删条款**：重要 / 不紧急 / 不可忽略 / 不可删除。完成 92 格主线条线后、方法论封盘签署前，必须作为独立议题重新呈上委员会。任何“清单瘦身”“任务合并”“主线超期顺延导致删单”的操作均无效，本单删除或降级视为流程违规。
-    - **指纹证据预存（KMIA_12h 5/5 实证支持）**：阶段一判别的事前指纹候选特征（极窄集合离散度 + 大残差）已获 5/5 实证支持。失效日四元组清单：① 2002-11-17 (σ_ens=0.25°F, z=-5.81, WT01 WT16); ② 2003-08-20 (σ_ens=0.29°F, z=-4.98, WT01 WT03 WT16); ③ 2008-10-29 (σ_ens=0.85°F, z=+4.82, WT01 WT03 WT16); ④ 2001-01-22 (σ_ens=0.47°F, z=-4.61, WT01 WT16); ⑤ 2011-07-07 (σ_ens=0.51°F, z=-4.60, WT01 WT03 WT13 WT16)。
-    - **专属红线（最高铁律）**：本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。
-    - （修订依据：委员会立项令 2026-10-09（P6-CALM-OUTLIER）及委员会裁决 2026-10-10）
-  - **工单 P6-POOL6H-AUDIT**：池化 6 小时回退层四项审计与封盘回填（状态：`VERIFIED_FLAGGED`，触发预注册分支一置 `FLAGGED_POOL_PHASE_ISSUE`，KMIA 晨谷 ECE 0.019657 越线 0.0100 挂旗入账；补办 A3 停机呈报形式要件）。
-  - **议题 P6-POOL-PHASE**：6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估（状态：`REGISTERED_PENDING_POST_SEALING`）。
-  - **议题 P6-RESEARCH-NO-GATE-BIC**：去门控纯 BIC 竞赛评估机制（状态：`REGISTERED_PENDING_POST_SEALING`）。
-  - **议题 P6-RESEARCH-DIURNAL-PHASE**：按验证时刻昼夜相位分层建模评估（状态：`REGISTERED_PENDING_POST_SEALING`）。
-  - **工单 P6-KMIA-GATE**：迈阿密站址数据五件套取证、海陆风对流机制审议与预注册自动放行裁决（状态：`VERIFIED_RELEASED`，ECE 0.0183 挂旗入账 COMPLETED_ECE_FLAGGED，触发器计数 1/2 未达 2 格立项门槛；24 格中 23 格加权 ECE 达标）。
-  - **工单 P6-KMIA-18H-GATE**：KMIA 18h 轻量级 JSU 专用放行门禁与反差专项归档（状态：`VERIFIED_RELEASED`，自动放行入账 COMPLETED_JSU）。
-  - **工单 P6-KMIA-24H-GATE**：KMIA 24h 常设 JSU 专用放行门禁（状态：`VERIFIED_RELEASED`，自动放行入账 COMPLETED_JSU）。
-  - **工单 P6-KMIA-30H-GATE**：KMIA 30h 常设 JSU 专用放行门禁（状态：`VERIFIED_RELEASED`，自动放行入账 COMPLETED_JSU）。
-  - **工单 P6-KMIA-36H-SPLIT-AUDIT**：KMIA 36h 混合胜出与门控机制深度审计（状态：`VERIFIED_RELEASED`，入账 COMPLETED_HYBRID_SPLIT_SUBSET_FLAGGED）。
-  - **工单 P6-WINDOW-FORENSIC**：生产评估窗口法医穿透取证报告（状态：`VERIFIED_RELEASED`，双口径如实双录入账留痕）。
-  - **纪律条款修订**：零 push 纪律已按 P7-SYNC-BRIDGE 修订为“未验收不出域、验收必出域”，细则见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
-- **为什么处于当前节点**：完成封盘前必办件 P6-POOL6H-AUDIT 审计回填与 AC-1/AC-2/AC-3 闭环，门禁 07 重新闭环，执行封盘 PR 创建与合流 main，P6 阶段正式封卷。
+> 📌 **法定长线规划与新会话交接导航**：项目长线路线图详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁总清单详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
+
+> 🚩 **【双重法定运行旗持续生效（下游强制带旗）】**：  
+> 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（交易窗口加权 ECE = `0.018318` 越线 0.0100，触发器计数 1/2 未达立项门槛；双城 24 格中 23 格 ECE 达标率 95.83%）；  
+> 2. `6h 池化回退层 (80 格)`：状态 `FLAGGED_POOL_PHASE_ISSUE`（晨谷方差膨胀比 1.45~1.81x，KMIA 晨谷 ECE = `0.019657` 越线 0.0100；Max Temp 缺失衰减公式依赖 METAR 实况硬截断兜底）。  
+> *下游引用约束*：交易盘口映射、分位数定价与风控链路在调用本格资产时，**必须显式带旗陈述，审慎收缩头寸，严禁脱旗裸跑**！
+
+- **当前阶段**：Phase 7 过渡态（主线战略转向：由横向扩展转向纵向落地）。Phase 6 双城 TMax 24 时间格（96 季节格）验证收口、方法论封盘与池化 6h 审计全量合流入主干 `main`（严格固化于 `6fe386c`，全库测试基线 987 项全绿）。委员会立项会终裁确立三波次长线路线图（详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)）。（修订依据：立项会终裁与工单 P7-TRANSITION-DOC 2026-10-10）
+- **活跃工作流**：长线规划入册与新会话交接包组装（工单 `P7-TRANSITION-DOC`）：① 新建长线规划法定文档 [`docs/ROADMAP.md`](docs/ROADMAP.md)；② 升版执行文件至 v6.0（增补 P7 修订章节）；③ 组装冷启动交接包 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；④ 账本同步与 P6-PR-129 尾务核销。（修订依据：委员会令 2026-10-10）
+- **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 与 `evidence/p6_tmax_methodology_closure.*` 冻结归档；主干 `main` 严格固化于 `6fe386c`，后续任何改动一律须新裁决令；生产代码（`src/` 与 `scripts/`）严格零无授权编辑。（修订依据：P6 终裁与 P7 治理纪律 2026-10-10）
+- **待办事项（Backlog 全景）**：
+  - **议题 P6-POOL-PHASE**：6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估（状态：`ACTIVATED_W1_PLANNED`，波次一列首，工单全文待下发）。
+  - **议题 P6-CALM-OUTLIER**：平静日极端失准事前指纹判别与 Regime 条件模型评估（状态：`REGISTERED`，防删条款绝对维持，独立排期）。
+  - **议题 P6-RESEARCH-NO-GATE-BIC**：去门控纯 BIC 竞赛评估机制研究（状态：`REGISTERED`，远期）。
+  - **议题 P6-RESEARCH-DIURNAL-PHASE**：按验证时刻昼夜相位分层建模评估（状态：`REGISTERED`，远期，学术成果受 W1 实测反哺）。
+  - **议题 P6-TMIN-CV-LOCK**：TMin 480 格交叉验证脚本 hardcode 解锁与审计规划（状态：`REGISTERED`，波次三）。
+  - **议题 P7-STA-SURVEY**：Active 8 站轻量三原型机械归类与偏离筛选（状态：`REGISTERED`，波次三，纸面盘期间并行）。
+- **为什么处于当前节点**：P6 封卷完成，战略转向落档入册，新会话交接包组装完毕，等待新会话请示 W1（P6-POOL-PHASE）工单全文鸣枪。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-10-10 13:00）
+（最近更新：2026-10-10 14:00）

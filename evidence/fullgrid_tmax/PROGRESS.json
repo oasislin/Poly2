@@ -101,9 +101,23 @@
     {
       "work_order": "P6-POOL-PHASE",
       "title": "6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估",
-      "status": "REGISTERED_PENDING_POST_SEALING",
-      "priority": "封盘后研发议题",
-      "rationale": "P6-POOL6H-AUDIT 实测证实 80 套 6h 池化模型在晨谷时刻存在预测方差系统性过宽（KMIA ECE=0.019657 越线 0.0100），且 interpolator.py 缺失 Max Temp 短时效 sqrt(L/24) 方差衰减公式（退化为边界截断，盘中段下游依赖 constraint_enforcer 的 METAR 实况温升上限硬截断兜底）。需按验证时刻昼夜相位进行分层重训或引入谐波方差校正项，并系统评估补全 TMax 短时效方差衰减机制。"
+      "status": "ACTIVATED_W1_PLANNED",
+      "priority": "波次一 (W1) 立即激活",
+      "rationale": "P6-POOL6H-AUDIT 实测证实 80 套 6h 池化模型在晨谷时刻存在预测方差系统性过宽（KMIA ECE=0.019657 越线 0.0100），且 interpolator.py 缺失 Max Temp 短时效 sqrt(L/24) 方差衰减公式（退化为边界截断，盘中段下游依赖 constraint_enforcer 的 METAR 实况温升上限硬截断兜底）。需按验证时刻昼夜相位进行分层重训或引入谐波方差校正项，并系统评估补全 TMax 短时效方差衰减机制。验收出口为加权 ECE <= 0.0100 拔除运行旗 2。"
+    },
+    {
+      "work_order": "P6-TMIN-CV-LOCK",
+      "title": "TMin 480 格交叉验证脚本 hardcode 解锁与审计规划",
+      "status": "REGISTERED",
+      "priority": "波次三 (W3) 审计线",
+      "rationale": "解除 tests/unit/modeling/test_p4_block_cv_20fold.py 中 variable='tmax' 的硬编码，完成参数化改造，编制 480 格 TMin 的 Block-CV 审计与门禁推进计划。"
+    },
+    {
+      "work_order": "P7-STA-SURVEY",
+      "title": "Active 8 站轻量三原型机械归类与偏离筛选",
+      "status": "REGISTERED",
+      "priority": "波次三 (W3) 纸面盘期间并行",
+      "rationale": "在 W2 纸面盘运行期间，对除 KORD/KMIA 外的其余 8 站实施轻量三原型（内陆温带峰度型、副热带对流负偏型、特殊物理偏离型）机械归类；提取 12 提前期矩全景、晨谷/峰顶残差相位分解与 PIT 方差三指标，吻合原型直接套用现成门禁条款入账，偏离者升级专项 P6 审计。"
     }
   ],
   "KORD_72h": {
