@@ -1,6 +1,6 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-10-10 17:00:00
+updated: 2026-10-10 18:30:00
 ---
 # 项目状态（唯一状态入口）
 
@@ -12,20 +12,21 @@ updated: 2026-10-10 17:00:00
 > 2. `6h 池化回退层 (80 格)`：状态 `FLAGGED_POOL_PHASE_ISSUE`（晨谷方差膨胀比 1.45~1.81x，KMIA 晨谷 ECE = `0.019657` 越线 0.0100；Max Temp 缺失衰减公式依赖 METAR 实况硬截断兜底）。  
 > *下游引用约束*：交易盘口映射、分位数定价与风控链路在调用本格资产时，**必须显式带旗陈述，审慎收缩头寸，严禁脱旗裸跑**！
 
-- **当前阶段**：Phase 7 过渡态（主线战略转向：由横向扩展转向纵向落地）。主干 `main` 基线更新至 PR #131 合流线 `122d872`（完成全生命周期宪法文档对账升级与 README 重写），Phase 6 双城 TMax 24 时间格（96 季节格）验证收口、方法论封盘与池化 6h 审计全量合流入主干 `main`（全库测试基线 987 项全绿）。委员会立项会终裁确立三波次长线路线图（详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)）。（修订依据：立项会终裁与工单 P7-TRANSITION-DOC / P7-DOC-RECON 2026-10-10）
+- **当前阶段**：Phase 7 过渡态（主线战略转向：由横向扩展转向纵向落地）。主干 `main` 基线更新至 PR #131 合流线 `122d872`（完成全生命周期宪法文档对账升级与 README 重写），Phase 6 双城 TMax 24 时间格（96 季节格）验证收口、方法论封盘与池化 6h 审计全量合流入主干 `main`（全库测试基线 987 项全绿）。*主干基线指针锚定封卷 merge commit（当前 122d872）；锚点之上的 docs-only 修正（当前 9cdd631）不触发指针升版，除非发生新的工单合流。*（修订依据：立项会终裁与工单 P7-TRANSITION-DOC / P7-DOC-RECON 2026-10-10）
 - **活跃工作流**：
+  - 6h 池化回退层相位分层重训与 TMax 方差衰减补齐（工单 `P7-W1-POOLPHASE`）：子任务 W1-A 实施完成，测试基线提升至 1000 passed，批文 `P7-W1-GO-A-PUSH` 已下发推进 push 与 W1-B 补遗；
   - 宪法文档与演化全景对账（工单 `P7-DOC-RECON`）：PR #131 已正式合流至 `main`，原独立工单 `P7-DOC-README` 标记为 `SUPERSEDED_BY(P7-DOC-RECON)` 并随 PR #131 执结闭环；
   - 长线规划入册与新会话交接包组装（工单 `P7-TRANSITION-DOC`）：已执结归档。
 - **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 与 `evidence/p6_tmax_methodology_closure.*` 冻结归档；主干 `main` 基线更新至 `122d872`（PR #131 合流），后续任何改动一律须新裁决令；生产代码（`src/` 与 `scripts/`）严格零无授权编辑。（修订依据：P6 终裁与 P7 治理纪律 2026-10-10）
 - **待办事项（Backlog 全景）**：
   - **工单 P7-DOC-README**：状态 `SUPERSEDED_BY(P7-DOC-RECON)`（已并入 PR #131 执结闭环）。
-  - **议题 P6-POOL-PHASE**：6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估（状态：`ACTIVATED_W1_PLANNED`，波次一列首，工单全文待下发）。
+  - **议题 P6-POOL-PHASE**：6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估（状态：`IN_PROGRESS_W1`，子任务 W1-A 完成，W1-B 补遗进行中）。
   - **议题 P6-CALM-OUTLIER**：平静日极端失准事前指纹判别与 Regime 条件模型评估（状态：`REGISTERED`，防删条款绝对维持，独立排期）。
   - **议题 P6-RESEARCH-NO-GATE-BIC**：去门控纯 BIC 竞赛评估机制研究（状态：`REGISTERED`，远期）。
   - **议题 P6-RESEARCH-DIURNAL-PHASE**：按验证时刻昼夜相位分层建模评估（状态：`REGISTERED`，远期，学术成果受 W1 实测反哺）。
   - **议题 P6-TMIN-CV-LOCK**：TMin 480 格交叉验证脚本 hardcode 解锁与审计规划（状态：`REGISTERED`，波次三）。
   - **议题 P7-STA-SURVEY**：Active 8 站轻量三原型机械归类与偏离筛选（状态：`REGISTERED`，波次三，纸面盘期间并行）。
-- **为什么处于当前节点**：P6 封卷完成，战略转向落档入册，新会话交接包组装完毕，P7-DOC-RECON 规格对账合流落盘，等待新会话请示 W1（P6-POOL-PHASE）工单全文鸣枪。
+- **为什么处于当前节点**：工单 P7-W1-POOLPHASE 子任务 W1-A 实施通过验收，批文 P7-W1-GO-A-PUSH 签发；当前节点 = W1-A 结项与 Rev.3-Addendum 解锁前置处理中。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-10-10 17:00）
+（最近更新：2026-10-10 18:30）
