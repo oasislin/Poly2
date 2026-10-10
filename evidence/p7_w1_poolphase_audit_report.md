@@ -99,3 +99,22 @@
 - C4/C5/C6：全量通过，零退化。
 
 **现正式向技术裁决委员会申请签发裁决令：拔除【运行旗 2】（`FLAGGED_POOL_PHASE_ISSUE`），并批准进入位次 4/4 工单结项与台账归档！**
+
+---
+
+## 七、 方案 B 执行后最终回归对账与数字勘误注记（P7-W1-B-CLOSURE-VERDICT-R1 勘注）
+
+依据技术裁决委员会裁决书 `P7-W1-B-C5-RULING-R1` 与 `P7-W1-B-CLOSURE-VERDICT-R1`，本节对方案 B（B-1 ~ B-4）落地后的终态指标与前序初版报告进行版本对账与数字勘误：
+
+1. **C5 测试计数与退出状态最终闭合**：
+   - **历史快照说明**：本报告初版跑于方案 B 落地之前，记录了当时 1005 项测试中因历史 P4 契约冲突导致的 3 项 failure 快照；
+   - **方案 B 落地终值**：按裁决书实施契约版本递增（`manifest_version: 2.2.0-phase`，1200 节点对账清册 `p7_w1_model_inventory_audit.csv`）与测试最小切口，并依据 B-3 增补断言 9（`test_p7_w1_phase_cluster_multistart_determinism`），全库测试总项自 1005 递增至 **1006** 项；
+   - **最终实测凭证**：执行 `python -m pytest tests/ -q`，实测结果为 **`1006 passed, 10 skipped, 3 warnings in 634.74s (0:10:34), exit_code = 0`**，全库 **0 failed**，C5 门禁终态判定为 **PASS**。
+2. **状态词表最终核验**：
+   - 240 套分簇主资产注册为 `PHASE-CLUSTER-PRIMARY`；
+   - 80 套标准名保底资产注册为 `PHASE-CLUSTER-FAILSAFE`；
+   - 720 套法定交易主节点保持 `STATUTORY_TRADING_MASTER`，160 套辅助节点保持 `AUXILIARY_POOLED_FALLBACK`；
+   - 1200 节点双轨对账 100% 机械咬合。
+3. **拔旗令落地记录**：
+   - 委员会已正式签发拔旗令 `P7-FLAG2-REMOVAL-R1`，【运行旗 2】（`FLAGGED_POOL_PHASE_ISSUE`）正式拔除。
+
