@@ -119,8 +119,17 @@ def test_jsu_gate_verdict_dual_branches():
         ece_val=0.003125,
     ) == "COMPLETED_JSU"
 
+    # KMIA 24h case: J1 PASS, J2 PASS, J3 PASS, ECE 0.0062 <= 0.0100
+    assert evaluate_jsu_gate_verdict(
+        j1_param_pass=True,
+        j2_bic_pass=True,
+        j3_top5_pass=True,
+        ece_val=0.006167,
+    ) == "COMPLETED_JSU"
+
     # Any failure branch
     assert evaluate_jsu_gate_verdict(False, True, True, 0.0031) == "PAUSE_FOR_COMMITTEE"
     assert evaluate_jsu_gate_verdict(True, False, True, 0.0031) == "PAUSE_FOR_COMMITTEE"
     assert evaluate_jsu_gate_verdict(True, True, False, 0.0031) == "PAUSE_FOR_COMMITTEE"
     assert evaluate_jsu_gate_verdict(True, True, True, 0.0183) == "PAUSE_FOR_COMMITTEE"
+

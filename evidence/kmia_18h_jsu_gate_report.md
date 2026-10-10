@@ -18,6 +18,8 @@
 
 ## 二、J1 取证：Johnson SU 参数零贴界与折间稳定性
 
+> 📌 **【参数记号法定映射注】**：本项目中 Johnson SU 分布族统一采用 SciPy/代码实现参数化记号 $(\gamma, \delta, \xi, \lambda)$：$\gamma$ 为偏度调节参数，$\delta$ 为尾部形状参数（$\delta > 0$），$\xi$ 为位置参数，$\lambda$ 为尺度参数（$\lambda > 0$）；标准定义为 $Z = \gamma + \delta \sinh^{-1}\left(\frac{X - \xi}{\lambda}\right) \sim \mathcal{N}(0, 1)$。全项目报告均严格遵此法定记号，杜绝不同文献符号引发的误读。
+
 从 `KMIA_18h` 20 折模型工件（`cv_fold_{0..19}_model.json`）中提取 4 个 Johnson SU 分布形态参数，统计参数跨折稳定性及边界贴附情况：
 
 | 参数名称 | 物理/几何含义 | 20 折均值 | 最小值 (Min) | 最大值 (Max) | 折间标准差 (Std) | 变异系数 (CV) | 贴界检验 | 机械结论 |

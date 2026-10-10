@@ -83,6 +83,20 @@
         ]
       },
       "red_line": "本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。"
+    },
+    {
+      "work_order": "P6-RESEARCH-NO-GATE-BIC",
+      "title": "去门控纯 BIC 竞赛评估机制",
+      "status": "REGISTERED_PENDING_POST_SEALING",
+      "priority": "中长期方法论优化",
+      "rationale": "在 KMIA 36h 审计中确证，偏度门控（|skew| > 0.40）硬切断导致 6 折未能拟合 BIC 显著更优（领先 170~230 点）的 Johnson SU。后续研究全面去除预设矩门控、全量候选分布直接参与 BIC 拟合与惩罚竞争的可行性与稳定性。"
+    },
+    {
+      "work_order": "P6-RESEARCH-DIURNAL-PHASE",
+      "title": "按验证时刻昼夜相位分层建模评估",
+      "status": "REGISTERED_PENDING_POST_SEALING",
+      "priority": "中长期气象物理精细化",
+      "rationale": "对账确证迈阿密与芝加哥均存在严格 24 小时昼夜谐波（迈阿密午后强对流 vs 清晨中性谷底；芝加哥正午峰度周期极大值）。后续研究引入验证时刻当地时间相位参数，或按早晚验证时刻分层建模的可行性。"
     }
   ],
   "KORD_72h": {
@@ -95,53 +109,92 @@
   },
   "KMIA_12h": {
     "status": "COMPLETED_ECE_FLAGGED",
-    "adjudication": "P6-KMIA-GATE (自动放行分支达成：数据五件套全绿，20折EVT碾压胜出，Top-5均为预报集体失效；法定ECE门槛0.0100，实测0.0183越线挂旗COMPLETED_ECE_FLAGGED；设下游触发器：若后续11格中≥2格ECE>0.0100则立项P6-KMIA-ECE)",
     "winner_family": "evt_hybrid"
   },
   "KMIA_18h": {
     "status": "COMPLETED_JSU",
-    "adjudication": "P6-KMIA-18H-GATE (自动放行分支达成：JSU 4参数稳定无贴界，20折碾压胜出中位数ΔBIC=-787.93，Top-5均为雷暴暴雨集体失准，ECE=0.0031优良达标)",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_24h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_30h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_36h": {
+    "status": "COMPLETED_HYBRID_SPLIT_SUBSET_FLAGGED",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_42h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_48h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_54h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_60h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_66h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_72h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_78h": {
+    "status": "COMPLETED_JSU",
     "metrics": {
       "station": "KMIA",
-      "lead_hour": 18,
+      "lead_hour": 78,
       "variable": "tmax",
-      "sample_size_days": 13740,
+      "sample_size_days": 13737,
       "winner_family": "johnsonsu",
       "family_counts": {
-        "johnsonsu": 13740
+        "johnsonsu": 13737
       },
-      "in_window_weighted_ece": 0.0031249051008962704,
-      "full_weighted_ece": 0.002501630354208046,
-      "pit_ks_statistic": 0.018371655360090666,
-      "pit_ks_p_value": 0.0001850962632130159,
-      "probit_skewness": 0.010410624296082542,
-      "probit_excess_kurtosis": -0.14021586471579628,
-      "sharpness_max_p": 0.5519882487474777,
-      "sharpness_p50_p": 0.47498654178910577,
+      "in_window_weighted_ece": 0.004791205344022064,
+      "full_weighted_ece": 0.0037053784734657745,
+      "pit_ks_statistic": 0.015589158352989185,
+      "pit_ks_p_value": 0.0024929676679667874,
+      "probit_skewness": -0.007682671743211883,
+      "probit_excess_kurtosis": -0.22100176850067044,
+      "sharpness_max_p": 0.4978062744724132,
+      "sharpness_p50_p": 0.35786532715578845,
       "sharpness_quantiles": {
-        "P10": 0.41603297098707315,
-        "P25": 0.44125501956756175,
-        "P50": 0.47498654178910577,
-        "P75": 0.5122845859242988,
-        "P90": 0.5282569587273145,
-        "P99": 0.541197390437079,
-        "Max": 0.5519882487474777
+        "P10": 0.25418338755760245,
+        "P25": 0.30896799425818,
+        "P50": 0.35786532715578845,
+        "P75": 0.4025866464476846,
+        "P90": 0.45939785003263006,
+        "P99": 0.48733616359398835,
+        "Max": 0.4978062744724132
       },
-      "kurtosis_gate_distance": -2.0445132841657063,
-      "skew_gate_distance": -0.5854867394736967,
+      "kurtosis_gate_distance": -2.1905632161070496,
+      "skew_gate_distance": -0.7689428499585852,
       "gate_triggered": true,
       "is_edge_case": true,
       "tail_left": {
-        "hits": 12,
-        "expected": 19.618396434849227,
-        "poisson_p": 0.9742135688498328
+        "hits": 270,
+        "expected": 228.33478096912583,
+        "poisson_p": 0.003922107846471401
       },
       "tail_right": {
-        "hits": 0,
-        "expected": 0.7109566069794251,
-        "poisson_p": 1.0
+        "hits": 15,
+        "expected": 37.50928032308723,
+        "poisson_p": 0.9999899843761614
       },
-      "lineage_sha256": "ae48dc28d1319e9e62079328357c1d558d4fa6411de6c5eff577e7f2becb1a5f"
-    }
+      "lineage_sha256": "2f1498b5b0d510862c153e04c134c5cabd9460b4b1f3a9842e2d38ffe7227ad4"
+    },
+    "adjudication": "JSU-GATE-PASS"
   }
 }
