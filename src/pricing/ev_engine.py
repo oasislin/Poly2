@@ -48,6 +48,7 @@ class EVTradeSignal:
     is_tradable: bool
     target_size: float
     reason: str
+    governance_flags: tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize trade signal to dictionary."""
@@ -62,6 +63,7 @@ class EVTradeSignal:
             "is_tradable": self.is_tradable,
             "target_size": self.target_size,
             "reason": self.reason,
+            "governance_flags": list(self.governance_flags),
         }
 
 
@@ -108,13 +110,19 @@ class DynamicEVEngine:
         snapshot: OrderBookSnapshot,
         model_probability: float,
         target_size: float,
+        is_failsafe: bool = False,
+        is_flagged: bool = False,
+        flag_label: Optional[str] = None,
     ) -> EVTradeSignal:
         """
         Evaluate net EV and edge for buying shares in a discrete market bin.
         Net EV = model_prob * (1 - fee) - P_eff
         Edge = Net EV / P_eff
+        Supports Rev.1.1 asset governance (FAILSAFE read-only downgrade, flagged asset haircut).
         """
-        p_eff = self.calculate_effective_price(asks=snapshot.asks, target_size=target_size)
+        effective_target_size = target_size * 0.5 if is_flagged else target_size
+
+        p_eff = self.calculate_effective_price(asks=snapshot.asks, target_size=effective_target_size)
 
         if p_eff is None:
             return EVTradeSignal(
@@ -126,7 +134,7 @@ class DynamicEVEngine:
                 net_ev=0.0,
                 edge=0.0,
                 is_tradable=False,
-                target_size=target_size,
+                target_size=effective_target_size,
                 reason="REJECTED_INSUFFICIENT_DEPTH",
             )
 
@@ -139,6 +147,22 @@ class DynamicEVEngine:
         else:
             edge = 0.0
 
+        # FAILSAFE asset downgrade: strictly read-only, no tradeable signal (Rev.1.1 §3.0)
+        if is_failsafe:
+            return EVTradeSignal(
+                station_id=snapshot.station_id,
+                bin_index=snapshot.bin_index,
+                bin_label=snapshot.bin_label,
+                model_probability=model_probability,
+                effective_price=p_eff,
+                net_ev=net_ev,
+                edge=edge,
+                is_tradable=False,
+                target_size=0.0,
+                reason="FAILSAFE_DEGRADED_READONLY",
+                governance_flags=("FAILSAFE_DEGRADED_READONLY",),
+            )
+
         if net_ev <= 0.0:
             return EVTradeSignal(
                 station_id=snapshot.station_id,
@@ -149,7 +173,7 @@ class DynamicEVEngine:
                 net_ev=net_ev,
                 edge=edge,
                 is_tradable=False,
-                target_size=target_size,
+                target_size=effective_target_size,
                 reason="REJECTED_NEGATIVE_EV",
             )
 
@@ -163,10 +187,11 @@ class DynamicEVEngine:
                 net_ev=net_ev,
                 edge=edge,
                 is_tradable=False,
-                target_size=target_size,
+                target_size=effective_target_size,
                 reason="REJECTED_EDGE_BELOW_THRESHOLD",
             )
 
+        gov_flags = (flag_label or "COMPLETED_ECE_FLAGGED",) if is_flagged else ()
         return EVTradeSignal(
             station_id=snapshot.station_id,
             bin_index=snapshot.bin_index,
@@ -176,6 +201,7 @@ class DynamicEVEngine:
             net_ev=net_ev,
             edge=edge,
             is_tradable=True,
-            target_size=target_size,
+            target_size=effective_target_size,
             reason="APPROVED_POSITIVE_EV",
+            governance_flags=gov_flags,
         )

@@ -40,10 +40,12 @@ class SanitizerResult:
     """Result verdict of observation sanitization."""
     is_valid: bool
     is_late: bool = False
+    is_wrh_late_exempt: bool = False
     station_blocked: bool = False
     error_reason: Optional[str] = None
     incident_type: Optional[str] = None  # e.g., "PHYSICAL_TEAR"
     action: Optional[str] = None  # e.g., "CANCEL_ALL_OPEN_ORDERS"
+    audit_tags: tuple[str, ...] = ()
 
 
 class TemperatureSanitizer:
@@ -122,48 +124,51 @@ class TemperatureSanitizer:
                 action="CANCEL_ALL_OPEN_ORDERS",
             )
 
-        # 1. Timeliness / Lateness Check (ADR-0013 D2: Missed Window Principle)
+        # 1. Timeliness / Lateness Check (ADR-0013 D2 & Rev.1.1 §2.1.1 WRH Exemption)
+        is_wrh = (packet.source_type == "nws_wrh")
+        is_late_packet = False
+        lateness_reason = None
 
         # Check out-of-order timestamp against station's latest recorded timestamp
         if state["last_timestamp_utc"] is not None and pkt_time < state["last_timestamp_utc"]:
-            logger.info(
-                "Discarding out-of-order packet for %s: pkt_time=%s < last_time=%s",
-                station,
-                pkt_time,
-                state["last_timestamp_utc"],
-            )
-            return SanitizerResult(
-                is_valid=False,
-                is_late=True,
-                station_blocked=False,
-                error_reason=f"Out-of-order observation timestamp {pkt_time} < {state['last_timestamp_utc']}",
-            )
+            is_late_packet = True
+            lateness_reason = f"Out-of-order observation timestamp {pkt_time} < {state['last_timestamp_utc']}"
 
         # Check arrival latency against current wall clock time
-        if current_wall_time is not None:
+        if not is_late_packet and current_wall_time is not None:
             if current_wall_time.tzinfo is None:
                 current_wall_time = current_wall_time.replace(tzinfo=timezone.utc)
             latency_sec = (current_wall_time - pkt_time).total_seconds()
             threshold_sec = self.config.stale_packet_threshold_minutes * 60.0
             if latency_sec > threshold_sec:
-                logger.info(
-                    "Discarding late packet for %s: latency=%.1fs > threshold=%.1fs",
-                    station,
-                    latency_sec,
-                    threshold_sec,
-                )
-                return SanitizerResult(
-                    is_valid=False,
-                    is_late=True,
-                    station_blocked=False,
-                    error_reason=f"Packet arrival late by {latency_sec / 60.0:.1f} minutes > {self.config.stale_packet_threshold_minutes}m",
-                )
+                is_late_packet = True
+                lateness_reason = f"Packet arrival late by {latency_sec / 60.0:.1f} minutes > {self.config.stale_packet_threshold_minutes}m"
+
+        if is_late_packet and not is_wrh:
+            logger.info(
+                "Discarding late packet for %s: %s",
+                station,
+                lateness_reason,
+            )
+            return SanitizerResult(
+                is_valid=False,
+                is_late=True,
+                station_blocked=False,
+                error_reason=lateness_reason,
+            )
+
+        if is_late_packet and is_wrh:
+            logger.info(
+                "WRH late packet for %s exempt from discard per Rev.1.1 §2.1.1: %s",
+                station,
+                lateness_reason,
+            )
 
         # If temperature is None / missing, cannot proceed with extreme updating
         if packet.temp_f is None:
             return SanitizerResult(
                 is_valid=False,
-                is_late=False,
+                is_late=is_late_packet,
                 station_blocked=False,
                 error_reason="Observation packet contains None for temperature.",
             )
@@ -182,7 +187,7 @@ class TemperatureSanitizer:
             )
             return SanitizerResult(
                 is_valid=False,
-                is_late=False,
+                is_late=is_late_packet,
                 station_blocked=True,
                 error_reason=(
                     f"Gate 1 Failed: Temperature {temp_f:.2f}°F outside climatological bounds "
@@ -190,6 +195,22 @@ class TemperatureSanitizer:
                 ),
                 incident_type="PHYSICAL_TEAR",
                 action="CANCEL_ALL_OPEN_ORDERS",
+            )
+
+        # For WRH late-exempt packet, Gate 1 passed: absorb extreme with audit tag
+        if is_late_packet and is_wrh:
+            if state["last_timestamp_utc"] is None or pkt_time > state["last_timestamp_utc"]:
+                state["last_timestamp_utc"] = pkt_time
+                state["last_temp_f"] = temp_f
+            return SanitizerResult(
+                is_valid=True,
+                is_late=True,
+                is_wrh_late_exempt=True,
+                station_blocked=False,
+                error_reason=None,
+                incident_type=None,
+                action=None,
+                audit_tags=("WRH_LATE_ABSORB",),
             )
 
         # 3. Gate 2: Body vs RMK T-Group Cross-Check (ADR-0013 D1.2)
