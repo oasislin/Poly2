@@ -6,8 +6,8 @@ Implements (v5.9.1 §4.3):
     1. Linear parameter interpolation across intermediate lead times:
        - Max Temp: Anchors {6, 30, 54}h -> Interpolates {12, 18, 24, 36, 42, 48}h
        - Min Temp: Anchors {24, 48}h -> Interpolates {30, 36, 42}h, Extrapolates {54}h
-    2. Min Temp short-lead (L < 24h) physical variance decay:
-       - σ_L² = σ_24h² · √(L / 24)
+    2. Min and Max Temp short-lead (L < 24h) physical variance decay (W1-A):
+       - σ_L = max(10⁻⁴, σ_24h · √(max(0, L) / 24.0))
        - Ensures prediction uncertainty monotonically shrinks as lead time approaches 0.
 """
 

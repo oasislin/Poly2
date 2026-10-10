@@ -250,3 +250,191 @@ flowchart TD
 《W1 预注册规格书 (Rev.2)》已彻底消除 Rev.1 中的 5 项硬伤，并以详实的实证与代码分析书面闭环了 5 项拷问。
 
 **现正式提请技术裁决委员会审阅 Rev.2 并签发开工批文，鸣枪启动 W1-A 生产代码实施！**
+
+---
+
+## 八、 [Rev.3-Addendum] 判据与集成规范终审补遗
+
+> **补遗编号**：`P7-W1-PREREG-REV3-ADDENDUM`  
+> **签发依据**：技术裁决委员会终审裁决书 `P7-W1-A-CLOSURE-R1` 及放行令 `P7-W1-B-GO-ADDENDUM`  
+> **串行位次**：2/4（Addendum 规范冻结）  
+> **效力说明**：本补遗属于预注册规格书的不可分割组成部分。Rev.2 正文保持冻结原貌，本章节对委员会裁决书中指出的残留项（R7、R2、R3、R4、R5、R1、R6）进行绝对数值与工程边界冻结。本补遗生效后，作为 W1-B 相位分层重训唯一的法定执行与验收基准。
+
+### 8.1 R7：Max Temp 衰减生产集成接线取证与前置冻结（最高优先）
+
+#### 8.1.1 生产调用点与锚点加载链路穿透取证
+经对生产代码库进行端到端穿透走查，`interpolator.predict_distribution` 的生产调用链路如下：
+1. **统一推理门面调用点**：
+   - 文件：[`src/modeling/registry.py`](../src/modeling/registry.py)
+   - 代码行号：第 482–489 行
+   - 实现代码：
+     ```python
+     return self.interpolator.predict_distribution(
+         target_type=target_type,
+         lead_hours=lead_hours,
+         ensemble_mean=ensemble_mean,
+         ensemble_variance=ensemble_variance,
+         sigma_clim_squared=sigma_clim_squared,
+         anchor_models=anchors,
+     )
+     ```
+2. **锚点集合构造处**：
+   - 文件：[`src/modeling/registry.py`](../src/modeling/registry.py)
+   - 代码行号：第 491–510 行（`_load_available_anchors` 方法）
+   - 实现代码：
+     ```python
+     anchor_leads = self.partitioner.get_station_lead_nodes(station_id, season=season, target_type=target_type)
+     anchors: Dict[int, GaussianEMOS] = {}
+     for lead in anchor_leads:
+         try:
+             model, _ = self.load_model(station_id, season, target_type, lead)
+             anchors[lead] = model
+         except FileNotFoundError:
+             continue
+     return anchors
+     ```
+3. **时效节点法定定义处**：
+   - 文件：[`src/modeling/partitioner.py`](../src/modeling/partitioner.py)
+   - 代码行号：第 258–281 行（`get_station_lead_nodes` 类方法）
+   - 现行法定返回节点：
+     - **Eastern 站点 (`KLGA, KATL, KMIA`)**：Max 目标节点为 `[66, 42, 18]`；
+     - **Central 站点 (`KORD, KDAL, KHOU, KAUS`)**：CDT（春/夏/秋）为 `[66, 42, 18]`；仅 CST（冬）为 `[72, 48, 24]`；
+     - **Mountain 站点 (`KBKF`)**：MDT（春/夏/秋）为 `[66, 42, 18]`；MST（冬）为 `[72, 48, 24]`；
+     - **Pacific 站点 (`KSEA, KLAX, KSFO`)**：Max 目标节点为 `[72, 48, 24]`；
+     - **Legacy 站点 (`ZSPD, KDEN`)**：Max 目标节点为 `[54, 30, 6]`。
+
+#### 8.1.2 事实结论与 R7-R 惰性资产声明（遵循裁决书 P7-W1-B-RELEASE-R1）
+- **事实结论**：**【未含 24h 主节点】（选项 2）**。
+- **病灶与架构本质**：
+  在绝大多数生产场景（包括挂旗病灶站 KMIA 全四季，以及 KORD 春/夏/秋季），`_load_available_anchors` 动态组装的 `anchors` 字典中仅包含时效键 `{18, 42, 66}`，天然不包含 24h 主节点。
+  然而，穿透审计表明：**24h Max 主节点在封卷体系中根本不存在；新建 24h 主节点属于擅自扩张封卷 24 格资产体系，属于动封卷方法论的违规行为，严禁作为 W1-B 搭车项！**
+  更为关键的是，根据 B1 证据链，生产推理链路中：
+  - 12h 为法定主节点，线上由 `ModelRegistry.get_model` 或磁盘直读独立离散拟合模型，**不经过插值器**；
+  - 6h 池化回退层在 W1-B 实施后，将按验证时刻相位由分簇模型（`valley` / `peak` / `transition`）直接加载服役，**同样不经过插值器**；
+  - 盘中段（$L < 6\text{h}$）由 `src/prediction/constraint_enforcer.py` 的 METAR 实况热力学硬截断兜底。
+  因此，`LeadTimeInterpolator.predict_distribution` 中的 Max Temp 短时效方差衰减分支在生产全链路中**未来并无生产调用者**。为该路径凭空新建 24h 封卷资产属于负价值工程。
+
+- **R7-R 处置条款：确认为“合格的惰性/防御性资产”**：
+  1. **代码保留**：W1-A 实现的 Max Temp 短时效衰减函数 $\sigma_L = \max(10^{-4}, \sigma_{24\text{h}} \cdot \sqrt{\max(0, L)/24.0})$ 与相关 13 项单元测试作为合格技术交付物完整保留，在代码库中处于**休眠/防御性状态**；
+  2. **禁触红线**：**严禁新建不存在的 24h Max 封卷主节点，严禁修改 `partitioner.py` 节点体系，封卷 24 格资产体系保持 100% 冻结**；
+  3. **生产链路原样保持**：生产推理维持既有直读架构不变，12h 走主节点模型直读，6h 走分簇模型直读；
+  4. **L3 运行旗定性更新与闭环**：
+     - **原旗帜描述**：Max Temp 短时效缺失物理方差衰减公式，依赖 METAR 硬截断兜底。
+     - **更新后描述**：Max Temp 短时效方差衰减数学逻辑已在 `interpolator.py` 实现并受单元测试保护（W1-A）；经生产全链路审计，现网 12h 走主节点独立模型直读、6h 走相位分簇模型直读、交割段由 METAR 实况硬截断兜底，全链路均不落入插值衰减，衰减函数作为休眠资产管理，生产不存在未接管盲区。
+     - **处置结论**：**建议将【运行旗 L3】判定为“已闭环/关闭”（或降级为休眠资产说明注记）**，不阻塞生产。
+- **顺笔修正记录**：
+  [`src/modeling/interpolator.py`](../src/modeling/interpolator.py) 模块头部 docstring 第 2 条已同步修正为 `"2. Min and Max Temp short-lead (L < 24h) physical variance decay (W1-A)"`，与内部实现逐字对齐。
+
+---
+
+### 8.2 R2：法定 ECE 概率分桶规则冻结（0.018318 管道同源落纸）
+
+#### 8.2.1 权威引用源与代码坐标
+本次重训严格绑定产生 KMIA 12h 挂旗基线 0.018318 之法定计算管道：
+- **主要实现脚本**：[`scripts/run_p6_fullgrid_tmax.py`](../scripts/run_p6_fullgrid_tmax.py) 之 `compute_ece_and_strata` 函数（第 270–293 行）；
+- **分桶底层引擎**：[`src/prediction/discrete_bin_engine.py`](../src/prediction/discrete_bin_engine.py)；
+- **历史审计同构脚本**：[`evidence/run_p6_pool6h_audit.py`](../evidence/run_p6_pool6h_audit.py)（第 213–229 行）及 [`scripts/audit_p4_reliability_v13b.py`](../scripts/audit_p4_reliability_v13b.py)（第 260–285 行）。
+
+#### 8.2.2 分桶与加权 ECE 机械执行规则
+1. **20 桶 $\times$ 5% 等宽分桶划分**：
+   在门禁可靠性评估中，预测概率 $p_{\text{pred}} \in [0, 1]$ 划分为 20 个等宽区间：
+   $$B_k = [0.05 \cdot k, 0.05 \cdot (k + 1)), \quad k = 0, 1, \dots, 18; \quad B_{19} = [0.95, 1.00]$$
+2. **$n < 30$ 最近邻合并机制（Nearest-Neighbor Merging）**：
+   若某一概率桶内样本量 $n_k < 30$，该桶被标记为统计低置信桶，机械触发与相邻非空桶合并，直至合并后的复合桶样本量达到 30 或无法继续合并为止。
+3. **8 概率谱带加权计算公式**：
+   法定 8 谱带边界常量冻结：
+   `STRATA_EDGES = [0.00, 0.03, 0.07, 0.12, 0.18, 0.25, 0.35, 0.50, 1.00]`。
+   加权 ECE 严格按各谱带样本量权重求和：
+   $$\text{ECE}_{\text{weighted}} = \sum_{s=1}^8 \frac{N_s}{N_{\text{sub}}} \cdot |\bar{p}_s - \bar{y}_s|$$
+4. **交易窗口过滤条件**：
+   严格过滤 `is_tradeable_window == True`（即预测概率 $p_{\text{pred}} \ge 0.02$ 或落在吸收中枢 $\mu \pm 4^\circ\text{F}$ 范围内）。
+
+#### 8.2.3 4 项已知缺陷带旗沿用（禁止事后修补）
+与 P4/P6 封盘报告完全一致，以下 4 项计算特性属于历史冻结口径，**一律带旗沿用，严禁顺手修改**：
+1. **吸收分桶极值截断效应**：2°F 吸收分桶在最外层边缘处的边界积分截断；
+2. **`settle_half_up` 边界偏置**：半整上入规则在精确 $0.5^\circ\text{F}$ 分割点处的单侧不对称性；
+3. **低频桶合并方差失配**：$n < 30$ 桶合并时赋予权重为样本量占比，未考虑小样本真实泊松方差；
+4. **有限样本 ECE 向上有偏性**：ECE 统计量因绝对值项 $|\bar{p} - \bar{y}|$ 导致的有限样本正向偏置（finite-sample upward bias）。
+
+---
+
+### 8.3 R3：全美 10 站部署点位跨簇排查矩阵与路由机制冻结
+
+#### 8.3.1 10 站 $\times$ 4 周期 $\times$ 6h 部署落簇完整矩阵
+在生产实际调度中，GFS/GEFS 运行 00Z, 06Z, 12Z, 18Z 四个主发报周期。提前期 6h 时对应的验证时刻（Valid Time UTC）分别为 06Z, 12Z, 18Z, 00Z。下表为根据各站经纬度所属时区及夏令时（DST / STD）换算后的精确当地验证时刻与归属簇：
+
+| 站点代码 | IANA 时区 | 标准时 UTC 偏移 (STD) | 夏令时 UTC 偏移 (DST) | 00Z 发报 (验证 06Z) | 06Z 发报 (验证 12Z) | 12Z 发报 (验证 18Z) | 18Z 发报 (验证 00Z) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **KMIA** | America/New_York | UTC-5 | UTC-4 | 01:00 / 02:00 (`valley`) | 07:00 / 08:00 (`valley`) | 13:00 / 14:00 (`peak`) | 19:00 / 20:00 (`peak`) |
+| **KLGA** | America/New_York | UTC-5 | UTC-4 | 01:00 / 02:00 (`valley`) | 07:00 / 08:00 (`valley`) | 13:00 / 14:00 (`peak`) | 19:00 / 20:00 (`peak`) |
+| **KATL** | America/New_York | UTC-5 | UTC-4 | 01:00 / 02:00 (`valley`) | 07:00 / 08:00 (`valley`) | 13:00 / 14:00 (`peak`) | 19:00 / 20:00 (`peak`) |
+| **KORD** | America/Chicago | UTC-6 | UTC-5 | 00:00 / 01:00 (`valley`) | 06:00 / 07:00 (`valley`) | 12:00 (`trans`) / 13:00 (`peak`) | 18:00 / 19:00 (`peak`) |
+| **KDAL** | America/Chicago | UTC-6 | UTC-5 | 00:00 / 01:00 (`valley`) | 06:00 / 07:00 (`valley`) | 12:00 (`trans`) / 13:00 (`peak`) | 18:00 / 19:00 (`peak`) |
+| **KHOU** | America/Chicago | UTC-6 | UTC-5 | 00:00 / 01:00 (`valley`) | 06:00 / 07:00 (`valley`) | 12:00 (`trans`) / 13:00 (`peak`) | 18:00 / 19:00 (`peak`) |
+| **KAUS** | America/Chicago | UTC-6 | UTC-5 | 00:00 / 01:00 (`valley`) | 06:00 / 07:00 (`valley`) | 12:00 (`trans`) / 13:00 (`peak`) | 18:00 / 19:00 (`peak`) |
+| **KSEA** | America/Los_Angeles | UTC-8 | UTC-7 | 22:00 / 23:00 (`trans`) | 04:00 / 05:00 (`valley`) | 10:00 / 11:00 (`trans`) | 16:00 / 17:00 (`peak`) |
+| **KLAX** | America/Los_Angeles | UTC-8 | UTC-7 | 22:00 / 23:00 (`trans`) | 04:00 / 05:00 (`valley`) | 10:00 / 11:00 (`trans`) | 16:00 / 17:00 (`peak`) |
+| **KSFO** | America/Los_Angeles | UTC-8 | UTC-7 | 22:00 / 23:00 (`trans`) | 04:00 / 05:00 (`valley`) | 10:00 / 11:00 (`trans`) | 16:00 / 17:00 (`peak`) |
+
+#### 8.3.2 跨簇站点处置机制与 C-2 默认路径落盘澄清
+- **路由机制裁决**：**【router-only（动态路由模式）】**。
+  在模型库中，Active 10 站 $\times$ 4 季 $\times$ 2 标的均生成完整的 `valley`、`peak`、`transition` 三簇资产。在推理调度端，严禁将某站点按发报周期粗暴绑定至单一“主导簇”；统一由 `interpolator` 或调度器根据目标验证时刻换算出的当地整点时刻（LT）精确匹配对应簇资产：
+  - 当中部站处于冬令时（STD），12Z 发报 6h 验证时刻为 12:00 LT，自动路由至 `transition` 簇模型；
+  - 当中部站处于夏令时（DST），12Z 发报 6h 验证时刻为 13:00 LT，自动路由至 `peak` 簇模型。
+  此举完全消除时区与 DST 切换引起的物理错配。
+
+- **C-2 默认路径落盘澄清（二选一写死）**：
+  **裁定选择：【双轨落盘：分簇模型独立持久化 + 默认 `lead6h.pkl` 故障回退兜底】**。
+  重训产出的模型文件中：
+  1. 分簇模型按 `{station}_{season}_{target}_lead6h_{cluster}.pkl` 显式落盘（供 router 运行时按验证时相位直读）；
+  2. 同时保留标准名 `{station}_{season}_{target}_lead6h.pkl` 文件（内容写入主导簇模型或经检验最稳健的簇资产，并在 manifest 中注册），作为路由未显式指定 cluster 或动态路由异常时的保底回退资产（Fail-Safe Fallback）。严禁留空默认路径，杜绝生产调用抛出 `FileNotFoundError`。
+
+
+---
+
+### 8.4 R4：C6 新资产门禁基线对照精确定义
+
+#### 8.4.1 对照组与实验组定义
+- **对照组（现役旧基线）**：现役无簇 80 套池化模型（文件：`data/models/{station}_{season}_{target_type}_lead6h.pkl`，未做昼夜相位分层）；
+- **实验组（本次新模型）**：W1-B 分层重训产出的对应簇模型（包含 `metadata.phase_cluster: "peak" | "transition"`）。
+
+#### 8.4.2 逐位匹配计算协议
+1. **样本层精确对齐**：
+   在相同的 2000–2018 20 折 Block-CV 留出测试折上，按验证时刻筛选属于目标簇的样本集合；
+2. **相同过滤与分桶**：
+   对旧模型预测与新模型预测，均执行完全相同的 `DiscreteBinEngine` 2°F 吸收分桶与 `is_tradeable_window == True` 过滤；
+3. **加权 ECE 差值判定公式**：
+   $$\Delta \text{ECE} = \text{ECE}_{\text{new, weighted}} - \text{ECE}_{\text{old, weighted}}$$
+4. **门槛约束**：
+   - 绝对门槛：$\text{ECE}_{\text{new, weighted}} \le 0.0100$ 且 PIT KS 检验 $p\text{-value} > 0.05$；
+   - 相对门槛：$\Delta \text{ECE} \le +0.0005$（即新模型加权 ECE 不得劣于旧模型超过 0.0005）；
+5. **计算脚本指针**：
+   严格以 [`evidence/run_p6_pool6h_audit.py`](../evidence/run_p6_pool6h_audit.py) 为基准扩展脚本，杜绝代码分支漂移。
+
+---
+
+### 8.5 R5：全站跨簇排查与拆簇回退“仅限一次”附加令
+
+#### 8.5.1 跨簇排查与缺席站点处置
+- 经表 8-1 完整排查，跨簇点位仅存在于中部站的 12Z 发报（STD 12:00 LT 落 `transition`，DST 13:00 LT 落 `peak`）以及西海岸三站的 00Z 与 12Z 发报；
+- **缺席站点处置条款**：本次重训矩阵覆盖全美 Active 10 站全量 10 站 $\times$ 4 季 $\times$ 2 目标 $\times$ 3 簇（共 240 套模型），**全网 100% 覆盖，零缺席站点**。
+
+#### 8.5.2 拆簇回退“仅限一次”上限条款（委员会附加令写入）
+- **触发条件**：若在 C6 门禁验收中，`transition` 簇模型在 KORD 或 KMIA 未能满足加权 ECE $\le 0.0100$ 或基线容差；
+- **执行动作**：机械触发预定拆分：将 `transition` 簇拆解为 `transition_morning`（08:00–13:00 LT）与 `transition_evening`（20:00–24:00 LT）两套独立子簇重新拟合；
+- **上限红线（写死）**：**拆分仅限一次（One-Shot Fallback Limit）**。
+  若一次拆分后仍不达标，**严禁进行二次切分、三次调优、时段微调或阈值放宽**！直接判定为“分支二：重训未达标，维持挂旗”，将实测结果原样归档并向委员会呈报，不得自由发挥。
+
+---
+
+### 8.6 R1 & R6：权威文献直接引用即闭环（引用不改写）
+
+1. **R1 引用（评估窗与挂旗基线同源可比性）**：
+   - **法定出处**：[`evidence/p6_tmax_methodology_closure.md`](../evidence/p6_tmax_methodology_closure.md) 方法论注记 4。
+   - **实证闭环**：P6 封盘报告实测证实，挂旗基线（KMIA 6h 加权 ECE = 0.019657，KMIA 12h 加权 ECE = 0.018318）与本次 Rev.2/Rev.3 冻结的评估数据窗同为 2000–2018 年 20 折 Block-CV 留出折·日池（KORD 13,740 / KMIA 13,739 折·日）。两套数据源、折划分与留出机制逐日严格一致，同源可比性完全成立。**声明：引用不改写。**
+2. **R6 引用（JSU-GATE 三项门控阈值法定出处）**：
+   - **法定出处**：[`evidence/p6_tmax_methodology_closure.md`](../evidence/p6_tmax_methodology_closure.md) §2.2 节。
+   - **实证闭环**：两段式 BIC 家族竞争的 JSU-GATE 准入三阈值：
+     $$|\text{skewness}| > 0.40, \quad \text{excess kurtosis} > 1.0, \quad \Delta\text{BIC}_{\text{JSU vs Gauss}} < -10.0$$
+     系 Phase 6 封盘法定门控规格。本次重训对 240 套新资产全面沿用此三阈值，严禁搭车修改。**声明：引用不改写。**
+
