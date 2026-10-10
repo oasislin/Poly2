@@ -97,6 +97,13 @@
       "status": "REGISTERED_PENDING_POST_SEALING",
       "priority": "中长期气象物理精细化",
       "rationale": "对账确证迈阿密与芝加哥均存在严格 24 小时昼夜谐波（迈阿密午后强对流 vs 清晨中性谷底；芝加哥正午峰度周期极大值）。后续研究引入验证时刻当地时间相位参数，或按早晚验证时刻分层建模的可行性。"
+    },
+    {
+      "work_order": "P6-POOL-PHASE",
+      "title": "6h 池化回退层按验证时刻昼夜相位分层重训与方差校准",
+      "status": "REGISTERED_PENDING_POST_SEALING",
+      "priority": "封盘后研发议题",
+      "rationale": "P6-POOL6H-AUDIT 实测证实 80 套 6h 池化模型在晨谷时刻存在预测方差系统性过宽（KMIA ECE=0.019657 越线 0.0100），需按验证时刻昼夜相位进行分层重训或引入谐波方差校正项。"
     }
   ],
   "KORD_72h": {
@@ -196,5 +203,13 @@
       "lineage_sha256": "2f1498b5b0d510862c153e04c134c5cabd9460b4b1f3a9842e2d38ffe7227ad4"
     },
     "adjudication": "JSU-GATE-PASS"
+  },
+  "P6-POOL6H-AUDIT": {
+    "status": "FLAGGED_POOL_PHASE_ISSUE",
+    "work_order": "P6-POOL6H-AUDIT",
+    "branch_triggered": "BRANCH_1",
+    "kord_ece": 0.005128,
+    "kmia_ece": 0.019657,
+    "report_ref": "evidence/p6_pool6h_audit_report.md"
   }
 }

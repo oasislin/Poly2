@@ -1,0 +1,384 @@
+{
+  "work_order": "P6-POOL6H-AUDIT",
+  "branch": "BRANCH_1",
+  "final_status": "FLAGGED_POOL_PHASE_ISSUE",
+  "a1_phase_decomposition": {
+    "KORD": {
+      "Winter": {
+        "params": {
+          "a": 11.98963286872005,
+          "b": 0.8278866124592512,
+          "c": 5.388408565916183,
+          "d": 1.7840634975772571,
+          "c_train": 1.1054859283249718,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10281,
+          "pred_mean_variance": 45.431,
+          "emp_residual_variance": 42.942,
+          "variance_ratio": 1.058,
+          "skewness": 0.292,
+          "fisher_kurtosis": 0.56,
+          "pit_variance": 0.07999
+        },
+        "peak": {
+          "n_samples": 10281,
+          "pred_mean_variance": 44.957,
+          "emp_residual_variance": 39.912,
+          "variance_ratio": 1.126,
+          "skewness": -0.07,
+          "fisher_kurtosis": 2.095,
+          "pit_variance": 0.06572
+        }
+      },
+      "Spring": {
+        "params": {
+          "a": 12.116059205810494,
+          "b": 1.0002002924104951,
+          "c": 7.724049148141389,
+          "d": 3.0,
+          "c_train": 1.0842030429669511,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10488,
+          "pred_mean_variance": 109.329,
+          "emp_residual_variance": 75.238,
+          "variance_ratio": 1.453,
+          "skewness": -0.207,
+          "fisher_kurtosis": 0.267,
+          "pit_variance": 0.06982
+        },
+        "peak": {
+          "n_samples": 10488,
+          "pred_mean_variance": 135.206,
+          "emp_residual_variance": 56.827,
+          "variance_ratio": 2.379,
+          "skewness": -0.496,
+          "fisher_kurtosis": 1.966,
+          "pit_variance": 0.03198
+        }
+      },
+      "Summer": {
+        "params": {
+          "a": 23.96114218014426,
+          "b": 0.8394901291111089,
+          "c": 4.580472270907372,
+          "d": 3.0,
+          "c_train": 1.0408185216397194,
+          "distribution": "gaussian"
+        },
+        "valley": {
+          "n_samples": 10488,
+          "pred_mean_variance": 45.985,
+          "emp_residual_variance": 34.134,
+          "variance_ratio": 1.347,
+          "skewness": -0.439,
+          "fisher_kurtosis": 0.189,
+          "pit_variance": 0.07068
+        },
+        "peak": {
+          "n_samples": 10488,
+          "pred_mean_variance": 68.195,
+          "emp_residual_variance": 22.718,
+          "variance_ratio": 3.002,
+          "skewness": -0.642,
+          "fisher_kurtosis": 1.325,
+          "pit_variance": 0.01681
+        }
+      },
+      "Autumn": {
+        "params": {
+          "a": 7.211078445937264,
+          "b": 1.0430344656844706,
+          "c": 6.194592855417632,
+          "d": 1.2033359744911618,
+          "c_train": 1.0793934296196628,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10371,
+          "pred_mean_variance": 47.756,
+          "emp_residual_variance": 44.297,
+          "variance_ratio": 1.078,
+          "skewness": -0.193,
+          "fisher_kurtosis": 0.114,
+          "pit_variance": 0.07932
+        },
+        "peak": {
+          "n_samples": 10371,
+          "pred_mean_variance": 49.794,
+          "emp_residual_variance": 33.705,
+          "variance_ratio": 1.477,
+          "skewness": -0.672,
+          "fisher_kurtosis": 2.779,
+          "pit_variance": 0.03209
+        }
+      }
+    },
+    "KMIA": {
+      "Winter": {
+        "params": {
+          "a": 26.00318905714698,
+          "b": 0.7490484823493412,
+          "c": 2.50598783077566,
+          "d": 3.0,
+          "c_train": 1.0974388543288969,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10281,
+          "pred_mean_variance": 21.01,
+          "emp_residual_variance": 14.473,
+          "variance_ratio": 1.452,
+          "skewness": -1.35,
+          "fisher_kurtosis": 2.586,
+          "pit_variance": 0.06123
+        },
+        "peak": {
+          "n_samples": 10281,
+          "pred_mean_variance": 27.764,
+          "emp_residual_variance": 14.259,
+          "variance_ratio": 1.947,
+          "skewness": -1.736,
+          "fisher_kurtosis": 4.853,
+          "pit_variance": 0.02617
+        }
+      },
+      "Spring": {
+        "params": {
+          "a": 23.312304150437566,
+          "b": 0.8152863905527364,
+          "c": 2.3362456805907263,
+          "d": 2.4323758524983763,
+          "c_train": 1.1357755232608902,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10488,
+          "pred_mean_variance": 13.712,
+          "emp_residual_variance": 9.096,
+          "variance_ratio": 1.508,
+          "skewness": -0.75,
+          "fisher_kurtosis": 2.645,
+          "pit_variance": 0.05999
+        },
+        "peak": {
+          "n_samples": 10488,
+          "pred_mean_variance": 19.583,
+          "emp_residual_variance": 7.486,
+          "variance_ratio": 2.616,
+          "skewness": -1.577,
+          "fisher_kurtosis": 6.5,
+          "pit_variance": 0.01612
+        }
+      },
+      "Summer": {
+        "params": {
+          "a": 19.005795890931182,
+          "b": 0.8628117056125937,
+          "c": 1.6527201936632405,
+          "d": 3.0,
+          "c_train": 1.1273597973180798,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10488,
+          "pred_mean_variance": 8.585,
+          "emp_residual_variance": 5.335,
+          "variance_ratio": 1.609,
+          "skewness": -0.614,
+          "fisher_kurtosis": 1.954,
+          "pit_variance": 0.06119
+        },
+        "peak": {
+          "n_samples": 10488,
+          "pred_mean_variance": 16.651,
+          "emp_residual_variance": 3.973,
+          "variance_ratio": 4.191,
+          "skewness": -0.922,
+          "fisher_kurtosis": 2.747,
+          "pit_variance": 0.01309
+        }
+      },
+      "Autumn": {
+        "params": {
+          "a": 19.130501034219396,
+          "b": 0.8494976273495605,
+          "c": 1.8241248039853626,
+          "d": 3.0,
+          "c_train": 1.1176580135605232,
+          "distribution": "johnsonsu"
+        },
+        "valley": {
+          "n_samples": 10371,
+          "pred_mean_variance": 11.717,
+          "emp_residual_variance": 6.486,
+          "variance_ratio": 1.806,
+          "skewness": -1.205,
+          "fisher_kurtosis": 3.527,
+          "pit_variance": 0.05688
+        },
+        "peak": {
+          "n_samples": 10371,
+          "pred_mean_variance": 19.062,
+          "emp_residual_variance": 5.549,
+          "variance_ratio": 3.436,
+          "skewness": -1.81,
+          "fisher_kurtosis": 6.957,
+          "pit_variance": 0.01628
+        }
+      }
+    }
+  },
+  "a2_6h_calibration": {
+    "KORD": {
+      "evaluation_window": "12h Morning Valley Block-CV Folds (06:00-08:00 LT)",
+      "sample_size_eval": 96180,
+      "in_window_weighted_ece": 0.005128,
+      "full_weighted_ece": 0.003606,
+      "baseline_12h_in_window_ece": 0.005105,
+      "statutory_threshold": 0.01,
+      "ece_pass": true,
+      "sharpness_p50_mean": 0.14,
+      "sharpness_p50_median": 0.1338
+    },
+    "KMIA": {
+      "evaluation_window": "12h Morning Valley Block-CV Folds (06:00-08:00 LT)",
+      "sample_size_eval": 96180,
+      "in_window_weighted_ece": 0.019657,
+      "full_weighted_ece": 0.016765,
+      "baseline_12h_in_window_ece": 0.018318,
+      "statutory_threshold": 0.01,
+      "ece_pass": false,
+      "sharpness_p50_mean": 0.2808,
+      "sharpness_p50_median": 0.2918
+    }
+  },
+  "a3_decay_anchor": {
+    "interpolator_file": "src/modeling/interpolator.py",
+    "min_temp_decay": {
+      "implemented": true,
+      "formula": "sigma_final = sigma_24h * sqrt(max(0.0, lead) / 24.0)",
+      "anchor_lead": 24,
+      "anchor_status": "STATUTORY_TRADING_MASTER",
+      "anchor_in_accepted_master_nodes": true
+    },
+    "max_temp_decay": {
+      "implemented": false,
+      "behavior_when_lead_below_min_anchor": "Flat boundary clamping to anchor_models[min(anchors)]",
+      "anchor_lead_if_6h_included": 6,
+      "anchor_status_6h": "POOLED-FALLBACK",
+      "anchor_lead_if_p6_grid_used": 12,
+      "anchor_status_12h": "STATUTORY_TRADING_MASTER (P6 Verified)"
+    },
+    "constraint_enforcer": {
+      "file": "src/prediction/constraint_enforcer.py",
+      "metar_truncation_present": true,
+      "formula": "T_max_possible = T_now + r_warm * delta_t; P(X >= L) = 0 for L > T_max_possible"
+    }
+  },
+  "a4_handoff_continuity": {
+    "manifest_continuity": {
+      "KORD_Winter": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KORD_Spring": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KORD_Summer": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KORD_Autumn": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KMIA_Winter": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KMIA_Spring": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KMIA_Summer": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      },
+      "KMIA_Autumn": {
+        "params_diff": {
+          "a": 0.0,
+          "b": 0.0,
+          "c": 0.0,
+          "d": 0.0
+        },
+        "c_train_diff": 0.0,
+        "dist_identical": true
+      }
+    },
+    "handoff_summary": {
+      "KORD": {
+        "manifest_6h_vs_12h_delta": "0.000000 (Identical parameters and distribution in manifest)",
+        "quote_step_median": 0.0,
+        "quote_step_mad": 0.0,
+        "step_threshold": 0.0,
+        "max_step": 0.0,
+        "variance_ratio_mean": 1.0
+      },
+      "KMIA": {
+        "manifest_6h_vs_12h_delta": "0.000000 (Identical parameters and distribution in manifest)",
+        "quote_step_median": 0.0,
+        "quote_step_mad": 0.0,
+        "step_threshold": 0.0,
+        "max_step": 0.0,
+        "variance_ratio_mean": 1.0
+      }
+    }
+  }
+}

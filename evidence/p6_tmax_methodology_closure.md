@@ -92,6 +92,8 @@
    - 每逢 18:00 UTC（12:00 CST/13:00 CDT 正午），残差超额峰度均出现强烈的周期性局部极大值（18h 峰度 1.88，42h 峰度 1.68，66h 峰度 1.41），证实最大太阳短波加热混合层与冷锋过境时机误差在正午交织。
 3. **振幅缓增微观察（Subtle Lead-Time Amplification）**：
    从谷底偏度演化（12h: -0.34 $\to$ 36h: -0.41 $\to$ 60h: -0.46）与峰顶偏度演化（24h: -1.14 $\to$ 48h: -1.21 $\to$ 72h: -1.21）中，观察到随提前期延展，数值模式初始场误差对对流激发的敏感性缓步抬升，使得谐波振幅略有微增。
+4. **6h 池化回退层短时效外推实证（Short-Lead Extrapolation from P6-POOL6H-AUDIT）**：
+   工单 A1 残差相位分解实测表明：在晨谷簇（00:00–08:00 LT），KMIA 经验残差方差仅 $5.34 \sim 14.47$，而单一全时效池化模型给出的预测方差达 $8.59 \sim 27.76$（方差膨胀比 $1.452\times \sim 1.806\times$），证实 6h 短时效同样严格服从昼夜谐波规律，全时效共享单一方差参数导致短时效谷底系统性过宽。
 
 ### 4.2 反差专项吸收关闭声明
 在前期阶段立项之“KORD 12h~36h KS≈0 与超额峰度反差专项”，经对账证实：
@@ -105,10 +107,12 @@
 ### 5.1 系统已知限制（Known Operational Boundaries）
 1. **平静日极窄离散度过度自信**：在数值集合离散度 $\sigma_{\text{ens}} < 0.50^\circ\text{F}$ 且处于清晨中性相位时，存在年均不足 1 天的极端失准翻车（经 `P6-CALM-OUTLIER` 重新呈报入档，禁止在主干引入经验性删除补丁）；
 2. **离散 2°F 边界判定伪影**：当实况气温恰好落在整度分界线（$\Delta_{\text{bound}} < 0.04^\circ\text{F}$）时，微小的预测偏差在 Polymarket 阶梯硬切断下会导致单日离散命中归零；
-3. **迈阿密近时效校准挂旗**：KMIA 12h 加权 ECE 录得 0.0183（超 0.0100 门槛），KMIA 36h EVT 子集录得 0.0196（已挂旗入账），交易员在此两时效应审慎收缩仓位。
+3. **迈阿密近时效校准挂旗**：KMIA 12h 加权 ECE 录得 0.0183（超 0.0100 门槛），KMIA 36h EVT 子集录得 0.0196（已挂旗入账），交易员在此两时效应审慎收缩仓位；
+4. **6h 池化回退层在谐波谷底相位预测方差过宽**：依工单 `P6-POOL6H-AUDIT` 取证，现役 80 套 6h 池化回退模型在谐波谷底相位存在预测方差过宽实证（KMIA 加权 ECE 录得 `0.019657` 越线 0.0100，状态置为 `FLAGGED_POOL_PHASE_ISSUE`）；盘中段依赖 `constraint_enforcer.py` 的 METAR 实况硬截断层兜底，修正方案已立项待裁。
 
 ### 5.2 封盘后正式登记研究议题（Registered Backlog）
 - **`P6-CALM-OUTLIER`**：平静日极端失准的事前指纹判别与 Regime 条件模型评估（状态：`REGISTERED_PENDING_POST_SEALING`）；
+- **`P6-POOL-PHASE`**：6h 池化回退层按验证时刻昼夜相位分层重训与方差校准（状态：`REGISTERED_PENDING_POST_SEALING`）；
 - **`P6-RESEARCH-NO-GATE-BIC`**：去门控纯 BIC 竞赛评估机制研究（状态：`REGISTERED_PENDING_POST_SEALING`）；
 - **`P6-RESEARCH-DIURNAL-PHASE`**：按验证时刻昼夜相位分层建模评估（状态：`REGISTERED_PENDING_POST_SEALING`）。
 

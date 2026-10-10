@@ -20,6 +20,8 @@ updated: 2026-10-10 00:20:00
     - **指纹证据预存（KMIA_12h 5/5 实证支持）**：阶段一判别的事前指纹候选特征（极窄集合离散度 + 大残差）已获 5/5 实证支持。失效日四元组清单：① 2002-11-17 (σ_ens=0.25°F, z=-5.81, WT01 WT16); ② 2003-08-20 (σ_ens=0.29°F, z=-4.98, WT01 WT03 WT16); ③ 2008-10-29 (σ_ens=0.85°F, z=+4.82, WT01 WT03 WT16); ④ 2001-01-22 (σ_ens=0.47°F, z=-4.61, WT01 WT16); ⑤ 2011-07-07 (σ_ens=0.51°F, z=-4.60, WT01 WT03 WT13 WT16)。
     - **专属红线（最高铁律）**：本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。
     - （修订依据：委员会立项令 2026-10-09（P6-CALM-OUTLIER）及委员会裁决 2026-10-10）
+  - **工单 P6-POOL6H-AUDIT**：池化 6 小时回退层四项审计与封盘回填（状态：`VERIFIED_FLAGGED`，触发预注册分支一置 `FLAGGED_POOL_PHASE_ISSUE`，KMIA 晨谷 ECE 0.019657 越线 0.0100 挂旗入账）。
+  - **议题 P6-POOL-PHASE**：6h 池化回退层按验证时刻昼夜相位分层重训与方差校准（状态：`REGISTERED_PENDING_POST_SEALING`）。
   - **议题 P6-RESEARCH-NO-GATE-BIC**：去门控纯 BIC 竞赛评估机制（状态：`REGISTERED_PENDING_POST_SEALING`）。
   - **议题 P6-RESEARCH-DIURNAL-PHASE**：按验证时刻昼夜相位分层建模评估（状态：`REGISTERED_PENDING_POST_SEALING`）。
   - **工单 P6-KMIA-GATE**：迈阿密站址数据五件套取证、海陆风对流机制审议与预注册自动放行裁决（状态：`VERIFIED_RELEASED`，ECE 挂旗入账 COMPLETED_ECE_FLAGGED）。
@@ -29,7 +31,7 @@ updated: 2026-10-10 00:20:00
   - **工单 P6-KMIA-36H-SPLIT-AUDIT**：KMIA 36h 混合胜出与门控机制深度审计（状态：`VERIFIED_RELEASED`，入账 COMPLETED_HYBRID_SPLIT_SUBSET_FLAGGED）。
   - **工单 P6-WINDOW-FORENSIC**：生产评估窗口法医穿透取证报告（状态：`VERIFIED_RELEASED`，双口径如实双录入账留痕）。
   - **纪律条款修订**：零 push 纪律已按 P7-SYNC-BRIDGE 修订为“未验收不出域、验收必出域”，细则见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。
-- **为什么处于当前节点**：双城 24 格（96 季节格）全部运算收口，J2 修订与 36h 三层真相注已入册；当前正推进法定封盘文档编制。
+- **为什么处于当前节点**：完成封盘前最后一项必办件 P6-POOL6H-AUDIT 审计与回填，门禁 07 重新闭环，等待委员会 PR 合流批文。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-10-10 11:20）
+（最近更新：2026-10-10 12:35）
