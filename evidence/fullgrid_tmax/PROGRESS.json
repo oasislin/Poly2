@@ -47,67 +47,169 @@
       "priority": "重要 / 不紧急 / 不可忽略 / 不可删除",
       "anti_deletion_clause": "完成 92 格主线条线后、方法论封盘签署前，必须作为独立议题重新呈上委员会。任何“清单瘦身”“任务合并”“主线超期顺延导致删单”的操作均无效，本单删除或降级视为流程违规。",
       "rationale": "在 P6-HEAVYTAIL-DIAG 四件套诊断中，已确证：KORD 42h/66h 残差厚尾由年均不足 1 天的孤立极端失准日主导（剔除 3~5 天峰度即跌破门槛），且这些失准日集中于气象平静日（|ΔT24| < 75 分位），锋面机制、σ_eff 量具、季节构成三项候选解释均被预注册检验排除。委员会已否决一切“剔除/补偿”类补丁（事后信息泄漏 + 商业上删除最贵结算档 + BIC 已裁决加宽尾部不划算）。唯一合法的升级路径是：证明极端失准日在预测时点存在事前指纹。本单即为此问题的正式立项。诊断原始数据：evidence/p6_heavytail_diag_results.json（SHA 已挂账 EVIDENCE_INDEX，P6-HTD-1/P6-HTD-2）。",
+      "evidence_fingerprints": {
+        "status_note": "阶段一判别的事前指纹候选特征已获 5/5 实证支持",
+        "top5_failure_quadruplets": [
+          {
+            "date": "2002-11-17",
+            "sigma_ens": 0.25,
+            "z": -5.81,
+            "weather_codes": "WT01 WT16"
+          },
+          {
+            "date": "2003-08-20",
+            "sigma_ens": 0.29,
+            "z": -4.98,
+            "weather_codes": "WT01 WT03 WT16"
+          },
+          {
+            "date": "2008-10-29",
+            "sigma_ens": 0.85,
+            "z": 4.82,
+            "weather_codes": "WT01 WT03 WT16"
+          },
+          {
+            "date": "2001-01-22",
+            "sigma_ens": 0.47,
+            "z": -4.61,
+            "weather_codes": "WT01 WT16"
+          },
+          {
+            "date": "2011-07-07",
+            "sigma_ens": 0.51,
+            "z": -4.6,
+            "weather_codes": "WT01 WT03 WT13 WT16"
+          }
+        ]
+      },
       "red_line": "本单全程只读生产工件；任何形式的剔除、加权、补偿逻辑，未经委员会批准 + 版本号递增 + 全套门禁，一个字节都不许进生产代码。"
+    },
+    {
+      "work_order": "P6-RESEARCH-NO-GATE-BIC",
+      "title": "去门控纯 BIC 竞赛评估机制",
+      "status": "REGISTERED_PENDING_POST_SEALING",
+      "priority": "中长期方法论优化",
+      "rationale": "在 KMIA 36h 审计中确证，偏度门控（|skew| > 0.40）硬切断导致 6 折未能拟合 BIC 显著更优（领先 170~230 点）的 Johnson SU。后续研究全面去除预设矩门控、全量候选分布直接参与 BIC 拟合与惩罚竞争的可行性与稳定性。"
+    },
+    {
+      "work_order": "P6-RESEARCH-DIURNAL-PHASE",
+      "title": "按验证时刻昼夜相位分层建模评估",
+      "status": "REGISTERED_PENDING_POST_SEALING",
+      "priority": "中长期气象物理精细化",
+      "rationale": "对账确证迈阿密与芝加哥均存在严格 24 小时昼夜谐波（迈阿密午后强对流 vs 清晨中性谷底；芝加哥正午峰度周期极大值）。后续研究引入验证时刻当地时间相位参数，或按早晚验证时刻分层建模的可行性。"
+    },
+    {
+      "work_order": "P6-POOL-PHASE",
+      "title": "6h 池化回退层按验证时刻昼夜相位分层重训与 TMax 短时效物理方差衰减缺口评估",
+      "status": "REGISTERED_PENDING_POST_SEALING",
+      "priority": "封盘后研发议题",
+      "rationale": "P6-POOL6H-AUDIT 实测证实 80 套 6h 池化模型在晨谷时刻存在预测方差系统性过宽（KMIA ECE=0.019657 越线 0.0100），且 interpolator.py 缺失 Max Temp 短时效 sqrt(L/24) 方差衰减公式（退化为边界截断，盘中段下游依赖 constraint_enforcer 的 METAR 实况温升上限硬截断兜底）。需按验证时刻昼夜相位进行分层重训或引入谐波方差校正项，并系统评估补全 TMax 短时效方差衰减机制。"
     }
   ],
   "KORD_72h": {
     "status": "COMPLETED",
-    "winner_family": "gaussian",
-    "in_win_ece": 0.003502855872380159,
-    "ks_p": 3.71668649664084e-14,
-    "is_edge_case": true
+    "winner_family": "gaussian"
   },
   "KORD_78h": {
     "status": "COMPLETED",
-    "winner_family": "gaussian",
-    "in_win_ece": 0.0015337734694345678,
-    "ks_p": 3.493637727946608e-05,
-    "is_edge_case": true
+    "winner_family": "gaussian"
   },
   "KMIA_12h": {
-    "status": "COMPLETED",
-    "adjudication": "P6-KMIA-GATE (自动放行分支达成：数据五件套全绿，20折EVT碾压胜出，Top-5均为预报集体失效)",
+    "status": "COMPLETED_ECE_FLAGGED",
+    "winner_family": "evt_hybrid"
+  },
+  "KMIA_18h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_24h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_30h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_36h": {
+    "status": "COMPLETED_HYBRID_SPLIT_SUBSET_FLAGGED",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_42h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_48h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_54h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_60h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_66h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_72h": {
+    "status": "COMPLETED_JSU",
+    "winner_family": "johnsonsu"
+  },
+  "KMIA_78h": {
+    "status": "COMPLETED_JSU",
     "metrics": {
       "station": "KMIA",
-      "lead_hour": 12,
+      "lead_hour": 78,
       "variable": "tmax",
-      "sample_size_days": 13740,
-      "winner_family": "evt_hybrid",
+      "sample_size_days": 13737,
+      "winner_family": "johnsonsu",
       "family_counts": {
-        "evt_hybrid": 13740
+        "johnsonsu": 13737
       },
-      "in_window_weighted_ece": 0.018336829365990168,
-      "full_weighted_ece": 0.014981790382466196,
-      "pit_ks_statistic": 0.08202215363271281,
-      "pit_ks_p_value": 7.374133886880787e-81,
-      "probit_skewness": -0.10847654023147493,
-      "probit_excess_kurtosis": 0.6687071592880285,
-      "sharpness_max_p": 0.34792650633796096,
-      "sharpness_p50_p": 0.2894750607398549,
+      "in_window_weighted_ece": 0.004791205344022064,
+      "full_weighted_ece": 0.0037053784734657745,
+      "pit_ks_statistic": 0.015589158352989185,
+      "pit_ks_p_value": 0.0024929676679667874,
+      "probit_skewness": -0.007682671743211883,
+      "probit_excess_kurtosis": -0.22100176850067044,
+      "sharpness_max_p": 0.4978062744724132,
+      "sharpness_p50_p": 0.35786532715578845,
       "sharpness_quantiles": {
-        "P10": 0.21559029050810177,
-        "P25": 0.25440646200587047,
-        "P50": 0.2894750607398549,
-        "P75": 0.31095825051716464,
-        "P90": 0.3332570713382946,
-        "P99": 0.343380922055091,
-        "Max": 0.34792650633796096
+        "P10": 0.25418338755760245,
+        "P25": 0.30896799425818,
+        "P50": 0.35786532715578845,
+        "P75": 0.4025866464476846,
+        "P90": 0.45939785003263006,
+        "P99": 0.48733616359398835,
+        "Max": 0.4978062744724132
       },
-      "kurtosis_gate_distance": -1.0355152823366076,
-      "skew_gate_distance": 0.011663610019288562,
+      "kurtosis_gate_distance": -2.1905632161070496,
+      "skew_gate_distance": -0.7689428499585852,
       "gate_triggered": true,
       "is_edge_case": true,
       "tail_left": {
-        "hits": 115,
-        "expected": 109.90108656388999,
-        "poisson_p": 0.3258201476867171
+        "hits": 270,
+        "expected": 228.33478096912583,
+        "poisson_p": 0.003922107846471401
       },
       "tail_right": {
-        "hits": 40,
-        "expected": 48.283434428513445,
-        "poisson_p": 0.8998611776391692
+        "hits": 15,
+        "expected": 37.50928032308723,
+        "poisson_p": 0.9999899843761614
       },
-      "lineage_sha256": "2aaa9e7fb5e4ef0316475825dd7abfbc162f7c10db09e77089b7b4e6a755e19c"
-    }
+      "lineage_sha256": "2f1498b5b0d510862c153e04c134c5cabd9460b4b1f3a9842e2d38ffe7227ad4"
+    },
+    "adjudication": "JSU-GATE-PASS"
+  },
+  "P6-POOL6H-AUDIT": {
+    "status": "FLAGGED_POOL_PHASE_ISSUE",
+    "work_order": "P6-POOL6H-AUDIT",
+    "branch_triggered": "BRANCH_1",
+    "kord_ece": 0.005128,
+    "kmia_ece": 0.019657,
+    "report_ref": "evidence/p6_pool6h_audit_report.md"
   }
 }

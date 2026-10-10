@@ -1,0 +1,182 @@
+[
+  {
+    "lead_hour": 12,
+    "kord": {
+      "in_win_ece": 0.005128482645085563,
+      "ks_p": 1.2056213449708636e-10,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.133823092764025
+    },
+    "kmia": {
+      "in_win_ece": 0.018336829365990168,
+      "ks_p": 7.374133886880787e-81,
+      "winner_family": "evt_hybrid",
+      "p50_peak_p": 0.2894750607398549
+    }
+  },
+  {
+    "lead_hour": 18,
+    "kord": {
+      "in_win_ece": 0.0029093001884570808,
+      "ks_p": 0.46914902220612675,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.27658447861554836
+    },
+    "kmia": {
+      "in_win_ece": 0.0031249051008962704,
+      "ks_p": 0.0001850962632130159,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.47498654178910577
+    }
+  },
+  {
+    "lead_hour": 24,
+    "kord": {
+      "in_win_ece": 0.004893041011095349,
+      "ks_p": 7.44368242222526e-17,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.1323854975239821
+    },
+    "kmia": {
+      "in_win_ece": 0.006166664610889737,
+      "ks_p": 0.00010602445747686264,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.32937890746006115
+    }
+  },
+  {
+    "lead_hour": 30,
+    "kord": {
+      "in_win_ece": 0.0021042564794334713,
+      "ks_p": 7.156086674944981e-05,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.13672904221043924
+    },
+    "kmia": {
+      "in_win_ece": 0.005006336029650158,
+      "ks_p": 7.844055096207814e-05,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.3675631085046847
+    }
+  },
+  {
+    "lead_hour": 36,
+    "kord": {
+      "in_win_ece": 0.0043654383134052325,
+      "ks_p": 6.859681013652854e-08,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.1293971996006258
+    },
+    "kmia": {
+      "in_win_ece": 0.007887718207124096,
+      "ks_p": 1.1232121331195752e-18,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.32859568394522914
+    }
+  },
+  {
+    "lead_hour": 42,
+    "kord": {
+      "in_win_ece": 0.006720101706049472,
+      "ks_p": 7.23710253031286e-08,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.2137348659371866
+    },
+    "kmia": {
+      "in_win_ece": 0.0025433767167962443,
+      "ks_p": 4.7066019199280305e-08,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.4499775139797506
+    }
+  },
+  {
+    "lead_hour": 48,
+    "kord": {
+      "in_win_ece": 0.004907755543895852,
+      "ks_p": 3.5527007587956143e-15,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.13313091384689366
+    },
+    "kmia": {
+      "in_win_ece": 0.005653323133128161,
+      "ks_p": 0.009834682998351446,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.32652554266745115
+    }
+  },
+  {
+    "lead_hour": 54,
+    "kord": {
+      "in_win_ece": 0.0013466992616848901,
+      "ks_p": 2.516934426500599e-05,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.13748714927863215
+    },
+    "kmia": {
+      "in_win_ece": 0.005560555714372335,
+      "ks_p": 1.3685168830229659e-06,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.3620884667996879
+    }
+  },
+  {
+    "lead_hour": 60,
+    "kord": {
+      "in_win_ece": 0.003096790157925082,
+      "ks_p": 0.0002944939763916353,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.1262068097743102
+    },
+    "kmia": {
+      "in_win_ece": 0.004233133402681792,
+      "ks_p": 1.2373047882766814e-05,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.34366458488086193
+    }
+  },
+  {
+    "lead_hour": 66,
+    "kord": {
+      "in_win_ece": 0.00897014718082853,
+      "ks_p": 5.2446198790767615e-08,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.19130602035055538
+    },
+    "kmia": {
+      "in_win_ece": 0.0015400653253292902,
+      "ks_p": 7.797360763989871e-08,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.43231178765724765
+    }
+  },
+  {
+    "lead_hour": 72,
+    "kord": {
+      "in_win_ece": 0.003502855872380159,
+      "ks_p": 3.71668649664084e-14,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.13182154435196225
+    },
+    "kmia": {
+      "in_win_ece": 0.005598746179793682,
+      "ks_p": 0.0013505363193163952,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.32881493856088284
+    }
+  },
+  {
+    "lead_hour": 78,
+    "kord": {
+      "in_win_ece": 0.0015337734694345678,
+      "ks_p": 3.493637727946608e-05,
+      "winner_family": "gaussian",
+      "p50_peak_p": 0.13683673907333715
+    },
+    "kmia": {
+      "in_win_ece": 0.004791205344022064,
+      "ks_p": 0.0024929676679667874,
+      "winner_family": "johnsonsu",
+      "p50_peak_p": 0.35786532715578845
+    }
+  }
+]

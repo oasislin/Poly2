@@ -23,6 +23,21 @@ PRE_REG_KMIA_DELTA_BIC_OVERWHELMING_MIN = -20.0
 PRE_REG_KMIA_XI_BOUND_MAX = 0.50
 PRE_REG_KMIA_BETA_BOUND_MIN = 0.00
 PRE_REG_KMIA_TOP5_REAL_FAILURES_MIN = 4  # >= 4/5
+PRE_REG_KMIA_ECE_MAX = 0.0100  # Statutory calibration threshold (0.01)
+
+
+def resolve_cell_status(release_verdict: str, ece: float) -> str:
+    """Resolves cell status accounting for ECE flagging."""
+    if release_verdict == "AUTOMATIC_RELEASE":
+        if ece > PRE_REG_KMIA_ECE_MAX:
+            return "COMPLETED_ECE_FLAGGED"
+        return "COMPLETED"
+    return "TRIGGERED_FROZEN"
+
+
+def evaluate_downstream_ece_trigger(flagged_cells_count: int) -> bool:
+    """Evaluates whether P6-KMIA-ECE work order should be triggered (>= 2 cells)."""
+    return flagged_cells_count >= 2
 
 
 def classify_delta_bic_tier(delta_bics: list) -> str:
@@ -139,3 +154,24 @@ def test_gate_verdict_dual_branches():
         top5_verdict="PASS",
         evidence_consistent=False,
     ) == "PAUSE_FOR_COMMITTEE"
+
+
+def test_ece_flagging_and_downstream_trigger():
+    """Tests that ECE > 0.0100 results in COMPLETED_ECE_FLAGGED and triggers downstream alert when >= 2."""
+    assert PRE_REG_KMIA_ECE_MAX == 0.0100
+
+    # Under gate: clean COMPLETED
+    assert resolve_cell_status("AUTOMATIC_RELEASE", ece=0.0051) == "COMPLETED"
+
+    # Over gate: COMPLETED_ECE_FLAGGED
+    assert resolve_cell_status("AUTOMATIC_RELEASE", ece=0.0183) == "COMPLETED_ECE_FLAGGED"
+
+    # Frozen gate: stays TRIGGERED_FROZEN regardless
+    assert resolve_cell_status("PAUSE_FOR_COMMITTEE", ece=0.0183) == "TRIGGERED_FROZEN"
+
+    # Downstream trigger: >= 2 flagged cells triggers P6-KMIA-ECE
+    assert evaluate_downstream_ece_trigger(flagged_cells_count=0) is False
+    assert evaluate_downstream_ece_trigger(flagged_cells_count=1) is False
+    assert evaluate_downstream_ece_trigger(flagged_cells_count=2) is True
+    assert evaluate_downstream_ece_trigger(flagged_cells_count=3) is True
+
