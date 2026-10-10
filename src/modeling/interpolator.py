@@ -97,23 +97,25 @@ class LeadTimeInterpolator:
         t_type = target_type.lower()
         lead = float(lead_hours)
 
-        # Min Temp short-lead physical decay for L < 24h
-        if t_type == "min" and lead < 24.0:
-            if 24 not in anchor_models:
-                raise KeyError("Min Temp interpolation requires 24h anchor model")
-            base_model = anchor_models[24]
-            mu_24, sigma_24 = base_model.compute_params(
-                ensemble_mean=ensemble_mean,
-                ensemble_variance=ensemble_variance,
-                sigma_clim_squared=sigma_clim_squared,
-            )
-            # Physical standard deviation decay per v5.9.1 §4: σ_final = σ_24h * sqrt(L / 24)
-            decay_factor = np.sqrt(max(0.0, lead) / 24.0)
-            decayed_sigma = np.maximum(1e-4, sigma_24 * decay_factor)
+        # Short-lead physical decay for L < 24h (Min Temp & Max Temp symmetry per v5.9.1 §4 / P7-W1-POOLPHASE)
+        if (t_type == "min" or t_type == "max") and lead < 24.0:
+            if 24 in anchor_models:
+                base_model = anchor_models[24]
+                mu_24, sigma_24 = base_model.compute_params(
+                    ensemble_mean=ensemble_mean,
+                    ensemble_variance=ensemble_variance,
+                    sigma_clim_squared=sigma_clim_squared,
+                )
+                # Physical standard deviation decay per v5.9.1 §4: σ_final = σ_24h * sqrt(max(0, L) / 24)
+                decay_factor = np.sqrt(max(0.0, lead) / 24.0)
+                decayed_sigma = np.maximum(1e-4, sigma_24 * decay_factor)
 
-            if np.ndim(mu_24) == 0:
-                return GaussianEMOS.from_params(mu=float(mu_24), sigma=float(decayed_sigma))
-            return GaussianEMOS.from_params(mu=mu_24, sigma=decayed_sigma)
+                if np.ndim(mu_24) == 0:
+                    return GaussianEMOS.from_params(mu=float(mu_24), sigma=float(decayed_sigma))
+                return GaussianEMOS.from_params(mu=mu_24, sigma=decayed_sigma)
+            elif t_type == "min" or not anchor_models or lead < sorted(anchor_models.keys())[0]:
+                type_name = "Min Temp" if t_type == "min" else "Max Temp"
+                raise KeyError(f"{type_name} interpolation requires 24h anchor model")
 
         # Standard linear-interpolated model forward pass
         model = self.get_model_at_lead(t_type, lead, anchor_models)

@@ -46,7 +46,7 @@
 > **【方法论披露注记 1：门控边缘截断效应】**：在门控阈值边缘（如偏度在 0.37~0.42 波动），存在因门控未激活而放弃显著更高似然度（$\Delta\text{BIC} < -170$）的假阴性截断现象（已在 KMIA 36h 详细取证，登记后续优化议题 `P6-RESEARCH-NO-GATE-BIC`）。  
 > **【方法论披露注记 2：常设 J2 门槛修订条款】**：全池汇聚 JSU 占比 $\ge 60\%$（经委员会立法解释事后追认标定）且全池加权 ECE $\le 0.0100$ 时，准予混合胜出；分族子集 ECE 越线单列挂旗入账，不计入全格 ECE 违规计数。  
 > **【方法论披露注记 3：正负偏态对称拟合】**：Johnson SU 在芝加哥（正偏 $\gamma \approx -0.50$）与迈阿密（负偏 $\gamma \approx +0.54$）双向形态下展现完全对称的参数收敛与数值稳定性（CV $\le 2.5\%$，零贴界）。  
-> **【方法论披露注记 4：池化回退层方差衰减缺口与实况硬截断兜底（AC-3 注记）】**：现役资产库持有的 80 套 6h 池化回退模型（`POOLED-FALLBACK`）经 `P6-POOL6H-AUDIT` 取证，在昼夜谐波晨谷相位存在预测方差系统性过宽实证（KMIA 加权 ECE 录得 `0.019657` 越线 0.0100，挂旗 `FLAGGED_POOL_PHASE_ISSUE`）；同时穿透发现 `src/modeling/interpolator.py` 仅对 Min Temp 实现了 $\sqrt{L/24.0}$ 物理方差衰减，Max Temp 缺失该衰减并退化为平底边界截断。在盘中交割段（$L < 6\text{h}$），系统通过 `src/prediction/constraint_enforcer.py` 的 METAR 实况热力学温升上限（$T_{\text{max\_possible}} = T_{\text{now}} + r_{\text{warm}}\cdot \Delta t$）硬截断层强制砍除不可能上尾概率档位，在工程实践中兜底弥补了方差衰减缺口。该架构性缺口已通过 `AC-2` 扩项并入封盘后研发议题 `P6-POOL-PHASE` 维持挂账。
+> **【方法论披露注记 4：池化回退层方差衰减缺口与实况硬截断兜底（AC-3 注记）】**：现役资产库持有的 80 套 6h 池化回退模型（`POOLED-FALLBACK`）经 `P6-POOL6H-AUDIT` 取证，在昼夜谐波晨谷相位存在预测方差系统性过宽实证（KMIA 加权 ECE 录得 `0.019657` 越线 0.0100，挂旗 `FLAGGED_POOL_PHASE_ISSUE`）；同时穿透发现 `src/modeling/interpolator.py` 仅对 Min Temp 实现了 $\sqrt{L/24.0}$ 物理方差衰减，Max Temp 缺失该衰减并退化为平底边界截断（*勘注：Max Temp 缺失方差衰减缺口已于工单 P7-W1 (W1-A) 正式修复，在 `src/modeling/interpolator.py` 补齐实现 $\sigma_L = \sigma_{24\text{h}} \cdot \sqrt{\max(0, L)/24.0}$*）。在盘中交割段（$L < 6\text{h}$），系统通过 `src/prediction/constraint_enforcer.py` 的 METAR 实况热力学温升上限（$T_{\text{max\_possible}} = T_{\text{now}} + r_{\text{warm}}\cdot \Delta t$）硬截断层强制砍除不可能上尾概率档位，在工程实践中兜底弥补了方差衰减缺口。该架构性缺口已通过 `AC-2` 扩项并入封盘后研发议题 `P6-POOL-PHASE` 维持挂账。
 
 ---
 
