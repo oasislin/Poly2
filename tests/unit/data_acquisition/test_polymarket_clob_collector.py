@@ -175,6 +175,17 @@ class TestCadenceScheduler:
         cadence = calculate_snapshot_cadence(settlement_time, current_time)
         assert cadence == "SETTLEMENT_PROBE_15M"
 
+    def test_post_settlement_layer_when_past_t0(self):
+        """
+        POST_SETTLEMENT fix: When current time is past official settlement T-0,
+        cadence must be POST_SETTLEMENT.
+        """
+        current_time = datetime(2026, 10, 11, 19, 0, 0, tzinfo=timezone.utc)  # 1h past
+        settlement_time = datetime(2026, 10, 11, 18, 0, 0, tzinfo=timezone.utc)
+
+        cadence = calculate_snapshot_cadence(settlement_time, current_time)
+        assert cadence == "POST_SETTLEMENT"
+
 
 class TestSnapshotCollectionAndPersistence:
     """Tests for snapshot collection, E-2 data provenance, and A-4 prob_static reservation."""
