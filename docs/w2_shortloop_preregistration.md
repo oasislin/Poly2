@@ -173,7 +173,8 @@
    - Johnson SU：`scipy.stats.johnsonsu.cdf`；
    - EVT-Hybrid：条件高斯核心段分位数截断与 GPD 厚尾解析积分；
 2. **概率单纯形约束**：
-   $$p_k = \frac{p_{\text{raw}}(k)}{\sum_{j=0}^{10} p_{\text{raw}}(j)}, \quad \sum_{k=0}^{10} p_k \equiv 1.00000000 \quad (\text{容差 } \le 1.0 \times 10^{-6})$$
+   $$p_k = \frac{p_{\text{raw}}(k)}{\sum_{j=0}^{10} p_{\text{raw}}(j)}, \quad \left|\sum_{k=0}^{10} p_k - 1.0\right| \le 1.0 \times 10^{-6}$$
+   残差压缩至双精度舍入极限内，本次采样点实测 0.00 系采样结果而非数学必然。
 3. **截断后条件单纯形重正化**：
    当实况极值注入导致某些档位物理死亡（$p_{\text{dead}} \equiv 0.0$）后，剩余存活档位执行单纯形条件概率重正化：
    $$p'_k = \frac{p_k}{\sum_{j \in \text{Alive}} p_j}$$

@@ -40,6 +40,10 @@
 - 当 router 模拟回退至 `PHASE-CLUSTER-FAILSAFE` 资产时，定价信号强制降级为 `is_tradable = False`、`target_size = 0.0`、`reason = "FAILSAFE_DEGRADED_READONLY"`，成功杜绝兜底资产在纸面盘中误开仓；
 - KMIA 12h TMax 资产调用成功识别 `COMPLETED_ECE_FLAGGED`，头寸额度严格执行 50% 折剪。
 
+### 2.4 C3 门禁残差勘误注记 (工单 P7-W2-B-CLOSURE-WO-001)
+- **勘误说明**：删除“IEEE 754 下误差严格归零”的不严谨断言；
+- **修正结论**：经重正化投影运算后，残差被压缩至双精度浮点数舍入极限（machine epsilon $\approx 2.22 \times 10^{-16}$）内，本次离散网格全采样点实测最大偏差 $0.00\text{e}+00$ 系离散采样结果而非全域数学必然。
+
 ---
 
 ## 三、 审计结论与位次流转
