@@ -245,6 +245,7 @@ class RealEMOSPipeline:
         station_id: str,
         target_date: Union[date, datetime, str],
         lead_hours: int = 24,
+        forecast_cycle: Optional[datetime] = None,
         injected_members: Optional[Dict[str, float]] = None,
     ) -> EMOSForecastResult:
         """
@@ -287,6 +288,7 @@ class RealEMOSPipeline:
                 station_id=station_id,
                 target_date=dt_obj,
                 lead_hours=lead_hours,
+                forecast_cycle=forecast_cycle,
             )
 
         # 4. Compute Ensemble Statistics
