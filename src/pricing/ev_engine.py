@@ -30,9 +30,12 @@ class OrderBookSnapshot:
 
 @dataclass(frozen=True)
 class EVConfig:
-    """Configurable thresholds for dynamic EV evaluations."""
-    min_reprice_edge: float = 0.03  # Minimum required edge (3%) to trade
-    fee_rate: float = 0.0           # Taker fee rate (Polymarket standard is 0%)
+    """Configurable thresholds and fee schedules for dynamic EV evaluations."""
+    min_reprice_edge: float = 0.03       # Minimum required edge (3%) to trade
+    taker_base_fee: float = 0.0125       # Polymarket Taker base fee (1.25%, aligned with v1 strategy.py:691)
+    maker_rebate_rate: float = 0.20      # Maker rebate percentage (20% of taker fee, aligned with v1 config)
+    is_maker: bool = False               # Order style (False: Taker execution, True: Maker quote)
+    fee_rate: Optional[float] = None     # Legacy override: if explicitly set float, overrides dynamic fee
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,7 @@ class EVTradeSignal:
     is_tradable: bool
     target_size: float
     reason: str
+    effective_cost: Optional[float] = None
     governance_flags: tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -58,6 +62,7 @@ class EVTradeSignal:
             "bin_label": self.bin_label,
             "model_probability": self.model_probability,
             "effective_price": self.effective_price,
+            "effective_cost": self.effective_cost,
             "net_ev": self.net_ev,
             "edge": self.edge,
             "is_tradable": self.is_tradable,
@@ -103,7 +108,25 @@ class DynamicEVEngine:
                 return total_cost / target_size
 
         # Insufficient depth to satisfy target_size
-        return None
+    def calculate_effective_cost(self, price: float) -> float:
+        """
+        Calculate effective purchase cost per share incorporating Polymarket fee structure.
+        Taker formula (v1 strategy.py:691):
+            q_eff = p * (1.0 + taker_base_fee * (1.0 - p))
+        Maker rebate formula (v1 rebate spec):
+            q_eff = p * (1.0 - maker_rebate_rate * taker_base_fee * (1.0 - p))
+        """
+        if price <= 0.0:
+            return 0.0
+        if self.config.fee_rate is not None:
+            return price * (1.0 + self.config.fee_rate) if self.config.fee_rate > 0.0 else price
+
+        if self.config.is_maker:
+            rebate_fraction = self.config.maker_rebate_rate * self.config.taker_base_fee * (1.0 - price)
+            return price * (1.0 - rebate_fraction)
+        else:
+            fee_fraction = self.config.taker_base_fee * (1.0 - price)
+            return price * (1.0 + fee_fraction)
 
     def evaluate_bin(
         self,
@@ -116,8 +139,9 @@ class DynamicEVEngine:
     ) -> EVTradeSignal:
         """
         Evaluate net EV and edge for buying shares in a discrete market bin.
-        Net EV = model_prob * (1 - fee) - P_eff
-        Edge = Net EV / P_eff
+        Dynamic Fee: q_eff = p * (1 + taker_base_fee * (1 - p))
+        Net EV = model_prob * 1.0 - q_eff
+        Edge = Net EV / q_eff
         Supports Rev.1.1 asset governance (FAILSAFE read-only downgrade, flagged asset haircut).
         """
         effective_target_size = target_size * 0.5 if is_flagged else target_size
@@ -131,6 +155,7 @@ class DynamicEVEngine:
                 bin_label=snapshot.bin_label,
                 model_probability=model_probability,
                 effective_price=None,
+                effective_cost=None,
                 net_ev=0.0,
                 edge=0.0,
                 is_tradable=False,
@@ -138,12 +163,17 @@ class DynamicEVEngine:
                 reason="REJECTED_INSUFFICIENT_DEPTH",
             )
 
-        # Calculate Net Payout & Net EV
-        net_payout = model_probability * (1.0 - self.config.fee_rate)
-        net_ev = net_payout - p_eff
+        # Calculate Net EV and Edge
+        if self.config.fee_rate is not None:
+            net_payout = model_probability * (1.0 - self.config.fee_rate)
+            net_ev = net_payout - p_eff
+            q_eff = p_eff
+        else:
+            q_eff = self.calculate_effective_cost(p_eff)
+            net_ev = model_probability - q_eff
 
-        if p_eff > 1e-9:
-            edge = net_ev / p_eff
+        if q_eff > 1e-9:
+            edge = net_ev / q_eff
         else:
             edge = 0.0
 
@@ -155,6 +185,7 @@ class DynamicEVEngine:
                 bin_label=snapshot.bin_label,
                 model_probability=model_probability,
                 effective_price=p_eff,
+                effective_cost=q_eff,
                 net_ev=net_ev,
                 edge=edge,
                 is_tradable=False,
@@ -170,6 +201,7 @@ class DynamicEVEngine:
                 bin_label=snapshot.bin_label,
                 model_probability=model_probability,
                 effective_price=p_eff,
+                effective_cost=q_eff,
                 net_ev=net_ev,
                 edge=edge,
                 is_tradable=False,
@@ -184,6 +216,7 @@ class DynamicEVEngine:
                 bin_label=snapshot.bin_label,
                 model_probability=model_probability,
                 effective_price=p_eff,
+                effective_cost=q_eff,
                 net_ev=net_ev,
                 edge=edge,
                 is_tradable=False,
@@ -198,6 +231,7 @@ class DynamicEVEngine:
             bin_label=snapshot.bin_label,
             model_probability=model_probability,
             effective_price=p_eff,
+            effective_cost=q_eff,
             net_ev=net_ev,
             edge=edge,
             is_tradable=True,

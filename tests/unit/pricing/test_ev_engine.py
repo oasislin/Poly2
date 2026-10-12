@@ -128,3 +128,64 @@ class TestDynamicEVEngine:
         signal = engine.evaluate_bin(snapshot=book, model_probability=0.60, target_size=50.0)
         assert signal.net_ev == pytest.approx(0.088, abs=1e-4)
         assert signal.edge == pytest.approx(0.088 / 0.50, abs=1e-4)
+
+    def test_polymarket_dynamic_taker_fee_formula(self):
+        """Verify dynamic taker fee formula q = p * [1 + taker_base_fee * (1 - p)]."""
+        default_engine = DynamicEVEngine(config=EVConfig())  # taker_base_fee=0.0125, is_maker=False
+        book = OrderBookSnapshot(
+            station_id="KORD",
+            bin_index=0,
+            bin_label="70°F",
+            bids=[],
+            asks=[OrderBookLevel(price=0.20, size=100.0)],
+        )
+        # p = 0.20 -> q = 0.20 * [1 + 0.0125 * (1 - 0.20)] = 0.20 * 1.01 = 0.2020
+        signal = default_engine.evaluate_bin(snapshot=book, model_probability=0.25, target_size=50.0)
+        expected_cost = 0.20 * (1.0 + 0.0125 * 0.80)
+        assert signal.effective_cost == pytest.approx(expected_cost, abs=1e-6)
+        expected_ev = 0.25 - expected_cost
+        assert signal.net_ev == pytest.approx(expected_ev, abs=1e-6)
+        assert signal.edge == pytest.approx(expected_ev / expected_cost, abs=1e-6)
+        assert signal.is_tradable is True
+
+    def test_polymarket_dynamic_maker_rebate_formula(self):
+        """Verify dynamic maker rebate formula q = p * [1 - maker_rebate * taker_base_fee * (1 - p)]."""
+        maker_engine = DynamicEVEngine(config=EVConfig(is_maker=True))  # rebate=0.20, taker_fee=0.0125
+        book = OrderBookSnapshot(
+            station_id="KMIA",
+            bin_index=1,
+            bin_label="85°F",
+            bids=[],
+            asks=[OrderBookLevel(price=0.40, size=100.0)],
+        )
+        # p = 0.40 -> rebate_frac = 0.20 * 0.0125 * (1 - 0.40) = 0.0015
+        # q = 0.40 * (1 - 0.0015) = 0.3994
+        signal = maker_engine.evaluate_bin(snapshot=book, model_probability=0.45, target_size=50.0)
+        expected_cost = 0.40 * (1.0 - 0.20 * 0.0125 * 0.60)
+        assert signal.effective_cost == pytest.approx(expected_cost, abs=1e-6)
+        expected_ev = 0.45 - expected_cost
+        assert signal.net_ev == pytest.approx(expected_ev, abs=1e-6)
+        assert signal.edge == pytest.approx(expected_ev / expected_cost, abs=1e-6)
+        assert signal.is_tradable is True
+
+    def test_cheap_token_fee_sensitivity(self):
+        """
+        Verify that on cheap tokens (p -> 0), the dynamic fee penalty turns a nominal positive edge
+        into a negative EV, correctly triggering REJECTED_NEGATIVE_EV.
+        """
+        default_engine = DynamicEVEngine(config=EVConfig())
+        book = OrderBookSnapshot(
+            station_id="KORD",
+            bin_index=5,
+            bin_label="≥90°F",
+            bids=[],
+            asks=[OrderBookLevel(price=0.04, size=100.0)],
+        )
+        # p = 0.04. Fee penalty is 0.0125 * (1 - 0.04) = 0.0120 (1.20% additional surcharge)
+        # q_eff = 0.04 * (1 + 0.012) = 0.04048
+        # If model_probability = 0.0402 (> p=0.04 nominally +0.5% edge without fee)
+        # Net EV = 0.0402 - 0.04048 = -0.00028 < 0.0 -> Must be rejected!
+        signal = default_engine.evaluate_bin(snapshot=book, model_probability=0.0402, target_size=50.0)
+        assert signal.is_tradable is False
+        assert signal.reason == "REJECTED_NEGATIVE_EV"
+        assert signal.net_ev < 0.0

@@ -30,22 +30,45 @@ DATA_PROVENANCE_SYNTHETIC = "SYNTHETIC_INJECTED_REPLAY"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 CLOB_API_BASE_URL = "https://clob.polymarket.com"
 
-# Station mappings for weather markets
-KNOWN_CITY_TO_STATION: Dict[str, str] = {
-    "chicago": "KORD",
-    "miami": "KMIA",
-    "nyc": "KLGA",
-    "new york": "KLGA",
-    "atlanta": "KATL",
-    "dallas": "KDFW",
-    "los angeles": "KLAX",
-    "seattle": "KSEA",
-    "san francisco": "KSFO",
-    "houston": "KIAH",
-    "denver": "KBKF",
-    "austin": "KAUS",
-    "london": "EGLL",
-}
+from src.data_processing.constants import ACTIVE_10_STATIONS, STATION_METADATA
+
+def build_active_city_to_station_map() -> Dict[str, str]:
+    """
+    Build canonical mapping dictionary strictly driven by statutory ACTIVE_10_STATIONS.
+    Maps lowercase city names, aliases, and station IDs to canonical station IDs.
+    """
+    mapping: Dict[str, str] = {}
+    city_aliases = {
+        "new york": "KLGA",
+        "nyc": "KLGA",
+        "dallas": "KDAL",
+        "houston": "KHOU",
+    }
+    for st in ACTIVE_10_STATIONS:
+        mapping[st.lower()] = st
+        if st in STATION_METADATA:
+            city_name = STATION_METADATA[st].get("city", "").lower()
+            if city_name:
+                mapping[city_name] = st
+    for alias, st in city_aliases.items():
+        if st in ACTIVE_10_STATIONS:
+            mapping[alias] = st
+    return mapping
+
+KNOWN_CITY_TO_STATION: Dict[str, str] = build_active_city_to_station_map()
+
+def get_active_station_for_city(city_or_station: str) -> str:
+    """
+    Resolve city alias or station ID to statutory Active 10 station ID.
+    Raises ValueError if unapproved/out-of-universe.
+    """
+    clean_key = city_or_station.strip().lower()
+    if clean_key in KNOWN_CITY_TO_STATION:
+        return KNOWN_CITY_TO_STATION[clean_key]
+    upper_key = city_or_station.strip().upper()
+    if upper_key in ACTIVE_10_STATIONS:
+        return upper_key
+    raise ValueError(f"Unapproved city or station '{city_or_station}'. Must be within Active 10 universe.")
 
 
 @dataclass(frozen=True)
@@ -431,8 +454,7 @@ class PolymarketCLOBCollector:
         seen_slugs = set()
 
         for city_raw in target_cities:
-            city_lower = city_raw.lower()
-            station_id = KNOWN_CITY_TO_STATION.get(city_lower)
+            station_id = get_active_station_for_city(city_raw)
             events = self.client.search_temperature_events(city_raw, limit=10)
 
             for ev in events:
