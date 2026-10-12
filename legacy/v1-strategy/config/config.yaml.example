@@ -1,0 +1,20 @@
+version: "1.0.1"
+
+# 运行模式: dry_run (模拟盘/纸钱包) 或 live_run (实盘)
+trading_mode: "dry_run"
+
+network_gateway:
+  polymarket_clob_url: "https://clob.polymarket.com"
+  polymarket_gamma_url: "https://gamma-api.polymarket.com"
+  open_meteo_url: "https://ensemble-api.open-meteo.com/v1/ensemble"
+  aviation_weather_url: "https://aviationweather.gov/api/data/stationinfo"
+
+risk_control_lock:
+  min_ev_threshold: 0.08             # 最低期望回报率（单位：USDC），低于此值不套利
+  max_slippage_allowance: 0.03       # 最大允许滑点 (3%)
+  max_portfolio_exposure: 0.05       # 单场天气事件最大资金占用上限 (5%)
+  boundary_buffer_celsius: 0.2       # 气温边界缓冲区（防止 0.1 度之差导致归零，在边界上下 0.2°C 内的气象成员算入 5% 概率扣减安全边际）
+
+wallet_vault:
+  rpc_node: "https://polygon-rpc.com"
+  account_address: "0x0000000000000000000000000000000000000000"

@@ -1,0 +1,270 @@
+{
+  "celsius_wunderground": [
+    {
+      "city": "Beijing",
+      "slug": "beijing",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/beijing/ZBAA"
+    },
+    {
+      "city": "Guangzhou",
+      "slug": "guangzhou",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/guangzhou/ZGGG"
+    },
+    {
+      "city": "Wuhan",
+      "slug": "wuhan",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/wuhan/ZHHH"
+    },
+    {
+      "city": "Qingdao",
+      "slug": "qingdao",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/qingdao/ZSQD"
+    },
+    {
+      "city": "Amsterdam",
+      "slug": "amsterdam",
+      "resolution_source": "https://www.wunderground.com/history/daily/nl/schiphol/EHAM"
+    },
+    {
+      "city": "Munich",
+      "slug": "munich",
+      "resolution_source": "https://www.wunderground.com/history/daily/de/munich/EDDM"
+    },
+    {
+      "city": "Madrid",
+      "slug": "madrid",
+      "resolution_source": "https://www.wunderground.com/history/daily/es/madrid/LEMD"
+    },
+    {
+      "city": "Warsaw",
+      "slug": "warsaw",
+      "resolution_source": "https://www.wunderground.com/history/daily/pl/warsaw/EPWA"
+    },
+    {
+      "city": "Helsinki",
+      "slug": "helsinki",
+      "resolution_source": "https://www.wunderground.com/history/daily/fi/vantaa/EFHK"
+    },
+    {
+      "city": "Cape Town",
+      "slug": "cape-town",
+      "resolution_source": "https://www.wunderground.com/history/daily/za/matroosfontein/FACT"
+    },
+    {
+      "city": "Buenos Aires",
+      "slug": "buenos-aires",
+      "resolution_source": "https://www.wunderground.com/history/daily/ar/ezeiza/SAEZ"
+    },
+    {
+      "city": "Sao Paulo",
+      "slug": "sao-paulo",
+      "resolution_source": "https://www.wunderground.com/history/daily/br/guarulhos/SBGR"
+    },
+    {
+      "city": "Panama City",
+      "slug": "panama-city",
+      "resolution_source": "https://www.wunderground.com/history/daily/pa/panama-city/MPMG"
+    },
+    {
+      "city": "Mexico City",
+      "slug": "mexico-city",
+      "resolution_source": "https://www.wunderground.com/history/daily/mx/mexico-city/MMMX"
+    },
+    {
+      "city": "Toronto",
+      "slug": "toronto",
+      "resolution_source": "https://www.wunderground.com/history/daily/ca/mississauga/CYYZ"
+    },
+    {
+      "city": "Wellington",
+      "slug": "wellington",
+      "resolution_source": "https://www.wunderground.com/history/daily/nz/wellington/NZWN"
+    },
+    {
+      "city": "Singapore",
+      "slug": "singapore",
+      "resolution_source": "https://www.wunderground.com/history/daily/sg/singapore/WSSS"
+    },
+    {
+      "city": "Kuala Lumpur",
+      "slug": "kuala-lumpur",
+      "resolution_source": "https://www.wunderground.com/history/daily/my/sepang-district/WMKK"
+    },
+    {
+      "city": "Manila",
+      "slug": "manila",
+      "resolution_source": "https://www.wunderground.com/history/daily/ph/manila/RPLL"
+    },
+    {
+      "city": "Karachi",
+      "slug": "karachi",
+      "resolution_source": "https://www.wunderground.com/history/daily/pk/karachi/OPKC"
+    },
+    {
+      "city": "Ankara",
+      "slug": "ankara",
+      "resolution_source": "https://www.wunderground.com/history/daily/tr/%C3%A7ubuk/LTAC"
+    },
+    {
+      "city": "Shanghai",
+      "slug": "shanghai",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/shanghai/ZSPD"
+    },
+    {
+      "city": "Chongqing",
+      "slug": "chongqing",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/chongqing/ZUCK"
+    },
+    {
+      "city": "Chengdu",
+      "slug": "chengdu",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/chengdu/ZUUU"
+    },
+    {
+      "city": "Shenzhen",
+      "slug": "shenzhen",
+      "resolution_source": "https://www.wunderground.com/history/daily/cn/shenzhen/ZGSZ"
+    },
+    {
+      "city": "Busan",
+      "slug": "busan",
+      "resolution_source": "https://www.wunderground.com/history/daily/kr/busan/RKPK"
+    },
+    {
+      "city": "London",
+      "slug": "london",
+      "resolution_source": "https://www.wunderground.com/history/daily/gb/london/EGLC"
+    },
+    {
+      "city": "Paris",
+      "slug": "paris",
+      "resolution_source": "https://www.wunderground.com/history/daily/fr/bonneuil-en-france/LFPB"
+    },
+    {
+      "city": "Lucknow",
+      "slug": "lucknow",
+      "resolution_source": "https://www.wunderground.com/history/daily/in/lucknow/VILK"
+    },
+    {
+      "city": "Jeddah",
+      "slug": "jeddah",
+      "resolution_source": "https://www.wunderground.com/history/daily/sa/jeddah/OEJN"
+    }
+  ],
+  "celsius_other": [
+    {
+      "city": "Hong Kong",
+      "slug": "hong-kong"
+    },
+    {
+      "city": "Moscow",
+      "slug": "moscow"
+    },
+    {
+      "city": "Istanbul",
+      "slug": "istanbul"
+    },
+    {
+      "city": "Tel Aviv",
+      "slug": "tel-aviv"
+    }
+  ],
+  "fahrenheit_wunderground": [
+    {
+      "city": "Los Angeles",
+      "slug": "los-angeles",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/ca/los-angeles/KLAX"
+    },
+    {
+      "city": "San Francisco",
+      "slug": "san-francisco",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/ca/san-francisco/KSFO"
+    },
+    {
+      "city": "Atlanta",
+      "slug": "atlanta",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/ga/atlanta/KATL"
+    },
+    {
+      "city": "Houston",
+      "slug": "houston",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/tx/houston/KHOU"
+    },
+    {
+      "city": "Chicago",
+      "slug": "chicago",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/il/chicago/KORD"
+    },
+    {
+      "city": "Austin",
+      "slug": "austin",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/tx/austin/KAUS"
+    },
+    {
+      "city": "Denver",
+      "slug": "denver",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/co/aurora/KBKF"
+    },
+    {
+      "city": "Miami",
+      "slug": "miami",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/fl/miami/KMIA"
+    },
+    {
+      "city": "Seattle",
+      "slug": "seattle",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/wa/seatac/KSEA"
+    },
+    {
+      "city": "Dallas",
+      "slug": "dallas",
+      "resolution_source": "https://www.wunderground.com/history/daily/us/tx/dallas/KDAL"
+    }
+  ],
+  "not_found": [
+    {
+      "city": "Seoul/Incheon",
+      "slug": "seoul/incheon"
+    },
+    {
+      "city": "New York City (Central Park)",
+      "slug": "new-york-city"
+    },
+    {
+      "city": "London Heathrow",
+      "slug": "london-heathrow"
+    },
+    {
+      "city": "Tokyo Haneda",
+      "slug": "tokyo-haneda"
+    },
+    {
+      "city": "Taipei Taoyuan",
+      "slug": "taipei-taoyuan"
+    },
+    {
+      "city": "Taipei Songshan",
+      "slug": "taipei-songshan"
+    },
+    {
+      "city": "Paris Charles de Gaulle",
+      "slug": "paris-charles-de-gaulle"
+    },
+    {
+      "city": "Paris Orly",
+      "slug": "paris-orly"
+    },
+    {
+      "city": "Milan Malpensa",
+      "slug": "milan-malpensa"
+    },
+    {
+      "city": "Jinan",
+      "slug": "jinan"
+    },
+    {
+      "city": "Zhengzhou",
+      "slug": "zhengzhou"
+    }
+  ]
+}
