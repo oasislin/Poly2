@@ -195,9 +195,8 @@ def calculate_snapshot_cadence(settlement_time: datetime, current_time: datetime
     delta_seconds = (settlement_time - current_time).total_seconds()
     hours_left = delta_seconds / 3600.0
 
-    if hours_left < 0.0:
-        return "POST_SETTLEMENT"
-    if hours_left <= 12.0:
+    # If within 12 hours of settlement (and not already past T-0 by > 2 hours)
+    if -2.0 <= hours_left <= 12.0:
         return "SETTLEMENT_PROBE_15M"
     return "BASELINE_60M"
 
