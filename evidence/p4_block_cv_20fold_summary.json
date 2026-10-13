@@ -2,7 +2,7 @@
   "station": "KORD",
   "n_rounds": 20,
   "seed": 20260923,
-  "total_duration_seconds": 14.81,
+  "total_duration_seconds": 15.63,
   "gate_passed_count": 17,
   "screening_records_count": 20,
   "pooled_gate": {
