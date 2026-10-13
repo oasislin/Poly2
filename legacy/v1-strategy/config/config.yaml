@@ -1,0 +1,49 @@
+version: "1.0.1"
+
+# 运行模式: dry_run (模拟盘/纸钱包) 或 live_run (实盘)
+trading_mode: "dry_run"
+
+network_gateway:
+  polymarket_clob_url: "https://clob.polymarket.com"
+  polymarket_gamma_url: "https://gamma-api.polymarket.com"
+  open_meteo_url: "https://ensemble-api.open-meteo.com/v1/ensemble"
+  aviation_weather_url: "https://aviationweather.gov/api/data/stationinfo"
+
+risk_control_lock:
+  min_ev_threshold: 0.08             # 最低期望回报率（单位：USDC），低于此值不套利
+  max_slippage_allowance: 0.03       # 最大允许滑点 (3%)
+  max_portfolio_exposure: 0.02       # 单场天气事件最大资金占用上限 (2%)
+  boundary_buffer_celsius: 0.2       # 气温边界缓冲区
+  allocated_capital: 10000.0         # 策略虚拟总本金 (USDC)
+  taker_base_fee: 0.0125             # Polymarket Taker 平台基础费率 (1.25%)
+  maker_rebate_rate: 0.20            # Maker 返佣比例 (20%)
+  obs_error_sigma_0: 0.6             # 观测误差基准标准差
+  lead_time_decay_beta: 0.15         # 预报时效衰减系数
+  obs_error_sigma_baseline_mid_lat: 0.50    # 中纬度/大陆性气候气象站的基准预测标准差下限 (Celsius, Brier Score 标定)
+  obs_error_sigma_baseline_tropics: 0.68    # 低纬度/热带雨林气象站的基准预测标准差下限 (Celsius, 标定推荐 0.68)
+  sigma_fade_window_hours: 12.0            # 临近结算时基准预测标准差开始衰减的时间窗口（小时）
+  sigma_absolute_min_celsius: 0.2          # 临近结算时刻绝对最低物理测量标准差下限 (Celsius)
+  robust_kelly_theta: 1.5                  # 稳健凯利概率区间的安全乘数 (theta)，值越大防守越保守
+  robust_kelly_model_uncertainty_eta: 0.15 # 稳健凯利模型不确定性比例系数 (eta)，用于平滑收缩低概率长尾尾部投机
+  mc_samples_per_member: 100         # 每个成员蒙特卡洛采样数 (K)
+  min_bet_usdc: 2.0                  # 最小投注与调仓金额 (USDC)
+  rebalance_hystersis_rate: 0.03     # 调仓防抖滞后阈值 (C_loc 的百分比)
+  min_dutch_book_margin: 0.02        # Dutch Book 最小套利利润边界 (2.0%)
+  bias_corrector_class: "MovingWindowBiasCorrector" # 偏置纠正实现类
+  bias_window_days: 6                               # 自适应纠偏窗口天数 (标定最优 6 天)
+  min_scaling_factor: 0.1                           # 最小保留下注系数 (10%)
+  scaling_sensitivity_alpha: 3.0                    # 资金缩水敏感度指数 (调大以加速衰减)
+  kelly_time_decay_lambda: 0.0578                   # [已废弃] 旧指数衰减参数，保留兼容
+  kelly_min_fraction: 0.05                          # 远期保留的最小凯利比例 (5%)
+  kelly_time_decay_k: 0.30                           # Sigmoid 时间衰减陡峭度 (k 越大远期惩罚越严厉)
+  kelly_time_decay_tc: 24.0                         # Sigmoid 时间衰减拐点 (小时，bias 修正窗口开始可靠的时间点)
+  shrinkage_q_min: 0.01                             # 临近结算最低信任中值点 (1%)
+  shrinkage_q_max: 0.05                             # 远期最严格信任中值点 (5%)
+  shrinkage_t_scale: 48.0                           # 时间衰减窗口特征尺度 (48小时)
+  shrinkage_k_exponent: 2.0                         # 平滑敏感度斜率指数 (k=2.0)
+  # allowed_cities: ["ZSSS"]                        # 可选：允许交易的城市气象站白名单（注释或为空则允许全部城市）
+
+
+wallet_vault:
+  rpc_node: "https://polygon-rpc.com"
+  account_address: "0x0000000000000000000000000000000000000000"

@@ -1,0 +1,99 @@
+# 悬置裁决台账 (Decision Ledger)
+
+**工单基准**：P7-ALGO-1B（v1 资产入库、零费率缺陷修复与登记）  
+**创建时间**：2026-10-12  
+**维护纪律**：按《AGENTS.md》审计纪律，本台账记录历史考古与审计排查中发现的所有未决事项、技术债务、设计分歧与悬置项。任何条目状态的流转必须附带证据（Commit Hash、文档章节或用户明确裁决令），严禁私自销项或篡改。
+
+---
+
+## 一、 P7-ALGO-1 卷宗 §6 五项未决事项状态追踪
+
+| 编号 | 事项名称 | 原始发现（P7-ALGO-1 卷宗 §6） | 最新状态 | 处置依据 / 对应工单 / 证据 |
+| :--- | :--- | :--- | :--- | :--- |
+| **UNDECIDED-01** | 外部 v1 算法资产与当前代码库物理隔离 | v1 完整策略代码在外部目录 `Polymarket天气套利/`，本库零检入 | **已入库 (只读隔离)** | **P7-ALGO-1B Task 1** 已完整镜像至 `legacy/v1-strategy/`，附带隔离 `README.md`，禁止执行/import/构建/测试。Commit: `8b9f05b` |
+| **UNDECIDED-02** | 费率模型在 v2 中降级为零费率假设 | `ev_engine.py` 硬编码 `fee_rate = 0.0`，低价 Token 存在严重负 EV 隐患 | **已修复** | **P7-ALGO-1B Task 2** 已对齐 v1 `strategy.py:691` 动态公式：$q = p \times [1 + \text{base\_fee} \times (1 - p)]$；Maker 联动返佣公式已实现；单测全绿。Commit: `0f1ac61` |
+| **UNDECIDED-03** | 稳健凯利 Minimax 在 v2 中缺失 | `multinomial_kelly.py` 仅为普通点估计多项凯利，缺失 $(\theta, \eta)$ 不确定集投影 | **挂起 (C-1)** | 登记为独立演进候选，待用户后续授权与算法评审裁决 |
+| **UNDECIDED-04** | Dutch Book 跨档锁利与对冲豁免机制在 v2 中缺失 | 缺失反向 NO 与全包 YES 锁利与 $C_{\text{loc}}$ 预算豁免逻辑 | **挂起 (C-2)** | 登记为独立演进候选，待实盘/纸面盘观察期根据盘口流动性裁决 |
+| **UNDECIDED-05** | 两步标定法脚本未随文档入库 | 《参数标定方案》v1.0 配套脚本滞留外部，本库无复现脚本 | **已入库 (只读隔离)** | **P7-ALGO-1B Task 1** 已随 v1 资产完整入库至 `legacy/v1-strategy/scratch/`（含 `calibrate_financial_params.py` 等）。Commit: `8b9f05b` |
+
+---
+
+## 二、 C 类三案挂起条目 (Deferred Candidate Proposals)
+
+依据 P7-ALGO-1 考古卷宗 §5.2，v2 在交易侧重构时与 v1 发生了一次断层式简化。以下三项列入悬置候选池，**严禁在无明确授权前擅自编写生产代码**：
+
+### 1. 提案 C-1：多项稳健凯利 Minimax 不确定集最坏情况投影 (Robust Kelly Minimax)
+- **历史事实**：v1 `strategy.py:243-345` 实现了 `project_worst_case_probabilities(p_model, q_market, theta, eta)`，在水深不足或天气噪声大时，将预测概率 $p$ 向市场价格 $q$ 作有界最坏情况收缩，有效抑制凯利过度下注。
+- **当前现状**：v2 `src/bankroll/multinomial_kelly.py` 仅使用点估计概率 $p$ 求解 SLSQP。
+- **挂起状态**：**【挂起待裁决】**。待气象端 EMOS 置信区间（或 CRPS 分布参数）与交易端衔接成熟后，由专门的架构评审决定是否引入 Minimax 投影或作为可插拔层接入。
+
+### 2. 提案 C-2：Dutch Book 跨档无风险反向锁利与 $C_{\text{loc}}$ 预算豁免 (Dutch Book & Hedging Exemption)
+- **历史事实**：v1 `strategy.py:734-770` 实现了当全档位赔率倒挂（$\sum q_i < 1.0$）或反向 NO 存在确定性套利空间时，触发跨档锁利，并在资金池中豁免其 $C_{\text{loc}}$ 预算上限（因其为确定性回笼而非风险暴露）。
+- **当前现状**：v2 纸面盘目前只支持单方向购买 YES 离散档位，无反向 NO 机制，无跨档套利状态机。
+- **挂起状态**：**【挂起待裁决】**。属于多资产组合套利高级功能，在 W2 纸面盘基础闭环稳固前保持冻结。
+
+### 3. 提案 C-3：两步标定法反事实模拟参数寻优 (Two-Stage Parameter Calibration Pipeline)
+- **历史事实**：v1 《天气套利参数标定与联合优化方案》v1.0 与 `calibrate_financial_params.py` 实现了基于历史盘口与气象预测缓存反事实回测搜索 $(\theta, \eta, \gamma)$ 最优超参的自动化流程。
+- **当前现状**：v2 目前使用执行文件与 ADR 预设的经验参数，尚未建立针对 Polymarket 历史分钟级盘口的反事实标定流水线。
+- **挂起状态**：**【挂起待裁决】**。配套脚本已在 `legacy/v1-strategy/scratch/` 归档。待后续盘口高频数据累积充足后，再行评估是否复现为 Phase 2 生产级标定工具。
+
+---
+
+## 三、 本工单（P7-ALGO-1B）执行记录与凭据
+
+### 1. 代码与工件改动清单
+
+| 类别 | 相对路径 | 改动性质 | 关联任务 |
+| :--- | :--- | :--- | :--- |
+| **Legacy 资产** | `legacy/v1-strategy/` | 新建目录（含只读 `README.md`、策略源码、配置与 scratch 脚本） | 任务 1 |
+| **定价核心** | `src/pricing/ev_engine.py` | 修正：移除 `fee_rate: 0.0` 默认假设，落地动态 Taker 费率与 Maker 返佣公式 | 任务 2 |
+| **单测套件** | `tests/unit/pricing/test_ev_engine.py` | 新增：3 个测试用例（动态 Taker 费率、Maker 返佣、低价档位敏感性验证） | 任务 2 |
+| **采集适配** | `src/data_acquisition/polymarket_clob_collector.py` | 适配：恢复 `ACTIVE_10` 站点映射导出接口保障单测自洽 | 任务 2 附属 |
+| **审计台账** | `docs/audit/DECISION_LEDGER.md` | 新建：悬置裁决台账，追踪未决事项与 C 类提案 | 任务 3 |
+
+### 2. 独立 Commit 凭据
+
+- **任务 1 资产入库 Commit**：
+  - Hash: `8b9f05b7647fb515b37092dbce9984070b91feeb`
+  - Message: `chore(legacy): 入库 v1 策略代码与配置资产作为只读考古参照`
+- **任务 2 缺陷修复 Commit**：
+  - Hash: `0f1ac6153d801a13a88d4cee6307c4e7fa6ad49e`
+  - Message: `fix(pricing): 修复零费率缺陷并落地 v1 动态费率与 Maker 返佣公式`
+- **远端同步状态**：
+  - 本地处于分支 `fix/p7-w2-shortloop`；
+  - 严格遵守《AGENTS.md》铁律，**未执行 `git push`**。
+
+---
+
+## 四、 P7-ALGO-VERDICT-DOC 判决书落盘与对应关系登记
+
+### 1. 判决书落盘凭据
+- **文件路径**：`docs/audit/P7-ALGO-VERDICT.md`
+- **版本与状态**：v0.2，框架定稿、判词除 M-2 外留白
+- **落盘 Commit**：`8d68d93bb5273185f8d2758f1031fbbfbd7121dd`（`docs: P7-ALGO-VERDICT v0.2 框架定稿`）
+
+### 2. M-2 已闭环判词登记
+- **条目**：M-2 动态费率模型
+- **判词内容（已裁，2026-10）**：
+  > 流程与方式确认无误；代码实现细节留一次复核（实盘亏损与费率无关，用户确认）。v2 修复（P7-ALGO-1B）予以追认；base 值与动态结构的对外核实一次后此条闭环。
+- **关联台账状态**：UNDECIDED-02 已修复并闭环。
+
+### 3. C 类三案挂起状态与判决书对应关系核验及解锁（2026-10-13 用户签署）
+依据 2026-10-13 用户对《v1 遗产判决书》v0.2 之最终逐条签署（见 `REMEDIATION_PLAN.md` §五），C 类三案状态正式由【挂起】流转为【已解锁】（解锁语境 = P7-ALGO-2 算法规格书编制）：
+- **提案 C-1 (shrinkage / Minimax 关联)** $\Longleftrightarrow$ **判决书 M-4 (胜率向市场价收缩 Shrinkage)**：**【已解锁 · 裁决废弃】**（微观结构报告证实我方物理信息优势，不移植 v1 Sigmoid 市场收缩，由概率层 𝒫 区间承担防守）；
+- **提案 C-2 (Dutch Book & 对冲豁免)** $\Longleftrightarrow$ **判决书 M-3 (Dutch Book 扫描与对冲豁免)**：**【已解锁 · 裁决保留】**（作为独立通道不走凯利目标函数，豁免经 ADR-0014 中枢统一登记，写入 P7-ALGO-2 规格）；
+- **提案 C-3 (两步标定法)** $\Longleftrightarrow$ **判决书 M-5 (两步标定法 Brier σ 标定 + 反事实 sizing)**：**【已解锁 · 框架复用】**（θ/η 网格搜索框架进规格；标定对象重定义为 EMOS 时代口径；挂 F-2 锁等待纸面盘自产数据，v1 历史样本不作先验）。
+
+---
+
+## 五、 REMEDIATION_PLAN 本地执行记录 (2026-10-13)
+
+| 整改项 | 类别 | 实际执行动作 | 状态 |
+| :--- | :--- | :--- | :--- |
+| **R-04 & R-05** | 命名基线 | 修订《项目方案 (v2.8)》与《Phase 2 执行文件 v2.1》，彻底清理非法 "Phase 4~7" 描述，确立 Phase 1/1.5/2/3 四阶段 + 工单 P4~P7 + 任务 Task 01~07 + 波次 W1~W3 体系 | ✅ 已完成 |
+| **R-06** | ADR 命名 | 统一为 `ADR-XXXX：中文主题.md` 单文件规范，完成 ADR-0001~0006 与 ADR-0018 重命名 | ✅ 已完成 |
+| **R-07 & R-08** | ADR 治理 | 确认删除 ADR-0016 缺失占位；正式废止引用该文件的 ADR-0017，移入 `docs/archive/` 归档 | ✅ 已完成 |
+| **R-13** | 历史文档归档 | 将方案历史版本（v2.2~v2.7）、执行文件旧版（Phase 1/1.5/2）、历史子任务单及早期英文文档统一移入 `docs/archive/`，新建索引 `docs/archive/README.md` | ✅ 已完成 |
+| **R-18** | 代码卫生 | 移出 `src/data_acquisition/` 中的 Wunderground 历史抓取脚本至 `docs/archive/wunderground_scripts/`，清理 `__init__.py`，跑通单测（157 passed, 4 skipped） | ✅ 已完成 |
+
+

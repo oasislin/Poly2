@@ -1,0 +1,524 @@
+{
+  "RKSI": {
+    "city": "Seoul/Incheon",
+    "lat": 37.469,
+    "lon": 126.451,
+    "timezone": "Asia/Seoul",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "KNYC": {
+    "city": "New York City (Central Park)",
+    "lat": 40.779,
+    "lon": -73.9692,
+    "timezone": "America/New_York",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "EGLL": {
+    "city": "London Heathrow",
+    "lat": 51.47,
+    "lon": -0.454,
+    "timezone": "Europe/London",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "RJTT": {
+    "city": "Tokyo Haneda",
+    "lat": 35.553,
+    "lon": 139.781,
+    "timezone": "Asia/Tokyo",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "VHHH": {
+    "city": "Hong Kong",
+    "lat": 22.309,
+    "lon": 113.922,
+    "timezone": "Asia/Hong_Kong",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "tropics"
+  },
+  "ZBAA": {
+    "city": "Beijing",
+    "lat": 40.082,
+    "lon": 116.603,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZGGG": {
+    "city": "Guangzhou",
+    "lat": 23.392,
+    "lon": 113.307,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "ZHHH": {
+    "city": "Wuhan",
+    "lat": 30.783,
+    "lon": 114.205,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZSQD": {
+    "city": "Qingdao",
+    "lat": 36.362,
+    "lon": 120.087,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "RCTP": {
+    "city": "Taipei Taoyuan",
+    "lat": 25.078,
+    "lon": 121.233,
+    "timezone": "Asia/Taipei",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "RCSS": {
+    "city": "Taipei Songshan",
+    "lat": 25.069,
+    "lon": 121.552,
+    "timezone": "Asia/Taipei",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "EHAM": {
+    "city": "Amsterdam",
+    "lat": 52.315,
+    "lon": 4.79,
+    "timezone": "Europe/Amsterdam",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LFPG": {
+    "city": "Paris Charles de Gaulle",
+    "lat": 49.015,
+    "lon": 2.534,
+    "timezone": "Europe/Paris",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LFPO": {
+    "city": "Paris Orly",
+    "lat": 48.717,
+    "lon": 2.384,
+    "timezone": "Europe/Paris",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "EDDM": {
+    "city": "Munich",
+    "lat": 48.348,
+    "lon": 11.813,
+    "timezone": "Europe/Berlin",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LEMD": {
+    "city": "Madrid",
+    "lat": 40.466,
+    "lon": -3.555,
+    "timezone": "Europe/Madrid",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LIMC": {
+    "city": "Milan Malpensa",
+    "lat": 45.631,
+    "lon": 8.728,
+    "timezone": "Europe/Rome",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "EPWA": {
+    "city": "Warsaw",
+    "lat": 52.163,
+    "lon": 20.961,
+    "timezone": "Europe/Warsaw",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "EFHK": {
+    "city": "Helsinki",
+    "lat": 60.327,
+    "lon": 24.957,
+    "timezone": "Europe/Helsinki",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "FACT": {
+    "city": "Cape Town",
+    "lat": -33.965,
+    "lon": 18.602,
+    "timezone": "Africa/Johannesburg",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "SAEZ": {
+    "city": "Buenos Aires",
+    "lat": -34.822,
+    "lon": -58.536,
+    "timezone": "America/Argentina/Buenos_Aires",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "SBGR": {
+    "city": "Sao Paulo",
+    "lat": -23.432,
+    "lon": -46.469,
+    "timezone": "America/Sao_Paulo",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "tropics"
+  },
+  "MPTO": {
+    "city": "Panama City",
+    "lat": 9.056,
+    "lon": -79.391,
+    "timezone": "America/Panama",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "MMMX": {
+    "city": "Mexico City",
+    "lat": 19.436,
+    "lon": -99.072,
+    "timezone": "America/Mexico_City",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "CYYZ": {
+    "city": "Toronto",
+    "lat": 43.679,
+    "lon": -79.629,
+    "timezone": "America/Toronto",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "NZWN": {
+    "city": "Wellington",
+    "lat": -41.331,
+    "lon": 174.806,
+    "timezone": "Pacific/Auckland",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "WSSS": {
+    "city": "Singapore",
+    "lat": 1.368,
+    "lon": 103.982,
+    "timezone": "Asia/Singapore",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "tropics"
+  },
+  "WMKK": {
+    "city": "Kuala Lumpur",
+    "lat": 2.747,
+    "lon": 101.714,
+    "timezone": "Asia/Kuala_Lumpur",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "RPLL": {
+    "city": "Manila",
+    "lat": 14.507,
+    "lon": 121.004,
+    "timezone": "Asia/Manila",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "OPKC": {
+    "city": "Karachi",
+    "lat": 24.902,
+    "lon": 67.139,
+    "timezone": "Asia/Karachi",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "KLAX": {
+    "city": "Los Angeles",
+    "lat": 33.93817,
+    "lon": -118.3866,
+    "timezone": "America/Los_Angeles",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "KSFO": {
+    "city": "San Francisco",
+    "lat": 37.61961,
+    "lon": -122.36561,
+    "timezone": "America/Los_Angeles",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "UUEE": {
+    "city": "Moscow",
+    "lat": 55.973,
+    "lon": 37.415,
+    "timezone": "Europe/Moscow",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LTFM": {
+    "city": "Istanbul",
+    "lat": 41.262,
+    "lon": 28.74,
+    "timezone": "Europe/Istanbul",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LTAC": {
+    "city": "Ankara",
+    "lat": 40.128,
+    "lon": 32.995,
+    "timezone": "Europe/Istanbul",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LLBG": {
+    "city": "Tel Aviv",
+    "lat": 31.93,
+    "lon": 34.86,
+    "timezone": "Asia/Jerusalem",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ATLA": {
+    "city": "Atlanta",
+    "lat": 33.64,
+    "lon": -84.428,
+    "timezone": "America/New_York",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "HOUS": {
+    "city": "Houston",
+    "lat": 29.645,
+    "lon": -95.279,
+    "timezone": "America/Chicago",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "CHIC": {
+    "city": "Chicago",
+    "lat": 41.974,
+    "lon": -87.907,
+    "timezone": "America/Chicago",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "AUST": {
+    "city": "Austin",
+    "lat": 30.194,
+    "lon": -97.67,
+    "timezone": "America/Chicago",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "DENV": {
+    "city": "Denver",
+    "lat": 39.856,
+    "lon": -104.673,
+    "timezone": "America/Denver",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "AURO": {
+    "city": "Denver",
+    "lat": 39.856,
+    "lon": -104.673,
+    "timezone": "America/Denver",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "MIAI": {
+    "city": "Miami",
+    "lat": 25.793,
+    "lon": -80.29,
+    "timezone": "America/New_York",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "MIAM": {
+    "city": "Miami",
+    "lat": 25.793,
+    "lon": -80.29,
+    "timezone": "America/New_York",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "SEAT": {
+    "city": "Seattle",
+    "lat": 47.448,
+    "lon": -122.309,
+    "timezone": "America/Los_Angeles",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "DALL": {
+    "city": "Dallas",
+    "lat": 32.899,
+    "lon": -97.04,
+    "timezone": "America/Chicago",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZSJN": {
+    "city": "Jinan",
+    "lat": 36.66,
+    "lon": 117.02,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZHCC": {
+    "city": "Zhengzhou",
+    "lat": 34.75,
+    "lon": 113.62,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZSPD": {
+    "city": "Shanghai",
+    "lat": 31.15,
+    "lon": 121.8,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZUCK": {
+    "city": "Chongqing",
+    "lat": 29.57,
+    "lon": 106.55,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZUUU": {
+    "city": "Chengdu",
+    "lat": 30.39,
+    "lon": 104.55,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "ZGSZ": {
+    "city": "Shenzhen",
+    "lat": 22.64,
+    "lon": 113.83,
+    "timezone": "Asia/Shanghai",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "RKPK": {
+    "city": "Busan",
+    "lat": 35.18,
+    "lon": 129.07,
+    "timezone": "Asia/Seoul",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "EGLC": {
+    "city": "London",
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "timezone": "Europe/London",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "LFPB": {
+    "city": "Paris",
+    "lat": 48.97,
+    "lon": 2.441,
+    "timezone": "Europe/Paris",
+    "is_tracked": true,
+    "is_tradable": true,
+    "climate_zone": "mid_lat"
+  },
+  "VILK": {
+    "city": "Lucknow",
+    "lat": 26.74,
+    "lon": 80.86,
+    "timezone": "Asia/Kolkata",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "mid_lat"
+  },
+  "OEJN": {
+    "city": "Jeddah",
+    "lat": 21.58,
+    "lon": 39.16,
+    "timezone": "Asia/Riyadh",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  },
+  "MPMG": {
+    "city": "Panama City",
+    "lat": 8.973,
+    "lon": -79.555,
+    "timezone": "America/Panama",
+    "is_tracked": true,
+    "is_tradable": false,
+    "climate_zone": "tropics"
+  }
+}

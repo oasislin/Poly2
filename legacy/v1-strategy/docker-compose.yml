@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # 1. 交易核心守护进程 (Daemon)
+  weather_arbitrage_bot:
+    build: .
+    container_name: weather_bot_runtime
+    command: python src/main.py
+    volumes:
+      - ./config:/app/config:ro        # 静态配置挂载（只读）
+      - ./protocols:/app/protocols:rw  # 协议文件总线挂载（读写）
+      - ./storage:/app/storage:rw      # 数据库与日志挂载（读写）
+    environment:
+      - HTTP_PROXY=${LAN_HTTP_PROXY}
+      - HTTPS_PROXY=${LAN_HTTPS_PROXY}
+      - POLYMARKET_PRIVATE_KEY=${POLYMARKET_PRIVATE_KEY}
+    restart: always
+
+  # 2. 实时监控看板服务 (Streamlit Dashboard)
+  weather_arbitrage_dashboard:
+    build: .
+    container_name: weather_bot_dashboard
+    command: streamlit run src/dashboard.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./config:/app/config:ro
+      - ./protocols:/app/protocols:rw
+      - ./storage:/app/storage:rw
+    environment:
+      - HTTP_PROXY=${LAN_HTTP_PROXY}
+      - HTTPS_PROXY=${LAN_HTTPS_PROXY}
+    restart: always
