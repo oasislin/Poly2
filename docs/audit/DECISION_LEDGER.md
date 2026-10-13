@@ -94,6 +94,7 @@
 | **R-06** | ADR 命名 | 统一为 `ADR-XXXX：中文主题.md` 单文件规范，完成 ADR-0001~0006 与 ADR-0018 重命名 | ✅ 已完成 |
 | **R-07 & R-08** | ADR 治理 | 确认删除 ADR-0016 缺失占位；正式废止引用该文件的 ADR-0017，移入 `docs/archive/` 归档 | ✅ 已完成 |
 | **R-13** | 历史文档归档 | 将方案历史版本（v2.2~v2.7）、执行文件旧版（Phase 1/1.5/2）、历史子任务单及早期英文文档统一移入 `docs/archive/`，新建索引 `docs/archive/README.md` | ✅ 已完成 |
+| **R-16** | 交易模块归档 | 依据方案 B 将 `src/`（27）、`tests/`（20）、`scripts/`（5）共 52 文件移入 `docs/archive/trading_modules/` 并新建 `README.md`（共 53 文件）；保留 `src/risk/stream_watchdog.py` 原位依赖；全量现役测试通过（649 passed） | ✅ 已完成 |
 | **R-18** | 代码卫生 | 移出 `src/data_acquisition/` 中的 Wunderground 历史抓取脚本至 `docs/archive/wunderground_scripts/`，清理 `__init__.py`，跑通单测（157 passed, 4 skipped） | ✅ 已完成 |
 
 
