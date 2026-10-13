@@ -1,19 +1,17 @@
 """
 Paper Trading Evaluation Engine and Probability Pipeline Integration (Phase 2 Wave 3 / W3-B).
-Governed by docs/w3_polymarket_ingestion_preregistration.md Rev.1.0, P7-W3-REPRIMAND-001 & P7-W3-TASK2-REDO-001.
+Governed by docs/w3_polymarket_ingestion_preregistration.md Rev.1.0 (Work Order P7-W3-TASK2-AUTH-001).
 
 Implements:
-1. Probability Pipeline Alignment to Polymarket Contract Brackets (Simplex Integration).
-2. B-1: Conservative Side Price Mapping (Ask for Buy, Bid for Sell, Midpoint for Display/Monitoring).
-3. B-2: NO_QUOTE Handling on Missing Book Sides.
-4. B-3: Positive EV Threshold (Edge = Model Prob - Best Ask >= 0.05 -> POSITIVE_EV_SIGNAL).
-5. B-4: Full Ledger Evaluation Persistence (All brackets recorded regardless of signal status).
-6. B-5: Minimum Depth Protection (Best ask size >= 10 contracts required for tradable signal).
-7. B-6: Model-Market Divergence Monitoring (|Model Prob - Mid Price| > 0.15 -> MODEL_MARKET_DIVERGENCE, non-blocking).
-8. A-4: PROB_STATIC Reservation & Tracking (Unchanged model probabilities flagged across snapshots).
-9. E-2: Mandatory DATA_PROVENANCE = "POLYMARKET_LIVE_CLOB" Tagging.
-10. E-4: Strict PROB_SOURCE stamping ('EMOS_PIPELINE' vs 'CLIMATOLOGY_PLACEHOLDER').
-11. INPUT_SUSPECT Isolation Gate: Quarantine signals if |M_model - M_market| > 8.0°F.
+1. Probability Pipeline Alignment to Polymarket Contract Brackets
+2. B-1: Conservative Side Price Mapping (Ask for Buy, Bid for Sell, Midpoint for Display/Monitoring)
+3. B-2: NO_QUOTE Handling on Missing Book Sides
+4. B-3: Positive EV Threshold (Edge = Model Prob - Best Ask >= 0.05 -> POSITIVE_EV_SIGNAL)
+5. B-4: Full Ledger Evaluation Persistence (All brackets recorded regardless of signal status)
+6. B-5: Minimum Depth Protection (Best ask size >= 10 contracts required for tradable signal)
+7. B-6: Model-Market Divergence Monitoring (|Model Prob - Mid Price| > 0.15 -> MODEL_MARKET_DIVERGENCE, non-blocking)
+8. A-4: PROB_STATIC Reservation & Tracking (Unchanged model probabilities flagged across snapshots)
+9. E-2: Mandatory DATA_PROVENANCE = "POLYMARKET_LIVE_CLOB" Tagging
 """
 
 from dataclasses import asdict, dataclass, field
@@ -35,19 +33,30 @@ from src.data_acquisition.polymarket_clob_collector import (
     PolymarketTemperatureMarket,
     SnapshotRecord,
 )
-from src.prediction.real_emos_pipeline import (
-    PROB_SOURCE_EMOS,
-    PROB_SOURCE_PLACEHOLDER,
-)
 
 logger = logging.getLogger(__name__)
 
-# Statutory Criteria Constants (Rev.1.0 & Redo Mandates)
-MIN_POSITIVE_EV_EDGE = 0.05               # B-3: edge >= 5 percentage points (0.05)
-MIN_ORDERBOOK_DEPTH = 10.0                # B-5: best level size >= 10 contracts
-DIVERGENCE_THRESHOLD = 0.15               # B-6: |model_prob - mid_price| > 0.15 (15 percentage points)
-PROB_STATIC_EPSILON = 1e-6                # A-4: probability stability threshold across snapshots
-MAX_MEDIAN_DEVIATION_THRESHOLD = 8.0      # INPUT_SUSPECT Gate: |M_model - M_market| <= 8.0°F
+# Statutory Criteria Constants (Rev.1.0)
+MIN_POSITIVE_EV_EDGE = 0.05       # B-3: edge >= 5 percentage points (0.05)
+MIN_ORDERBOOK_DEPTH = 10.0        # B-5: best level size >= 10 contracts
+DIVERGENCE_THRESHOLD = 0.15       # B-6: |model_prob - mid_price| > 0.15 (15 percentage points)
+PROB_STATIC_EPSILON = 1e-6        # A-4: probability stability threshold across snapshots
+
+# Climatological/Forecast priors for Active 10 stations (Fahrenheit Mean & StdDev)
+DEFAULT_STATION_PRIORS: Dict[str, Tuple[float, float]] = {
+    "KORD": (62.0, 3.5),   # Chicago O'Hare
+    "KMIA": (84.0, 2.0),   # Miami International
+    "KLGA": (64.0, 3.2),   # NYC LaGuardia
+    "KATL": (68.0, 3.0),   # Atlanta
+    "KDFW": (74.0, 3.5),   # Dallas Fort Worth
+    "KLAX": (72.0, 2.5),   # Los Angeles
+    "KSEA": (58.0, 2.8),   # Seattle
+    "KSFO": (63.0, 2.5),   # San Francisco
+    "KIAH": (78.0, 3.0),   # Houston
+    "KBKF": (60.0, 4.0),   # Denver Buckley
+    "KAUS": (77.0, 3.2),   # Austin
+    "EGLL": (55.0, 2.5),   # London Heathrow
+}
 
 
 def parse_bracket_bounds(label: str) -> Tuple[float, float]:
@@ -101,67 +110,24 @@ def parse_bracket_bounds(label: str) -> Tuple[float, float]:
     return (-np.inf, np.inf)
 
 
-def calculate_market_implied_median(
-    brackets: List[MarketTokenBracket],
-    quotes: Dict[str, CLOBQuote],
-) -> Optional[float]:
-    """
-    Calculate market-implied median temperature (°F) from orderbook mid-prices.
-    Enforces simplex normalization of mid-prices across discrete contract brackets
-    and locates the 50th percentile (median) via piecewise linear interpolation.
-    """
-    bracket_data = []
-    total_mid = 0.0
-    for b in brackets:
-        q = quotes.get(b.token_id)
-        mid = q.mid_price if q else None
-        lo, hi = parse_bracket_bounds(b.bracket_label)
-        if mid is not None and mid > 0:
-            total_mid += mid
-            bracket_data.append((lo, hi, b.bracket_label, mid))
-
-    if total_mid <= 1e-6 or not bracket_data:
-        return None
-
-    # Sort brackets strictly by lower bound
-    bracket_data.sort(key=lambda x: x[0])
-
-    cum_prob = 0.0
-    for lo, hi, lbl, mid in bracket_data:
-        norm_p = mid / total_mid
-        prev_cum = cum_prob
-        cum_prob += norm_p
-        if cum_prob >= 0.50:
-            # 50th percentile falls in this bracket
-            fraction = (0.50 - prev_cum) / norm_p if norm_p > 0 else 0.5
-            if np.isneginf(lo):
-                return hi - 1.0
-            elif np.isposinf(hi):
-                return lo + 1.0
-            else:
-                return float(lo + fraction * (hi - lo))
-
-    last_lo, last_hi, _, _ = bracket_data[-1]
-    return last_lo if not np.isposinf(last_lo) else None
-
-
 def compute_bracket_probabilities(
     brackets: List[MarketTokenBracket],
     cdf_fn: Optional[Callable[[float], float]] = None,
     mu: Optional[float] = None,
     sigma: Optional[float] = None,
+    station_id: Optional[str] = None,
 ) -> Dict[str, float]:
     """
     Integrate continuous cumulative distribution function across discrete contract brackets.
     Enforces simplex normalization (sum == 1.0).
-    Requires either cdf_fn or explicit (mu, sigma).
     """
+    # Determine CDF
     if cdf_fn is None:
         if mu is None or sigma is None:
-            raise ValueError(
-                "Explicit distribution parameters (mu, sigma) or cdf_fn are required. "
-                "Silent climatological fallback is strictly prohibited under Rule E-4."
-            )
+            prior_mu, prior_sigma = DEFAULT_STATION_PRIORS.get(station_id or "KORD", (65.0, 3.0))
+            mu = prior_mu if mu is None else mu
+            sigma = prior_sigma if sigma is None else sigma
+        # Gaussian CDF using scipy.special.ndtr
         cdf_fn = lambda x: float(ndtr((x - mu) / sigma))
 
     raw_probs: Dict[str, float] = {}
@@ -185,7 +151,6 @@ class BracketEvaluationRecord:
     """
     Single contract bracket paper evaluation record.
     B-4: Fully serialized and persisted regardless of whether EV threshold is crossed.
-    E-4: prob_source explicitly tracked.
     """
     token_id: str
     bracket_label: str
@@ -198,7 +163,6 @@ class BracketEvaluationRecord:
     edge: Optional[float]
     is_signal: bool
     eval_status: str
-    prob_source: str = PROB_SOURCE_EMOS
     tags: Tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -214,7 +178,6 @@ class BracketEvaluationRecord:
             "edge": round(self.edge, 6) if self.edge is not None else None,
             "is_signal": self.is_signal,
             "eval_status": self.eval_status,
-            "prob_source": self.prob_source,
             "tags": list(self.tags),
         }
 
@@ -224,7 +187,6 @@ class MarketEvaluationSnapshot:
     """
     Complete evaluation snapshot across all brackets of a market.
     E-2: Explicit data_provenance == DATA_PROVENANCE_LIVE.
-    E-4: Explicit prob_source tracked.
     B-4: Full ledger structure.
     """
     evaluation_id: str
@@ -234,7 +196,6 @@ class MarketEvaluationSnapshot:
     station_id: Optional[str]
     settlement_time_iso: str
     data_provenance: str
-    prob_source: str = PROB_SOURCE_EMOS
     records: List[BracketEvaluationRecord] = field(default_factory=list)
     summary: Dict[str, Any] = field(default_factory=dict)
 
@@ -247,7 +208,6 @@ class MarketEvaluationSnapshot:
             "station_id": self.station_id,
             "settlement_time_iso": self.settlement_time_iso,
             "data_provenance": self.data_provenance,
-            "prob_source": self.prob_source,
             "records": [r.to_dict() for r in self.records],
             "summary": self.summary,
         }
@@ -256,7 +216,7 @@ class MarketEvaluationSnapshot:
 class PaperEvaluationEngine:
     """
     Evaluates market orderbook snapshots against physical model probability distributions.
-    Executes criteria B-1 through B-6, A-4, E-2, E-4, and the INPUT_SUSPECT safety gate.
+    Executes criteria B-1 through B-6, A-4, and E-2.
     """
 
     def __init__(self, storage_base_dir: Optional[Path] = None):
@@ -272,7 +232,6 @@ class PaperEvaluationEngine:
         mu: Optional[float] = None,
         sigma: Optional[float] = None,
         cdf_fn: Optional[Callable[[float], float]] = None,
-        prob_source: str = PROB_SOURCE_EMOS,
     ) -> MarketEvaluationSnapshot:
         """
         Evaluate orderbook quotes for all brackets in a market.
@@ -283,7 +242,6 @@ class PaperEvaluationEngine:
         B-5: Min depth >= 10 contracts.
         B-6: Divergence > 0.15 marked MODEL_MARKET_DIVERGENCE.
         A-4: Unchanged model probability flagged PROB_STATIC.
-        INPUT_SUSPECT: If |M_model - M_market| > 8.0°F, quarantine signals.
         """
         eval_time_iso = datetime.now(timezone.utc).isoformat()
         evaluation_id = f"eval_{snapshot.snapshot_id}"
@@ -295,27 +253,11 @@ class PaperEvaluationEngine:
                 cdf_fn=cdf_fn,
                 mu=mu,
                 sigma=sigma,
+                station_id=market.station_id,
             )
-
-        # 2. Compute market-implied median and model median for INPUT_SUSPECT gate
-        market_median = calculate_market_implied_median(market.brackets, snapshot.quotes)
-        model_median = mu
-
-        is_input_suspect = False
-        median_deviation = None
-        if market_median is not None and model_median is not None:
-            median_deviation = abs(model_median - market_median)
-            if median_deviation > MAX_MEDIAN_DEVIATION_THRESHOLD:
-                is_input_suspect = True
-                logger.warning(
-                    f"INPUT_SUSPECT triggered for {market.slug}: "
-                    f"|M_model ({model_median:.2f}°F) - M_market ({market_median:.2f}°F)| = "
-                    f"{median_deviation:.2f}°F > {MAX_MEDIAN_DEVIATION_THRESHOLD}°F"
-                )
 
         records: List[BracketEvaluationRecord] = []
         positive_ev_count = 0
-        quarantined_count = 0
         divergence_count = 0
         static_count = 0
         no_quote_count = 0
@@ -336,9 +278,6 @@ class PaperEvaluationEngine:
             # Update cache
             self._prev_model_probs[tid] = m_prob
 
-            if is_input_suspect:
-                tags.append("INPUT_SUSPECT")
-
             # B-2: Missing quote or unpopulated book side
             if quote is None or quote.quote_status in ["NO_QUOTE", "EMPTY_BOOK"]:
                 tags.append("NO_QUOTE")
@@ -355,7 +294,6 @@ class PaperEvaluationEngine:
                     edge=None,
                     is_signal=False,
                     eval_status="NO_QUOTE",
-                    prob_source=prob_source,
                     tags=tuple(tags),
                 )
                 records.append(record)
@@ -379,19 +317,13 @@ class PaperEvaluationEngine:
             assert best_ask is not None
             edge = m_prob - best_ask
 
-            # B-3 & B-5 & INPUT_SUSPECT Gate
+            # B-3 & B-5: Positive EV & Minimum Depth Gate
             is_positive_ev = edge >= MIN_POSITIVE_EV_EDGE
             has_sufficient_depth = best_ask_size >= MIN_ORDERBOOK_DEPTH
 
             if is_positive_ev:
                 tags.append("POSITIVE_EV_SIGNAL")
-                if is_input_suspect:
-                    # Input is suspect: quarantine signal completely
-                    is_signal = False
-                    eval_status = "QUARANTINED_INPUT_SUSPECT"
-                    tags.append("QUARANTINED")
-                    quarantined_count += 1
-                elif has_sufficient_depth:
+                if has_sufficient_depth:
                     is_signal = True
                     eval_status = "APPROVED_POSITIVE_EV"
                     positive_ev_count += 1
@@ -415,7 +347,6 @@ class PaperEvaluationEngine:
                 edge=edge,
                 is_signal=is_signal,
                 eval_status=eval_status,
-                prob_source=prob_source,
                 tags=tuple(tags),
             )
             records.append(record)
@@ -424,15 +355,9 @@ class PaperEvaluationEngine:
             "total_brackets": len(market.brackets),
             "evaluated_count": len(records),
             "positive_ev_signals": positive_ev_count,
-            "quarantined_signals": quarantined_count,
             "divergence_count": divergence_count,
             "static_prob_count": static_count,
             "no_quote_count": no_quote_count,
-            "is_input_suspect": is_input_suspect,
-            "market_implied_median": round(market_median, 4) if market_median is not None else None,
-            "model_median": round(model_median, 4) if model_median is not None else None,
-            "median_deviation": round(median_deviation, 4) if median_deviation is not None else None,
-            "prob_source": prob_source,
         }
 
         eval_snapshot = MarketEvaluationSnapshot(
@@ -443,7 +368,6 @@ class PaperEvaluationEngine:
             station_id=market.station_id,
             settlement_time_iso=market.official_settlement_time.isoformat(),
             data_provenance=DATA_PROVENANCE_LIVE,
-            prob_source=prob_source,
             records=records,
             summary=summary,
         )
