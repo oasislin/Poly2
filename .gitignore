@@ -9,4 +9,4 @@ temp/
 *.log
 .env
 *.env
-
+*_Conflict*

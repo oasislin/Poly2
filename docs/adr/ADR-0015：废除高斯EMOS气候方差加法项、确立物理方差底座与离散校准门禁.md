@@ -1,6 +1,6 @@
 # ADR-0015：废除高斯 EMOS 气候方差加法项、确立物理方差底座与离散校准门禁
 
-- **状态**: APPROVED (Review R5 最终闭环)
+- **状态**: APPROVED (Review R5 最终闭环 · 2026-10-19 依据裁决 D2 修订对齐 ECE≤5.0%)
 - **提出日期**: 2026-09-23
 - **决策者**: 架构委员会、统计独立审查方、Polymarket 气象量化工程组
 - **关联文档**: ADR-0001 (SUPERSEDED), ADR-0010 (SUPERSEDED / VOID)
@@ -45,7 +45,7 @@ $$\mathbb{E}[\sigma_f^2] \le \text{Var}(T) = \sigma_{\text{clim}}^2$$
 - **废除条款**: 彻底移除 Benjamini-Hochberg (BH) 假发现率多重假设检验条款（避免在离散分桶下的多重假设检验谬误）；
 - **主门禁（Primary Rejection Gates）**:
   1. 随机化 PIT 均匀性 Kolmogorov-Smirnov 检验: $p_{\text{KS}} \ge 0.05$（严守单调无偏）；
-  2. 加权期望校准误差 (Weighted ECE): $\text{ECE} \le 3.0\%$（法定硬门禁，5% 提议正式作废回滚）；
+  2. 加权期望校准误差 (Weighted ECE): $\text{ECE} \le 5.0\%$（法定硬门禁，依据裁决 D2 与 ADR-0018 生产 Binding 门禁统一为 $\le 5.0\%$；原 3.0% 限制及 5% 作废回滚条款正式废止反转）；
 - **辅助诊断（Auxiliary Diagnostics）**:
   1. 去偏分层方差比 F 检验: 必须按 $\sigma_f$ 十分位数分层调用，禁止全年池化；
   2. 加权 ECE bootstrap 95% 置信区间；

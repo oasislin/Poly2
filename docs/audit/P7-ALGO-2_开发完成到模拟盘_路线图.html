@@ -1,0 +1,100 @@
+<html style="margin:0;padding:0;">
+<title>P7-ALGO-2 开发完成到模拟盘 差距路线图</title>
+<div style="width:100%;box-sizing:border-box;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Microsoft YaHei',sans-serif;background:#f7f8fa;padding:20px;">
+
+  <div style="font-size:18px;font-weight:700;color:#1a2333;margin-bottom:4px;">P7-ALGO-2 · 开发完成 → 模拟盘：差距路线图</div>
+  <div style="font-size:14px;color:#5a6a7a;margin-bottom:16px;">依据：规格书 v0.6 §9 验证与验收（F-2 锁）、§7 参数挂锁表、算法描述 §10 ECE 梯级门禁、未定项清单第二/三层。示意结构，非精确比例。</div>
+
+  <!-- 主流程阶段带 -->
+  <div style="display:flex;align-items:stretch;gap:0;flex-wrap:nowrap;">
+
+    <!-- 阶段1：开发完成 -->
+    <div style="flex:1;min-width:150px;background:#e8edf5;border:2px solid #3a5a8c;border-radius:8px;padding:10px;position:relative;">
+      <div style="font-size:13px;color:#3a5a8c;font-weight:700;">阶段 0 · 当前</div>
+      <div style="font-size:15px;font-weight:700;color:#1a2333;">按 v0.6 文档开发完成</div>
+      <div style="font-size:12px;color:#5a6a7a;margin-top:6px;">代码可完备编写（M-8）；运行命令与参数落地 <b>[F-2 LOCKED]</b></div>
+    </div>
+
+    <!-- 箭头 -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:0 6px;flex:0 0 34px;">
+      <svg width="34" height="22" viewBox="0 0 34 22"><path d="M2 11h24" stroke="#8a9ab0" stroke-width="2" fill="none"/><path d="M22 3l10 8-10 8" stroke="#8a9ab0" stroke-width="2" fill="none"/></svg>
+    </div>
+
+    <!-- 阶段2：链路冒烟（现在可做） -->
+    <div style="flex:1;min-width:150px;background:#e6f4ea;border:2px solid #2e7d46;border-radius:8px;padding:10px;position:relative;">
+      <div style="font-size:13px;color:#2e7d46;font-weight:700;">现在即可 · 跑得通</div>
+      <div style="font-size:15px;font-weight:700;color:#1a2333;">链路冒烟 / 录播回放</div>
+      <div style="font-size:12px;color:#5a6a7a;margin-top:6px;">单测·契约测试·S1→S7 空跑·无 NaN·Fail-Closed 不误触发·S6 只读观测·结算复刻</div>
+      <div style="font-size:12px;color:#2e7d46;font-weight:600;margin-top:6px;">仅验证"跑得通"，非有效模拟盘</div>
+    </div>
+
+    <!-- 箭头 -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:0 6px;flex:0 0 34px;">
+      <svg width="34" height="22" viewBox="0 0 34 22"><path d="M2 11h24" stroke="#8a9ab0" stroke-width="2" fill="none"/><path d="M22 3l10 8-10 8" stroke="#8a9ab0" stroke-width="2" fill="none"/></svg>
+    </div>
+
+    <!-- 阶段3：F-2 绿灯闸门（卡点） -->
+    <div style="flex:1;min-width:170px;background:#fdeeee;border:2px solid #b23b3b;border-radius:8px;padding:10px;position:relative;">
+      <div style="font-size:13px;color:#b23b3b;font-weight:700;">卡点① · 硬前置</div>
+      <div style="font-size:15px;font-weight:700;color:#1a2333;">F-2 绿灯闸门</div>
+      <div style="font-size:12px;color:#5a6a7a;margin-top:6px;">概率层 ECE/CRPSS 门禁：RED（熔断）/ YELLOW（带旗禁投）/ <b>GREEN（解锁标定）</b></div>
+      <div style="font-size:12px;color:#b23b3b;font-weight:600;margin-top:6px;">未绿灯 → 凯利标定与一切 sizing 调优不得开工</div>
+    </div>
+
+    <!-- 箭头 -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:0 6px;flex:0 0 34px;">
+      <svg width="34" height="22" viewBox="0 0 34 22"><path d="M2 11h24" stroke="#8a9ab0" stroke-width="2" fill="none"/><path d="M22 3l10 8-10 8" stroke="#8a9ab0" stroke-width="2" fill="none"/></svg>
+    </div>
+
+    <!-- 阶段4：两步标定 -->
+    <div style="flex:1;min-width:160px;background:#fdf6e3;border:2px solid #b07d1e;border-radius:8px;padding:10px;position:relative;">
+      <div style="font-size:13px;color:#b07d1e;font-weight:700;">卡点② · 解锁后</div>
+      <div style="font-size:15px;font-weight:700;color:#1a2333;">两步标定</div>
+      <div style="font-size:12px;color:#5a6a7a;margin-top:6px;">Step 0 概率门禁审计 → Step 1 反事实 sizing 产出 (θ,η,δμ,δσ) → Step 2 复核 fractional_multiplier；min_edge / z_crit / z_cert / max_rehedge_loss 标定</div>
+      <div style="font-size:12px;color:#b07d1e;font-weight:600;margin-top:6px;">参数挂锁全部解锁后才能落地运行</div>
+    </div>
+
+    <!-- 箭头 -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:0 6px;flex:0 0 34px;">
+      <svg width="34" height="22" viewBox="0 0 34 22"><path d="M2 11h24" stroke="#8a9ab0" stroke-width="2" fill="none"/><path d="M22 3l10 8-10 8" stroke="#8a9ab0" stroke-width="2" fill="none"/></svg>
+    </div>
+
+    <!-- 阶段5：正式模拟盘 -->
+    <div style="flex:1;min-width:160px;background:#e8edf5;border:2px solid #3a5a8c;border-radius:8px;padding:10px;position:relative;">
+      <div style="font-size:13px;color:#3a5a8c;font-weight:700;">阶段 2 · 目标</div>
+      <div style="font-size:15px;font-weight:700;color:#1a2333;">正式模拟盘</div>
+      <div style="font-size:12px;color:#5a6a7a;margin-top:6px;">纸面盘链路运行（F-2 绿灯后）+ 2019 盲测年 Airgap 回测验证通道 → 行为验收</div>
+      <div style="font-size:12px;color:#3a5a8c;font-weight:600;margin-top:6px;">此时才验证"跑得好"</div>
+    </div>
+
+  </div>
+
+  <!-- 需要增加的工作：三块 -->
+  <div style="margin-top:20px;font-size:15px;font-weight:700;color:#1a2333;">开发完成后 → 模拟盘前，需要增加的工作</div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;">
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #d8dee8;border-left:4px solid #b23b3b;border-radius:6px;padding:12px;box-sizing:border-box;">
+      <div style="font-size:14px;font-weight:700;color:#b23b3b;">① 概率层 F-2 绿灯（最大前置，独立于本规格）</div>
+      <div style="font-size:13px;color:#3a4a5a;margin-top:6px;line-height:1.6;">EMOS 概率模型训练与评估；Binding ECE ≤ 0.05 ∧ 交易窗口 ECE ≤ 0.0100 → GREEN。P1 原则：本规格只消费、不修正概率输出——概率层工作属另一条任务线，必须先绿灯。</div>
+    </div>
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #d8dee8;border-left:4px solid #b07d1e;border-radius:6px;padding:12px;box-sizing:border-box;">
+      <div style="font-size:14px;font-weight:700;color:#b07d1e;">② 数据资产就绪与真实冒烟</div>
+      <div style="font-size:13px;color:#3a4a5a;margin-top:6px;line-height:1.6;">2019 盲测年历史数据、GEFS reforecast 采集确认（铁律：不得预设不存在的资产）；Data API v2 / gamma 元数据 / 盘口深度真实契约测试；tick/lot 真实实例值实测回填（开放项 4）。</div>
+    </div>
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #d8dee8;border-left:4px solid #3a5a8c;border-radius:6px;padding:12px;box-sizing:border-box;">
+      <div style="font-size:14px;font-weight:700;color:#3a5a8c;">③ 标定流水线与纸面盘细节落地</div>
+      <div style="font-size:13px;color:#3a4a5a;margin-top:6px;line-height:1.6;">两步标定 Step 1/2 全流程；[待标定] 项（min_edge / z_crit / z_cert / max_rehedge_loss）标定；paper_engine / settlement_sim 模拟循环细节（快照频率、成交撮合规则、结算判定时序——规格书第三层留白）；JSU/EVT 闭式灵敏度公式（若用非高斯族）。</div>
+    </div>
+
+  </div>
+
+  <!-- 底部结论条 -->
+  <div style="margin-top:16px;background:#1a2333;color:#fff;border-radius:6px;padding:12px;font-size:14px;line-height:1.7;">
+    <b>结论</b>：开发完成当天即可跑"链路冒烟/录播回放"（验证跑得通），但<b>正式模拟盘（验证跑得好）被 F-2 绿灯硬前置 + 参数挂锁 + 数据资产三件事卡住</b>；缺一不可，顺序为：概率层 GREEN → 数据资产确认 → 两步标定解锁 → 正式模拟盘。
+  </div>
+
+</div>
+</html>

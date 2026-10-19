@@ -1,10 +1,10 @@
-# P7-ALGO-2 算法描述文档（数学公式完备版，主导方初稿）
+# P7-ALGO-2 算法描述文档（数学公式完备版，v0.6）
 
 > **文档编号**：P7-ALGO-2-MATH  
-> **版本**：v0.2（主导方初稿；**待开发端挑战审阅**，未定稿——2026-10-13）  
-> **配套**：《P7-ALGO-2 规格书》v0.2（本文件为其数学章节的完备展开）  
-> **状态**：全部公式为结构定义；所有涉及标定/sizing 的参数 `[F-2 LOCKED]` / `[待标定]` / `[待核实]`，不填实值  
-> **依据**：判决书 M-1~M-8、卷宗 §4（v1 公式摘录）、ADR-0011~0015/0018、归档代码契约（ev_engine / risk_limiter / order_router / paper_engine / tests）、Debate 冻结共识
+> **版本**：v0.6（**已对齐市场特性契约 v1.0 + 外部审计修正与 τ_2D 阶梯补注 + 2026-10-19 套利轨废除修剪与 P0-2 严谨性注记**；待用户最终确认）  
+> **配套**：《P7-ALGO-2 规格书》v0.6（本文件为其数学章节的完备展开）  
+> **状态**：全部公式为结构定义；第二层涉及标定/sizing 的参数维持 `[F-2 LOCKED]` / `[待标定]`，不填实值；官方定案项（base=0.05、FAK、Data API v2、pUSD）与外部审计修正项已完成回填；套利三轨已废除，S6 降级为只读错价监控  
+> **依据**：判决书 M-1~M-8、ADR-0011~0015/0018、Polymarket 市场特性契约 v1.0、外部专家审计报告（2026-10-14）、主导方审核意见 v1.0、DR-2026-1014-01~04、DR-2026-1019-01 裁决记录
 
 ---
 
@@ -12,43 +12,49 @@
 
 | 记号 | 含义 | 来源 |
 | :--- | :--- | :--- |
-| $K$ | 档位数（互斥完备市场，如 11 档 2°F 离散区间） | 方案 v2.8 |
+| $K$ | 档位数（互斥完备市场，依站点温标划分为 11 档 2°F 或 1°C 离散区间） | 方案 v2.8 / DR-2026-1014-04 |
 | $\hat p_i$ | 第 $i$ 档概率（EMOS 概率层输出，截断后，$\sum \hat p_i = 1$） | 概率层（F-2 管辖） |
 | $q_i$ | 第 $i$ 档盘口 ask 价 | CLOB 盘口 |
 | $q_{\text{eff}, i}$ | 第 $i$ 档含费率有效买入成本 | §2 |
 | $N_i$ | 第 $i$ 档既有持仓（payout 沉没成本，只买不卖下为外生常数） | 四桶账务 |
-| $W_{\text{free}}$ | 可自由资金（Free USDC） | 四桶账务 |
+| $W_{\text{free}}$ | 可自由资金（Free pUSD，backed by USDC） | 四桶账务 |
 | $B_{\text{eff}}$ | 有效资金 $= \text{Free} + \text{Active}$（sizing 母数，Zombie/Disputed 以 0.0x 剔除） | ADR-0012 |
 | $f_i$ | 第 $i$ 档拟投入金额（决策变量，$f_i \ge 0$） | 本规格 |
-| $\text{base}$ | Polymarket 动态费率基础值（v1 现值 0.0125） | M-2（`[待核实]`） |
+| $\text{base}$ | Polymarket 天气市场动态 Taker 费率系数（**0.05**） | 市场契约 v1.0（✅ 官方定案） |
 | $\text{min\_edge}$ | 最小 Edge 门槛（结构保留，数值 `[待标定]`） | §2 |
 | $\theta, \eta$ | 不确定集宽度参数 | M-1（`[F-2 LOCKED]`） |
 | $\delta_\mu, \delta_\sigma$ | EMOS 参数（μ, σ）的不确定性尺度 | M-1（`[F-2 LOCKED]`） |
-| $m_{\text{dutch}}$ | 套利安全边际（v1 现值 2%，**不继承**） | M-3（`[待标定]`） |
+| $m_{\text{dutch}}$ | 套利安全边际 —— **[DEPRECATED]**（三轨废除） | DR-2026-1019-01 |
+| $m_{\text{rehedge}}$ | 追单对冲允许贴水亏损上限 `max_rehedge_loss`（建议初值 2%） | P1-4（`[待标定]`） |
+| $z_{\text{crit}}, z_{\text{cert}}$ | 无量纲标准化残差风控门限（参考基线 2.0 / 0.3） | DR-2026-1014-04（`[待标定]`） |
+| $\text{eps}$ | 破产防御常数（$10^{-7}$，浮点层严格下界） | P0-3（✅ 架构参数） |
 
 ---
 
 ## 2. 定价：VWAP 深度穿透与动态费率
 
-### 2.1 VWAP 深度穿透（S1）
+### 2.1 VWAP 深度穿透（S1，DR-2026-1014-01）
 
-按目标规模 $S_{\text{target}}$ 累计 ask 档（价格升序 $j=1,2,\dots$）：
+按 `min_edge` 达标穿透深度自动确定定价探针规模 $S_{\text{target}}$，根除"鸡生蛋"死锁：
+
+$$S_{\text{target}} := \sum_{j: \text{edge}_j \ge \text{min\_edge}} s_j = \text{safe\_capacity\_at\_min\_edge}$$
 
 $$S = \sum_{j} s_j \quad \text{（累计至 } \min(S_{\text{target}}, \text{盘口总深度})\text{）}$$
 
-$$\bar P = \frac{\sum_j p_j \cdot s_j}{\sum_j s_j} \quad \text{（纯盘口加权均价）}$$
+$$\bar P = \frac{\sum_j p_j \cdot s_j}{\sum_j s_j} \quad \text{（达标深度纯盘口加权均价）}$$
 
-- 对齐归档 `ev_engine.calculate_effective_price` 契约；深度不足时按可成交部分计。
+- 定价加权均价 $\bar P$ 在达标深度内具有保守单调性，实际任意规模成交均价必定 $\le \bar P$；
+- 穿透逻辑与 S4 执行路由的 $\text{safe\_capacity}$ 共享算法核心，杜绝两处口径漂移。
 
-### 2.2 动态费率折算（M-2 已裁；Debate 约束 1 冻结）
+### 2.2 动态费率折算（M-2 已裁；市场特性契约 v1.0 回填）
 
 **时序铁律：先穿透得纯盘口均价 $\bar P$，再统一施加费率，严禁逐层非线性迭代。**
 
-$$q_{\text{eff}} = \bar P \cdot \left[1 + \text{base}\cdot(1 - \bar P)\right]$$
+$$q_{\text{eff}} = \bar P \cdot \left[1 + 0.05 \cdot (1 - \bar P)\right]$$
 
-- 等价于 v1 `strategy.py:691` 已裁公式 $q = p\cdot[1+\text{base}\cdot(1-p)]$（卷宗 4.2）；
-- 边缘情形：$\bar P \to 0$ 时绝对费用小但费率摩擦高，EV 判定保留 edge 的费率敏感性（不得因绝对费用小忽略）；
-- 参数：$\text{base}=0.0125$ `[待核实]`（M-2 闭环项）；Maker 返佣 $\beta=0.20$ 的判定式见 §9。
+- 官方公式依据：$fee = C \times 0.05 \times \bar P(1 - \bar P)$，每份名义溢价率 $\text{fee\_rate} = 0.05(1 - \bar P)$；有效买入成本 $q_{\text{eff}} = \bar P(1 + \text{fee\_rate})$；
+- 边缘情形：$\bar P \to 0$ 时绝对费用小但费率摩擦高，EV 判定保留 edge 的费率敏感性（极端价位不抹费率，坚持最坏情况防御）；
+- 参数状态：$\text{base} = 0.05$ 已闭环（✅ 官方定案回填）；Maker 暂不建模（用户裁决挂起）。
 
 ### 2.3 EV 与 Edge（S1 交易信号）
 
@@ -59,40 +65,29 @@ $$\text{edge}_i = \frac{\text{net\_ev}_i}{q_{\text{eff}, i}} = \frac{\hat p_i - 
 **可交易判定**：$\text{tradable}_i = \big(\text{edge}_i \ge \text{min\_edge}\big) \wedge \big(\text{治理旗放行}\big)$
 
 - 治理（用户裁决 A）：带旗资产 $\text{tradable}_i = \text{False}$（只观测、不交易，直至拔旗）；FAILSAFE 只读；
-- $\text{min\_edge}$：结构保留（覆盖 Noise Floor 语义：v1 Maker 3.5% / Taker 5.0% 已归档不继承，数值 `[待标定]`）。
+- $\text{min\_edge}$：结构保留（覆盖 Noise Floor 语义：v1 已归档不继承，数值 `[待标定]`）。
 
 ---
 
-## 3. 凯利目标函数（多项增量对冲，v2 基线 + N_i 注入）
+## 3. 凯利目标函数（多项增量对冲与预算前置）
 
-### 3.1 结局财富
+### 3.1 结局财富与 W_free 基底设计意图（P2-3 批注）
 
 第 $i$ 档胜出时的结局财富（买入 $f_i / q_{\text{eff}, i}$ 股，总投入 $\sum_j f_j$，既有持仓 $N_i$ 为沉没成本）：
 
 $$W_i(f) = W_{\text{free}} + N_i + \frac{f_i}{q_{\text{eff}, i}} - \sum_{j=1}^{K} f_j$$
 
-### 3.2 目标函数与约束
+> **架构批注（W_free 基底的刻意设计）**：
+> 结局财富基底明确采用当前自由流动资金 $W_{\text{free}}$（而非有效总资产 $B_{\text{eff}}$）。这是审慎风控的刻意**内生动态降杠杆机制**：当已有较多持仓被占用锁定（$W_{\text{free}}$ 降低）时，对数效用函数自然对每一笔新风险暴露施加更严苛的边际惩罚，迫使优化器自动收缩后续开仓规模，坚决防范资金链断裂。
 
-$$\max_{f} \; G(f) = \sum_{i=1}^{K} \hat p_i \cdot \ln W_i(f)$$
+### 3.2 预算上限与风控调制前置化（DR-2026-1014-02 / DR-2026-1014-03）
 
-$$\text{s.t.} \quad f_i \ge 0 \quad \forall i \quad \text{（只买不卖）}$$
+风控调制系数（$\tau_z$ 僵尸率调制、$\tau_{\text{2D}}$ 阶梯温差调制）前置并入预算上限公式：
 
-$$\sum_i f_i \le C_{\max} := \min\left(0.10 \cdot B_{\text{eff}},\; 0.70 \cdot B_{\text{eff}} - \text{Active\_locked},\; W_{\text{free}}\right)$$
+$$C_{\max} := \tau_z \cdot \tau_{\text{2D}} \cdot \min\left(0.10 \cdot B_{\text{eff}},\; 0.70 \cdot B_{\text{eff}} - \text{Active\_locked},\; W_{\text{free}}\right)$$
 
-$$W_i(f) > 0 \quad \forall i \quad \text{（对数定义域；若不可行则 fail-closed 全零）}$$
-
-- 对齐归档 `multinomial_kelly.py` 契约：正 EV 档分配、负 EV 归零、概率翻转自然转向（新钱解决）、非法输入 fail-closed 归零；
-- $q_{\text{eff}}$ 在**决策快照内冻结**（按预估规模），不对 SLSQP 迭代重算（N3 决策快照冻结）。
-
-### 3.3 凹性与收敛性（回应开发端质询：N_i 注入后是否仍凸且收敛）
-
-**引理 1（凹性）**：$\ln\big(W_{\text{free}} + N_i + \frac{f_i}{q_{\text{eff},i}} - \sum_j f_j\big)$ 是 $f$ 的凹函数（线性函数之对数）。
-
-**引理 2（保凹性）**：非负加权和保凹——$G(f) = \sum_i \hat p_i \ln W_i(f)$ 是凹函数。
-
-**引理 3（可行域凸性）**：$\{f \ge 0,\; \sum f \le C_{\max}\}$ 为凸集（box + 单形约束）。
-
-**结论**：$\max_f G(f)$ 为**凹最大化于凸集**——SLSQP 收敛到全局最优；既有持仓 $N_i$ 仅平移 $W_i(f)$ 的常数项（$W_{\text{free}} + N_i$），**不改变凹性结构**，收敛性保持。该论证同样适用于稳健化目标（§6，因 min 保凹）。
+- **前置优势**：SLSQP 在压缩后的预算内全局优化，自动集中资金于最优势档位，彻底规避后置乘法导致的零碎小单团灭；
+- **分母统一（DR-2026-1014-03）**：全局 70% 约束统一以有效资金母数 $B_{\text{eff}}$ 为分母，Zombie / Disputed 分子分母坚决全剔除。
 
 ---
 
@@ -104,154 +99,191 @@ $$\text{SE}_i = \max\left(\text{SE}_{\text{EMOS}, i},\; \eta\sqrt{\hat p_i(1 - \
 
 $$\text{SE}_{\text{EMOS}, i} = \left|\frac{\partial p_i}{\partial \mu}\right| \delta_\mu + \left|\frac{\partial p_i}{\partial \sigma}\right| \delta_\sigma$$
 
-**高斯族闭式灵敏度**（双参数 CDF，$z_a = (a_i-\mu)/\sigma$，$z_b = (b_i-\mu)/\sigma$，$\varphi$ 为标准正态密度）：
+**高斯族闭式灵敏度**（双参数 CDF，$z_a = (a_i-\mu)/\sigma$，$z_b = (b_i-\mu)/\sigma$）：
 
-$$p_i = \Phi(z_b) - \Phi(z_a)$$
+$$\frac{\partial p_i}{\partial \mu} = \frac{\varphi(z_a) - \varphi(z_b)}{\sigma}, \qquad \frac{\partial p_i}{\partial \sigma} = \frac{z_a\,\varphi(z_a) - z_b\,\varphi(z_b)}{\sigma}$$
 
-$$\frac{\partial p_i}{\partial \mu} = \frac{\varphi(z_a) - \varphi(z_b)}{\sigma}$$
-
-$$\frac{\partial p_i}{\partial \sigma} = \frac{z_a\,\varphi(z_a) - z_b\,\varphi(z_b)}{\sigma}$$
-
-（JSU / EVT-Hybrid 族同法解析，规格书标注公式族，推导随实现落地——开放项 2。）
+> **口径批注（L1 盒式最坏相关上界，P2-2）**：
+> 此处绝对值之和（L1 范数）构成关于 $(\mu, \sigma)$ 扰动的最坏相关上界（Worst-case correlation upper bound），比独立假设下的 L2 范数放大至多 $\sqrt{2}$ 倍，旨在审慎抵御气象预测均值与方差耦合偏差的最坏情况冲击。
 
 ### 4.2 区间与冻结
 
 $$p_{L,i} = \max\left(0,\; \hat p_i - \theta \cdot \text{SE}_i\right), \qquad p_{U,i} = \min\left(1,\; \hat p_i + \theta \cdot \text{SE}_i\right)$$
 
-- **快照冻结**：$\text{SE}_i, p_{L,i}, p_{U,i}$ 在决策快照内固定，不进 SLSQP 迭代重算（保贪心投影 $O(K\log K)$ 与收敛性——Debate Q1 冻结）；
-- **可行性条件**：$\sum_i p_{L,i} \le 1 \le \sum_i p_{U,i}$（否则退化处理，fail-closed 或归一化，规格书开放项）；
-- 参数：$\theta, \eta, \delta_\mu, \delta_\sigma$ 全部 `[F-2 LOCKED]`（v1 θ=1.5/η=0.15 仅归档不继承）。
+- $\text{SE}_i, p_{L,i}, p_{U,i}$ 在决策快照内固定，不进 SLSQP 迭代重算；参数维持 `[F-2 LOCKED]`。
 
 ---
 
-## 5. 稳健 Minimax：内层贪心最坏情况投影（M-1；O(K log K)）
+## 5. 稳健 Minimax：LP 强对偶单层展开（P0-2 外部审计修正）
 
-固定 $f$（外层迭代），求解最坏分布：
+### 5.1 内层最坏概率极小化的对偶化推导
 
-$$\min_{p \in \mathcal{P}} \; \sum_{i=1}^{K} p_i \ln W_i(f), \qquad \mathcal{P} = \left\{p : p_{L,i} \le p_i \le p_{U,i},\; \sum p_i = 1\right\}$$
+内层极小化问题为：
 
-**精确解（非近似）**：目标对 $p$ 线性，box + 单形约束下极值点在极点——按 $\ln W_i$（等价 $W_i$）**升序**，将概率质量优先分配给财富最差结局：
+$$\min_{p \in \mathcal{P}} \; \sum_{i=1}^{K} p_i \ln W_i(f) \quad \text{s.t.} \quad \sum_{i=1}^K p_i = 1, \quad p_i \ge p_{L,i}, \quad -p_i \ge -p_{U,i}$$
 
-1. 排序：$\pi = \text{argsort}(W_i)$（升序，$O(K\log K)$）；
-2. 从最差档开始：$p_{\pi(k)}^* = \min\big(p_{U,\pi(k)},\; 1 - \sum_{\text{已分配}}\big)$，直到 $\sum p^* = 1$；
-3. 其余档 $p^* = 0$（若 $p_{L}$ 强制下限使 $\sum p_L > 1$，触发可行性退化分支）。
+引入对偶变量：
+- $\lambda \in \mathbb{R}$ 对应等式约束 $\sum p_i = 1$；
+- $\alpha_i \ge 0$ 对应下界约束 $p_i \ge p_{L,i}$；
+- $\beta_i \ge 0$ 对应上界约束 $p_i \le p_{U,i}$。
 
-- 对齐 v1 `project_worst_case_probabilities` 结构（卷宗 4.1）；
-- **精确性**：线性规划在 box+simplex 上的最优解由贪心排序给出，非启发式近似。
+拉格朗日函数：
+$$L(p, \lambda, \alpha, \beta) = \lambda + \sum_{i=1}^K \alpha_i p_{L,i} - \sum_{i=1}^K \beta_i p_{U,i} + \sum_{i=1}^K p_i \big(\ln W_i(f) - \lambda - \alpha_i + \beta_i\big)$$
+
+对 $p$ 求极小，有限值的充要条件为对偶约束 $\ln W_i(f) - \lambda - \alpha_i + \beta_i \ge 0$。根据线性规划强对偶定理，内层原问题与对偶问题极值严格相等、对偶间隙恒为 0：
+
+$$\min_{p \in \mathcal{P}} \sum_{i=1}^K p_i \ln W_i(f) = \max_{\substack{\lambda \in \mathbb{R}, \\ \alpha \ge 0, \beta \ge 0 \\ \lambda + \alpha_i - \beta_i \le \ln W_i(f)}} \left( \lambda + \sum_{i=1}^K \alpha_i p_{L,i} - \sum_{i=1}^K \beta_i p_{U,i} \right)$$
+
+### 5.2 单层连续可微规划问题定义（3K + 1 维变量）
+
+将内外层两个 $\max$ 合并，消灭所有极点折角，形成单层规划：
+
+$$\max_{f, \lambda, \alpha, \beta} \; H(f, \lambda, \alpha, \beta) := \lambda + \sum_{i=1}^K \alpha_i p_{L,i} - \sum_{i=1}^K \beta_i p_{U,i}$$
+
+**约束条件**：
+1. **耦合约束（$K$ 个）**：$g_i(f, \lambda, \alpha, \beta) := \ln W_i(f) - \lambda - \alpha_i + \beta_i \ge 0 \quad (\forall i \in \{1,\dots,K\})$
+2. **预算上限约束（1 个）**：$C_{\max} - \sum_{j=1}^K f_j \ge 0$
+3. **破产硬约束（$K$ 个）**：$W_i(f) - \text{eps} \ge 0 \quad (\forall i \in \{1,\dots,K\})$
+4. **决策变量盒约束**：$0 \le f_i \le C_{\max}, \quad \alpha_i \ge 0, \quad \beta_i \ge 0, \quad \lambda \in \mathbb{R}$
+
+### 5.3 闭式解析 Jacobian 偏导数
+
+为确保 SLSQP 求解器达到极致数值稳定性，提供精确闭式 Jacobian：
+- 目标函数关于变量 $(f, \lambda, \alpha, \beta)$ 的梯度：
+  $$\nabla_f H = \mathbf{0}_K, \quad \nabla_\lambda H = 1, \quad \nabla_\alpha H = p_L, \quad \nabla_\beta H = -p_U$$
+- 耦合约束 $g_i$ 关于变量的梯度：
+  $$\frac{\partial g_i}{\partial f_j} = \frac{1}{W_i(f)} \cdot \left(\frac{\delta_{ij}}{q_{\text{eff},i}} - 1\right), \quad \frac{\partial g_i}{\partial \lambda} = -1, \quad \frac{\partial g_i}{\partial \alpha_j} = -\delta_{ij}, \quad \frac{\partial g_i}{\partial \beta_j} = \delta_{ij}$$
 
 ---
 
-## 6. 稳健 Minimax：外层 SLSQP（M-1）
+## 6. 凹性与收敛性证明（引理 1~3，P0-2 改写）
 
-$$\max_{f \in \mathcal{F}} \; \min_{p \in \mathcal{P}} \; \sum_{i=1}^{K} p_i \ln W_i(f)$$
+**引理 1（LP 强对偶等价性）**：对于任意满足 $p_L \le p_U$ 且可行域非空的快照不确定集 $\mathcal{P}$，内层最坏概率极小化问题强对偶成立，原 Minimax 问题与单层对偶问题解集与极值完全等价。
 
-$$\mathcal{F} = \left\{f \ge 0,\; \sum f \le C_{\max},\; W_i(f) > 0\right\}$$
+**引理 2（目标与可行域凸性）**：单层规划目标函数 $H$ 为线性函数（无限光滑 $C^\infty$）；耦合函数 $g_i$ 是仿射函数与对数函数的复合，为凹函数（一般情形非严格凹：存在线性方向时凹性退化）；其水平集 $\{ (f,\lambda,\alpha,\beta) \mid g_i \ge 0 \}$ 是闭凸集；预算与破产约束均为线性半空间，交集为闭凸集。
 
-- 内层 min 保凹（凹函数逐点下确界仍凹），外层仍为凹最大化 → SLSQP 全局收敛（引理 1~3 推广）；
-- **Fail-Closed（Debate 约束 2 冻结）**：
-  - 预设 `maxiter = 200`、`ftol = 1e-9`；
-  - `res.success == False` 或结果含 NaN → **100% 回退全零向量**（不分配资金）；
-  - NaN/脏解防御覆盖**输入**（p̂ 含 NaN/越界）与**输出**（f* 含 NaN）两方向；
-  - 连续 $N$ 次失败 → 联动 ADR-0014 上报（台站降级/人工介入），不止静默归零。
+**引理 3（全局收敛与假死根除）**：线性目标在闭凸集上的极值问题不存在任何非光滑折角或局部伪极值；SLSQP 在给定解析 Jacobian 下保证收敛至 KKT 点，即全局最优解，彻底消除了 argsort 导致的 line search status=8 假死。**注**：凹性保证全局最优，但线性目标的最优解集可能非唯一（凸面）；数值 SLSQP 不保证 100% 收敛——**G7 Fail-Closed 兜底保留为第二道物理防线**（对偶化负责常态收敛率，Fail-Closed 负责退化兜底，二者互补）。
 
 ---
 
-## 7. 风控门禁不等式（S3，全部下沉为布尔判定）
+## 7. 风控门禁不等式（S3，全部下沉为纯布尔判定）
 
 | # | 门禁 | 不等式 / 判定 | 来源 |
 | :--- | :--- | :--- | :--- |
-| G1 | 单市场硬顶 | $\sum_i f_i \le 0.10 \cdot B_{\text{eff}}$（超限按比例缩水） | ADR-0012 / risk_limiter 契约 |
-| G2 | 全局利用率 | $\big(\text{Active\_locked} + \sum_i f_i\big) \big/ \text{Total} \le 0.70$ | ADR-0012 / risk_limiter 契约 |
-| G3 | 僵尸分级折剪 | $\tau_z \in \{1.0,\;0.5,\;0.0,\;0.0\}$ 对应 R_z ≤ 15% / ≤ 30% / ≤ 50% / > 50% | ADR-0012 / zombie_evaluator 契约 |
-| G4 | 两维风控 | CRITICAL：$T_{\text{rem}}<1\text{h} \wedge \Delta T > 3^\circ\text{F}$ → 0.20x；CERTAIN：$T_{\text{rem}}<0.5\text{h} \wedge \Delta T \le 0.5^\circ\text{F}$ → 禁反向投机；否则 1.00x | ADR-0011 / two_dimensional_risk 契约 |
-| G5 | 带旗治理（用户裁决 A） | $\text{FLAGGED} \Rightarrow \text{tradable} = \text{False}$（只观测）；$\text{FAILSAFE} \Rightarrow$ 只读 | 方案 v2.8 §4 / R-19 |
-| G6 | 预购门 | $\Delta_{\text{age}} \le 7\text{min} \wedge \text{数据连通} \wedge \text{网关连通} \wedge \text{ACTIVE} \wedge \text{阀开}$ | ADR-0014 / pre_buy_gate 契约 |
-| G7 | 求解器 Fail-Closed | $\text{success} \wedge \neg\text{NaN} \wedge W_i(f)>0$ 全部成立才放行 | Debate 约束 2 |
+| G1 | 单市场硬顶 | $\sum_i f_i \le 0.10 \cdot B_{\text{eff}}$ | ADR-0012 |
+| G2 | 全局利用率 | $\big(\text{Active\_locked} + \sum_i f_i\big) \big/ B_{\text{eff}} \le 0.70$（分母统一 $B_{\text{eff}}$） | DR-2026-1014-03 |
+| G3 | 僵尸熔断放行 | $\tau_z > 0$（当 $R_z > 30\%$ 时 $\tau_z = 0$ 触发阻断） | DR-2026-1014-02 |
+| G4 | 两维残差风控 | $z = \frac{|T_{\text{obs}} - \hat\mu|}{\hat\sigma}$；$\tau_{\text{2D}} \in \{1.0, 0.20, 0\}$（阶梯映射见 §7.1）；门禁布尔放行条件为 $\tau_{\text{2D}} > 0$ 且方向合规 | DR-2026-1014-04 |
+| G5 | 带旗治理 | $\text{governance\_flag is None}$（带旗只观测禁投） | 方案 A |
+| G6 | 预购与元数据 | $\Delta_{\text{age}} \le 7\text{min} \wedge \text{数据连通} \wedge \text{网关连通} \wedge \text{元数据完备} \wedge \text{ACTIVE} \wedge \text{阀开}$ | ADR-0014 |
+| G7 | 求解器收敛 | $\text{solver\_success} \wedge \neg\text{NaN} \wedge \forall i: W_i(f) \ge \text{eps}$ 全部成立才放行 | 约束 2 |
 
-**批准分配**：$x_{\text{approved}} = \tau_z \cdot \tau_{\text{2D}} \cdot f^*$（G3×G4 调制；G5 为前置禁投；G1/G2/G6/G7 为硬门禁，不调制只放行/阻断）。**折剪点唯一化**：调制全在 S3，无第二折剪点（带旗禁投使治理折剪不存在）。
+**联合总放行判定**：$\text{ALL\_SYSTEMS\_PASS} = \text{G6} \wedge \text{G5} \wedge \text{G7} \wedge \text{G1} \wedge \text{G2} \wedge \text{G3} \wedge \text{G4}$。
 
----
+### 7.1 $\tau_{\text{2D}}$ 阶梯映射规则（结构式，数值挂锁）
 
-## 8. 执行定价（S4：保护价 + IOC）
+风控调制系数 $\tau_{\text{2D}}$ 前置并入 S2 联合凯利预算上限公式 $C_{\max}$，具体映射规则如下：
 
-### 8.1 保护价（EV 零点）
+| 档位 | 触发条件（结构） | $\tau_{\text{2D}}$ 取值 | 业务与风控语义 |
+| :--- | :--- | :---: | :--- |
+| **正常档** | 非以下各档 | **1.0** | 全额预算分配（前置并入 $C_{\max}$） |
+| **CRITICAL 缩放档** | $z_{\text{cert}} < z \le z_{\text{crit\_scale}} \wedge t_{\text{rem}} \le 60\text{m}$ | **0.20** | 承接原 ADR-0011 "临盘 1h 且温差大" 的 0.20x 预算折剪，防范模型尾部失真 |
+| **CERTAIN 方向限制** | $z \le z_{\text{cert}}$（预测高度确定） | 正向 **1.0** / 反向 **0** | 承接原 "CERTAIN 禁反向投机"：与预测温差同向档位正常放行，逆向反开档位一票否决 |
+| **极端阻断档** | $z > z_{\text{crit\_scale}} \wedge t_{\text{rem}} \le 15\text{m}$ | **0** | 临近关盘且严重偏离预测，全额阻断（$C_{\max}=0$），触发 G4 布尔拦截 |
 
-遍历 ask 档 $j$（价格升序），对第 $i$ 档目标：
-
-$$\text{edge}_j = \frac{\hat p_i - q_{\text{eff}, j}}{q_{\text{eff}, j}} \ge \text{min\_edge} \quad \text{（$q_{\text{eff}, j}$ 按 §2.2 折算）}$$
-
-$$P_{\text{protect}, i} = \text{最后一个达标档的 ask 价}, \qquad \text{safe\_capacity}_i = \sum_{\text{达标档}} s_j$$
-
-- 对齐归档 `order_router.calculate_protection_price` 契约；
-- IOC 限价单，**严禁市价单**（`MarketOrderForbiddenError`，归档 models.py 契约）。
-
-### 8.2 残差愈合（非原子成交）
-
-- 部分成交 → 30s 内限价再对冲（rehedge）；超时或亏损击穿 → 硬止损移交人工 / 保持持有至结算；
-- 状态机：CLEAN / RESOLVED_BALANCED / LIQUIDATED（归档 residual_risk 契约）。
+> **换算对照基线与挂锁说明**：
+> - 阈值 $z_{\text{cert}}$（参考基线 0.3）、$z_{\text{crit\_scale}}$（参考基线 2.0）均标注为 **`[待标定]`**，F-2 绿灯后经两步标定定稿，严禁填入虚假实值；
+> - 原 ADR-0011 华氏度绝对阈值（$0.5^\circ\text{F} / 3.0^\circ\text{F}$）保留为**换算对照基线**（当典型台站 $\sigma \approx 1.5^\circ\text{F}$ 时，$z = 0.5 / 1.5 \approx 0.33$，$z = 3.0 / 1.5 = 2.0$），仅作审计追溯对照，运行时严格以无量纲 $z$ 为准；
+> - **CERTAIN 口径演进说明**：原 v0.3 CERTAIN 判定需 $t_{\text{rem}} < 0.5\text{h} \wedge \Delta T \le 0.5^\circ\text{F}$ 双条件；新口径统一以无量纲标准化残差 $z \le z_{\text{cert}}$ 判定（时间条件已吸收进 $z$ 判定，当预测高度确定时全时段严禁逆势投机，禁反向适用范围扩大至全时段，属更保守的防御方向，避免误读为 bug）；
+> - **结构不变更**：$\tau_{\text{2D}}$ 前置并入 $C_{\max}$ 与 S3 门禁纯布尔判定保持不变：只要 $\tau_{\text{2D}} > 0$（含 0.20 档与 CERTAIN 正向档）即为布尔放行；极端阻断档或 CERTAIN 逆向档则判定为阻断。
 
 ---
 
-## 9. 套利通道（S6：独立旁路，Debate Q2 + 主导方补充冻结）
+## 8. 执行定价与离散量化管道（S4：保护价 + FAK）
 
-### 9.1 判定式（含费率，M-3）
+### 8.1 保护价计算与含费量化时序（P0-3 修正）
 
-**全包 YES**：$\sum_{i=1}^{K} q_{\text{eff}, i} \le 1 - m_{\text{dutch}}$
+遍历 ask 档 $j$（价格升序），锁定最后一个满足 Edge 阈值的档位：
 
-**反向 NO 锁利**（买入 NO 组合与单档 YES 之间）：按对应互补价格折算后同样式判定。
+$$P_{\text{protect}, i} = \text{最后一个满足 } \text{edge}_j \ge \text{min\_edge} \text{ 的 ask 价}, \qquad \text{safe\_capacity}_i = \sum_{\text{达标档}} s_j$$
 
-- $m_{\text{dutch}}$：**新参数，不继承 v1 2%**（用户裁决），`[待标定]`；
-- Taker 与 Maker 两套判定式分别落位（Maker 返佣 $\beta=0.20$ 按 v1 §4.2 结构，参数 `[待核实]`）。
+**从连续资金到离散订单的执行管道时序（顺序严格锁定）**：
+1. 资金精度收口：$f_{\text{dec}} = \text{quantize}(f_i^*, \text{Decimal}("0.000001"), \text{ROUND\_DOWN})$；
+2. 保护价穿透：计算 $P_{\text{protect}}$ 与 $\text{safe\_capacity}$；
+3. 价格量化：$P_{\text{limit}} = \text{quantize\_to\_tick}(P_{\text{protect}}, \text{tick\_size}, \text{ROUND\_DOWN})$；
+4. **含费折算原始份额与深度截断（P0-3）**：
+   $$S_{\text{raw}} = \min\left( \frac{f_{\text{dec}}}{q_{\text{eff}}(P_{\text{limit}})},\; \text{safe\_capacity} \right)$$
+   $$S_{\text{order}} = \text{quantize\_to\_lot}(S_{\text{raw}}, \text{lot\_size}, \text{ROUND\_DOWN})$$
+5. 最小订单门禁：若 $S_{\text{order}} < \text{minimum\_order\_size}$，标记 `SKIPPED_BELOW_MINIMUM_ORDER_SIZE` 并退出；
+6. **含费足额预冻结资金（P0-3）**：$\text{lock\_funds}(S_{\text{order}} \times q_{\text{eff}}(P_{\text{limit}}))$；
+7. 订单类型：统一使用 **FAK 限价单**（Fill-and-Kill），**严禁市价单**。
 
-### 9.2 资金与优先级
+### 8.2 残差愈合与追单贴水上限（P1-4）
 
-$$\text{套利预算} \le \min\big(W_{\text{free}},\; C_{\text{total}} - \text{Active\_locked}\big)$$
-
-$$\text{且} \le \text{盘口现实可成交深度（M-3 拷问 3 约束）}$$
-
-- **豁免**：$C_{\text{loc}}$（10% 单市场）；**不豁免**：70% 全局利用率（主导方补充 N2）；
-- 占用计入 Active Locked；执行后剩余 Free 与最新持仓注入 S2 凯利增量对冲；
-- 必须向 ADR-0014 中枢登记 `IncidentEvent(SUB_ARBITRAGE, DUTCH_BOOK_DISPATCH)`（禁止静默穿仓）。
+- 30s 内限价补单重对冲；允许最大追单贴水亏损 $\text{rehedge\_loss} \le m_{\text{rehedge}} = 0.02$（`[待标定]`）；
+- 超时或亏损击穿阈值 $\Rightarrow$ 触发 `STOP_LOSS_TRIGGERED` / `LIQUIDATED` 紧急止损。
 
 ---
 
-## 10. 概率层门禁：ECE 梯级判定（Q6 冻结 + 用户确认继承声明）
+## 9. 套利轨废除与只读错价监控（S6：观测面，2026-10-19 定论）
+
+### 9.1 三轨废除（公理 + 机制 + 实证三重依据）
+
+- **轨 A（全包 YES）— 公理性不可能**：互斥穷尽市场结算公理 Σp=1；盘口总和被套利均衡钉在 ≥1+摩擦（开普敦实测 ΣAsk(YES)=1.0170>1），含 0.05 费率后更 >1，恒不满足 `Σq_eff(Ask(YES_i)) ≤ 1−m_dutch`；
+- **轨 B（全包 NO）— 镜像冗余**：每档互补协议锁定（split/merge 固定 $1/对，1 YES+1 NO≡1 pUSD）下 ΣAsk(YES)+ΣAsk(NO)≡K，"ΣNO≤K−1−m" ⟺ "ΣYES≥1+m"，与轨 A 为同一约束的代数镜像，不增加独立信息；
+- **轨 C（单档配对）— 机制性恒等**：YES+NO≡1 自铸造（split）即成立，Ask(YES_i)+Ask(NO_i)≥1+spread；<1 窗口被套利机器人 split+merge 秒级闭合。
+
+**判定**：三轨全部废除（死代码有害：永不触发的判定逻辑只承担误触发 bug 风险，轨 B 错误不等式即实盘教训）。原"套利前置 S6 最高优先级"（Q2 裁决）作废，见 DR-2026-1019-01。
+
+### 9.2 S6 只读错价监控（保留，零发射）
+
+- **观测对象**：① 单档互补偏离 `Ask(YES_i)+Ask(NO_i) − 1`；② 跨档总和偏离 `ΣAsk(YES_i) − 1`；
+- **频率**：低频轮询（60s）或行情事件驱动；
+- **输出**：偏离度时序 + 超阈值告警日志（仅人工/审计消费）；
+- **硬约束**：不触发任何下单、不产生仓位、不进入交易管线（零发射定理）；
+- **用途**：市场健康度信号（流动性断裂/撮合异常度量），并入风控观测 M 层。
+
+---
+
+## 10. 概率层门禁：ECE 梯级判定
 
 $$\text{F-2 绿灯} = \begin{cases}
 \text{GREEN（完全解锁标定）} & \text{Binding ECE} \le 0.05 \wedge \text{交易窗口 ECE} \le 0.0100 \\
-\text{YELLOW（带旗，按 A 禁投只观测）} & \text{Binding ECE} \le 0.05 \wedge \text{交易窗口 ECE} > 0.0100 \\
+\text{YELLOW（带旗，按方案 A 禁投只观测）} & \text{Binding ECE} \le 0.05 \wedge \text{交易窗口 ECE} > 0.0100 \\
 \text{RED（全线熔断）} & \text{Binding ECE} > 0.05
 \end{cases}$$
-
-- **口径继承声明**：两口径继承自模型训练/抽检时设定的阈值（ADR-0018 Binding ≤5% + 方案 v2.8 交易窗口加权 ≤0.0100），交易层只消费判定结果，不产生、不修正概率（P1）；
-- **联动调整契约**：版本更新时概率层与交易层协同调整口径（两侧确认、留痕、回灌门禁）；
-- RED 联动 ADR-0014 fail-closed（全线熔断/只读）。
 
 ---
 
 ## 11. 结算与账务（S5/S7：四桶恒等与双轨估值）
 
-$$\text{Total} = \text{Free} + \text{Active} + \text{Zombie} + \text{Disputed} \quad \text{（恒等式，全链路 Decimal 6 位 ROUND\_DOWN）}$$
+$$\text{Total} = \text{Free} + \text{Active} + \text{Zombie} + \text{Disputed} \quad \text{（全链路 pUSD 6 位 Decimal ROUND\_DOWN）}$$
 
-$$B_{\text{eff}} = \text{Free} + \text{Active} \quad \text{（sizing 母数）}$$
+$$B_{\text{eff}} = \text{Free} + \text{Active} \quad \text{（sizing 母数，Zombie/Disputed 0.0x 剔除）}$$
 
-$$\text{NAV} = \sum_i \left(N_i \cdot 0.90 \right) \quad \text{（僵尸双轨估值，sizing 母数 0.0x）}$$
-
-- 12h 触发僵尸判定；结算按 NWS WRH 复刻；舍入闭环（ADR-0012）。
+- 12h 触发僵尸判定；结算复刻器严格按 NWS WRH 整度结合 Decimal `ROUND_HALF_UP` 算术舍入闭环（ADR-0012）；
+- 距离名义关盘剩余小时 $t_{\text{remain}}$ 严格锚定台站当地时区 23:59:59（依 `station_tz` 解析）。
 
 ---
 
-## 12. 参数挂锁汇总
+## 12. 参数挂锁与运行端点映射汇总
 
-| 参数 | 状态 | 解锁路径 |
-| :--- | :--- | :--- |
+| 参数 / 接口 | 当前值 / 状态 | 来源 / 解锁依据 |
+| :--- | :---: | :--- |
+| base（Weather Taker 费率系数） | **0.05** | ✅ 官方定案（市场契约 v1.0 回填；docs.polymarket.com/trading/fees） |
+| Maker 返佣 | 暂不建模 | ✅ 用户裁决（暂不做 maker，挂起备查 25%） |
+| 历史数据 API | **Data API v2** | ✅ 官方定案（端点 `data-api.polymarket.com/v2`，token_id + cursor 分页） |
+| 官方 SDK 基础 | **py-sdk（polymarket-client）** | ✅ 官方定案（替代废弃 py-clob-client） |
+| eps（破产防御常数） | **1e-7** | ✅ 架构参数（浮点层严格下界） |
 | $\theta, \eta, \delta_\mu, \delta_\sigma$ | `[F-2 LOCKED]` | 概率层 GREEN + 两步标定 Step 1（纸面盘自产数据） |
-| $m_{\text{dutch}}$ | `[待标定]`（不继承） | 宪法推导 / 两步标定复核 |
-| $\text{min\_edge}$（Noise Floor） | `[待标定]` | 同上 |
-| $\text{base}, \beta$ | `[待核实]` | M-2 对外核实一次后闭环 |
-| 10%/70%/7min/0.2x/12h/R_z | 宪法级 | 不标定（ADR 来源） |
+| $m_{\text{dutch}}$（套利安全边际） | **[DEPRECATED]**（三轨废除，2026-10-19） | DR-2026-1019-01 |
+| $m_{\text{rehedge}}$（残差追单贴水上限） | 建议初值 0.02 | 仅 S4 凯利执行部分成交/单档失败场景（非套利），P1-4（`[待标定]`） |
+| $z_{\text{crit}}, z_{\text{cert}}$（残差门限） | 参考基线 2.0 / 0.3 | DR-2026-1014-04（`[待标定]`） |
+| $\text{min\_edge}$（Noise Floor） | `[待标定]` | 结构保留，数值走标定或宪法推导 |
+| 10%/70%/7min/15m/35m/12h/R_z | 宪法级 | 架构硬规则，不标定（ADR-0011~0014） |
 | fractional_multiplier | 配置默认（0.5） | F-2 解锁后 Step 1 复核 |
 
 ---
 
-*本文件全部公式为结构定义；`[F-2 LOCKED]` / `[待标定]` / `[待核实]` 项在解锁/核实前不填实值。最终版须经用户确认。*
+*本文档为 v0.6 对齐稿；第二层 `[F-2 LOCKED]` / `[待标定]` 项在解锁前绝不填入虚假实值。最终版须经用户确认。*
+

@@ -76,6 +76,8 @@ $$\text{Total Bankroll} = \text{Free USDC} + \text{Active Locked} + \text{Zombie
    - **Disputed Margin 估值**：$V_{\text{disputed\_mtm}} = \min(0.50 \times \text{Cost}, \; P_{\text{true\_model}} \times \text{Shares} \times 0.60)$；
 3. **流动性水位线分子剔除铁律**：
    全局流动性占用率计算：$\text{Utilization} = \text{Active Locked} / \text{Total Bankroll} \le 0.70$。`Zombie Margin` 与 `Disputed Margin` 坚决从分子中剔除；
+   > [!NOTE] 版本标注联动修订（已对齐 P7-ALGO-2 v0.5 / 裁决 DR-2026-1014-03 · 2026-10-14）：
+   > 依据审慎风控原则与 M5 资金模型"Zombie 0.0x 剔除"精神，全局利用率分母统一为有效资金母数 $\text{Bankroll}_{\text{effective}} = \text{Free} + \text{Active}$（$B_{\text{eff}}$），即 $\text{Utilization} = (\text{Active Locked} + \sum f_i) / B_{\text{eff}} \le 0.70$。Zombie Margin 与 Disputed Margin 在分子与分母中坚决双向全额剔除，杜绝因冻结资金虚高分母而放大活跃下注杠杆。既有历史文本保持原貌备查。
 4. **阶梯流动性熔断（名义僵尸率 $R_z = \frac{\text{Nominal Zombie} + \text{Nominal Disputed}}{\text{Total Bankroll}}$）**：
    - $R_z > 15\%$：新开仓额度强制折剪 $\times 0.5$；
    - $R_z > 30\%$：暂停新开仓，仅允许残局补单与硬止损；

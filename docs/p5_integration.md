@@ -1,6 +1,7 @@
 # P5 可靠性抽检门禁快速接线指南 (P5 Reliability Gate Integration Guide)
 
 - **适用对象**: 主线模型训练研发（Phase 2/3 模型迭代与生产定型）
+- **修订记录**: 2026-10-19 依据裁决 D2 勘误 ks_stat 判定标准为 ≤0.08（对齐 ADR-0018 与 p5_gate.py:140）
 - **核心原则**: **`GateReport` 是主线与 P5 检验引擎之间的唯一契约**。主线训练代码禁止直接 import P5 内部脚本或算法函数，以确保底层演进时外部接口零破裂。
 - **接线耗时**: 约 5 分钟。
 
@@ -78,7 +79,7 @@ assert report.passed is True
 | `ece_ci_upper` | `float` | 1,000 次确定性 Bootstrap 的 ECE 95% 置信上界 | 供审计记录 |
 | `bss` | `float` | 相对气候基线的 Brier 技能得分 | $\ge 0.0$ (具备正向预测技能) |
 | `wilson_coverage_rate`| `float` | 各概率档 Wilson 95% 置信区间的实际覆盖比例 | $\ge 90.0\%$ |
-| `ks_stat` | `float` | PIT 序列对比均匀分布的 K-S 统计量 | $\le 0.05$ |
+| `ks_stat` | `float` | PIT 序列对比均匀分布的 K-S 统计量 | $\le 0.08$（依据裁决 D2 与 ADR-0018 及 p5_gate.py:140 统一勘误） |
 | `is_degenerate` | `bool` | 是否属于方差塌缩的“全同值退化死模型” | 必须为 `False` |
 | `s_ladder_status` | `dict` | 包含 S1(防御) ~ S5(拟合) 的子阶梯布尔值 | 全项为 `True` |
 | `error_message` | `Optional[str]` | 未通过时的法定诊断报错信息 | 通过时为 `None` |
