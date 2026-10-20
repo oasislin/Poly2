@@ -90,8 +90,10 @@ def test_airgap_sanitizes_unauthorized_dataframe(tmp_path, monkeypatch):
         sanitize_dataframe(df_pure_2019, year_col="year")
 
 
-def test_airgap_sanitizes_with_audit_trail_and_logging(caplog):
+def test_airgap_sanitizes_with_audit_trail_and_logging(tmp_path, monkeypatch, caplog):
     """Verify that sanitize_dataframe explicitly logs and records all stripped 2019 rows."""
+    test_auth_path = tmp_path / "preregistered_2019_authorization.flag"
+    monkeypatch.setattr("src.utils.airgap.AUTHORIZATION_FLAG_FILE", test_auth_path)
     reset_sanitization_audit_log()
     df = pd.DataFrame({
         "year": [2016, 2017, 2018, 2019, 2019],
