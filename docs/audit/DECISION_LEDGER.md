@@ -113,6 +113,14 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **DECISION-20261021-01** | T3 阶段二 lead 维离散度归因诊断 D-1/D-2（服务 P-3/P-2，KORD/KMIA） | 1. **D-1 全格离散度归因（88 格）**：计算未含 $c_{\text{train}}$ 的纯格级离散度匹配比 $raw\_ratio = Var(resid_{calib}) / mean(c^2 + d^2 \cdot ens\_var)$。发现 $raw\_ratio$ 沿 lead 呈现显著 24h 周期性日变化特征（如 KORD Winter 在 18h/42h/66h 达 1.19~1.22，而在 36h/60h 降至 1.04~1.05）。生产模型 $c_{\text{train}}$ 采用 18h 标量（1.1055，对应方差扩张 1.2221），导致在 36h/60h lead 产生人工方差高估/欠自信下压（$s_{\text{oos}} \approx 0.86$），从机理上完整复现并解释了 V1 盲测中 KORD $s_{\text{oos}}$ 震荡现象。<br>2. **D-1 噪声基线对照（KORD 19 折 LOYO）**：KORD 逐季逐 lead 的相邻步进 $|\Delta raw\_ratio|$（如 0.14~0.17）达对应折间自然噪声标准差 $\sigma_{\text{fold}}$（0.01~0.02）的 3~11 倍，实证 lead 维震荡并非样本折间随机扰动，而是强物理/日变化特征。<br>3. **D-2 参数跳变描述**：全窗 $(a, b, c, d)$ 沿 lead 原始数值与差分已全量提取入表，供审核方机械判定。| **审核通过（2026-10-21 机械判定）**：D-1 周期结构超噪声（9.2~16.9 倍）、锚点除法机制成立；**P-3 不进单调正则，转 `P4-BLIND-AUDIT-CHK-03` 相位归因；P-2 收缩证据不足暂不进入**。更正 manifest hash 笔误（真实 `8bb364e2…`）；KMIA 系统性 >1.2 单列待查。 | 1. 任务书：`docs/audit/T3-阶段二_lead维归因诊断_开发端任务书_20261021.md`<br>2. 诊断脚本：`scripts/audit_t3/lead_attribution.py` (SHA-256: `b8dc80a27f671aba685f2f4ee6ae357a31ad23f9fb08c80f409cd9f62a96a4e8`)<br>3. 全格归因表：`evidence/audit_t3/t3_d1_lead_attribution.csv` (SHA-256: `1fa63317d49eb7a410222ce0378ba6648e57beb81b9c29ab11b284b93f4a1407`)<br>4. 沿 lead 序列表：`evidence/audit_t3/t3_d1_lead_sequence.csv` (SHA-256: `b64924f492f5e1c3816b68a8b79802261db0519edfddad8f5599fd157e4c0e6d`)<br>5. 提交凭据：Commit 1 `1707e56` + Commit 2 `f05bdb1` |
 
+---
+
+## 八、 P4-BLIND-AUDIT-CHK-03 相位归因检测记录 (2026-10-21)
+
+| 编号 | 事项名称 | 原始发现与实验设计 | 最新状态 | 处置依据 / 对应工单 / 证据 |
+| :--- | :--- | :--- | :--- | :--- |
+| **DECISION-20261021-02** | CHK-03 lead 24h 周期相位归因只读诊断（KORD/KMIA） | 1. **相位分组跨季一致性（32 行）**：UTC 相位 $lead \pmod{24}$ 四组中，KORD 四季 group_mean 相位 12h=0.9880（谷）至相位 18h=1.1381（峰）；KMIA 四季 group_mean 相位 18h=1.2757（谷）至相位 0h=1.5006（峰）。同相位内不同 lead 高度聚合（如 KORD 冬相 0h leads 24/48/72 极差仅 0.0247，CV 1.2%）。<br>2. **跨年稳定性（152 行）**：KORD 2000-2018 逐年跨年相位峰谷高度稳定重复（18/19 年 18h 显著高于 12h）；KMIA 按指导表项留空。<br>3. **实证结论**：实证强烈支持假设 (a) 物理日循环相位成立（非拟合伪影），为后续「分相位离散度」建模提供实证依据。 | **诊断完成，待审核方机械判定** | 1. 任务书：`docs/audit/P4-BLIND-AUDIT-CHK-03_相位归因_任务书_20261021.md`<br>2. 诊断脚本：`scripts/audit_t3/phase_attribution.py` (SHA-256: `f0c552cd8151a037bb5e8ceec26424c263c21b39053fe5a647dc0988c7797536`)<br>3. 相位分组表：`evidence/audit_t3/p4blind_chk03_phase_group.csv` (SHA-256: `3ddd99564804edf332562797015fda9596ba6338524b346cb12c97359f3d11eb`)<br>4. 跨年相位表：`evidence/audit_t3/p4blind_chk03_year_phase.csv` (SHA-256: `348b55c9a871a43b3864d33009d081b0fc6ef238a49f624c5599947e48926f18`)<br>5. 提交凭据：见本次 Commit 2 |
+
 
 
 
