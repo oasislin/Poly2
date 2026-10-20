@@ -9,7 +9,7 @@
 2. 相位 = lead mod 24：相位 0={24,48,72}、相位 6={30,54}、相位 12={12,36,60}、相位 18={18,42,66}；仅 KORD/KMIA × tmax × 2000-2018。
 3. 落盘两张 CSV 到 `evidence/audit_t3/`：
    - `p4blind_chk03_phase_group.csv`：`station,phase_h,leads,season,raw_ratio,group_mean,group_range,cv`
-   - `p4blind_chk03_year_phase.csv`：`station,phase_h,year,mean_raw_ratio`（KORD 优先 LOYO；KMIA 无 LOYO 则留空并注明）
+   - `p4blind_chk03_year_phase.csv`：`station,phase_h,year,mean_raw_ratio`（本轮仅授权 KORD 跨年；KMIA 逐年数据齐全但未纳入本单，行留 None 待后续补算，非缺数据）
 4. 复现命令、退出码、输出末尾原始片段、脚本与两张 CSV 的 SHA-256、输入数据 SHA-256 一并回交。
 5. 只列原始值，不下结论。
 
