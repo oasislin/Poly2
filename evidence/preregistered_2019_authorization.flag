@@ -1,0 +1,26 @@
+{
+  "preregistration_id": "preregistration-p4-active10-retrain.md + WAIVER-001",
+  "authorized_by": "Eric Lin",
+  "allowed_scope": {
+    "year": 2019,
+    "stations": ["KORD", "KMIA"],
+    "variable": "tmax",
+    "lead_hours": [12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72],
+    "excluded": {
+      "lead_6h": "PHASE-CLUSTER diagnostic only, not settled (D6-Q4)",
+      "lead_78h": "no production pkl, excluded",
+      "other_stations_tmax_384": "sealed, pending own 20-fold CV",
+      "all_tmin_480": "sealed, P6-TMIN-CV-LOCK kept locked, not running"
+    },
+    "aux_note": "AUXILIARY_POOLED_FALLBACK is a historical-source tag only (D6), not an exclusion"
+  },
+  "frozen_gate_thresholds": {
+    "ks_p_value_min": 0.05,
+    "weighted_ece_7bin_max": 0.05,
+    "variance_ratio_s_oos_bounds": [0.85, 1.15],
+    "pit_mean_bounds": [0.46, 0.54],
+    "coverage_90_bounds": [0.83, 0.95]
+  },
+  "status": "AUTHORIZED",
+  "waiver_id": "P4-2019-OOS-SCOPE-WAIVER-001"
+}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P4 双城 TMax 2019 样本外盲测 V1 存档报告</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%231f5f6b'/%3E%3Cpath d='M3 11 L6 7 L9 9 L13 4' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f5f2; --ink:#1c2127; --muted:#5c6670; --line:#d9d5cc;
+    --accent:#1f5f6b; --ok:#3a7d5d; --warn:#b4553a; --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    line-height:1.7;font-size:15px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px;}
+  header.masthead{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:28px;}
+  header.masthead h1{font-size:26px;margin:0 0 8px;letter-spacing:.5px;}
+  .meta{color:var(--muted);font-size:13px;}
+  .banner{background:#eef3f3;border-left:3px solid var(--accent);padding:12px 16px;margin:18px 0;font-size:14px;}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:6px;border-bottom:1px solid var(--line);}
+  h3{font-size:15.5px;margin:22px 0 8px;color:var(--accent);}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:13.5px;table-layout:fixed;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:center;vertical-align:middle;}
+  th{background:#eceee9;font-weight:600;}
+  td.l,th.l{text-align:left;}
+  .num{font-variant-numeric:tabular-nums;}
+  .pass{color:var(--ok);font-weight:600;}
+  .fail{color:var(--warn);font-weight:600;}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0;}
+  .stat{background:var(--card);border:1px solid var(--line);padding:16px;}
+  .stat .v{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .stat .k{color:var(--muted);font-size:13px;margin-top:4px;}
+  .chart{width:100%;height:380px;background:var(--card);border:1px solid var(--line);margin:14px 0;}
+  .chart.sm{height:320px;}
+  .note{color:var(--muted);font-size:13px;}
+  ul{margin:8px 0;padding-left:22px;}
+  li{margin:4px 0;}
+  .tag{display:inline-block;padding:1px 8px;font-size:12px;border:1px solid var(--line);border-radius:2px;margin-right:6px;}
+  .code{background:#eceee9;padding:10px 14px;font-family:Consolas,monospace;font-size:13px;overflow-x:auto;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:760px){
+    .cards{grid-template-columns:repeat(2,1fr);}
+    .grid2{grid-template-columns:1fr;}
+    .chart{height:320px;}
+    table{font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>P4 双城（KORD / KMIA）TMax 2019 样本外盲测 · V1 完整存档报告</h1>
+  <div class="meta">基准日 2026-10-20 ｜ 授权 Waiver P4-2019-OOS-SCOPE-WAIVER-001（authorized_by Eric Lin）｜ 文档性质：V1 冻结存档，不改写</div>
+</header>
+
+<div class="banner">
+  本报告只客观记录 V1 在既有冻结门禁下的原始结果与审核方补证实证，<b>不据此判定模型好坏</b>。模型整体判为「可用」；暴露的问题主要是 V1 检验逻辑本身的不合理，而非模型失效。全程零调参、零回溯改阈值、未执行 git push；2019 仅由审核方亲自结算。
+</div>
+
+<div class="cards">
+  <div class="stat"><div class="v num">7/22</div><div class="k">五道门禁全过</div></div>
+  <div class="stat"><div class="v num">22/22</div><div class="k">ECE / PIT均值 / 覆盖率</div></div>
+  <div class="stat"><div class="v num">20/22</div><div class="k">KS 检验</div></div>
+  <div class="stat"><div class="v num">9/22</div><div class="k">方差比 s_oos（瓶颈）</div></div>
+</div>
+
+<h2>1. 评估范围与算法基线</h2>
+<ul>
+  <li>矩阵：2 站（KORD 芝加哥、KMIA 迈阿密）× tmax × 11 提前期（12,18,…,72h）= <b>22 格</b>；2019 单年样本外，n=362~365 天/格。</li>
+  <li>排除：tmin 全部、6h（仅印证）、78h（无 pkl）、其余 8 站。</li>
+  <li>位置：μ_raw=a+b·ens_mean；因果 30 天滑动残差偏置 b30（shift(1).rolling(30,min_periods=10)，无前视）；μ_calib=μ_raw+b30。</li>
+  <li>离散度：σ_raw=√(c²+d²·ens_var)；σ_eff=σ_raw·c_train（c_train 站×季，训练期 clip[0.85,1.35]，存 manifest）。</li>
+  <li>形态：KORD 冬/春/秋 Johnson SU、夏 Gaussian；KMIA 四季 Johnson SU；授权范围不触发 EVT。</li>
+</ul>
+
+<h2>2. 五项冻结门禁（预注册 §七，原文为「20 折折外平均」门禁）</h2>
+<table>
+  <colgroup><col style="width:14%"><col style="width:46%"><col style="width:22%"><col style="width:18%"></colgroup>
+  <tr><th>门禁</th><th class="l">定义</th><th>冻结阈值</th><th>实测通过</th></tr>
+  <tr><td>G1 KS p</td><td class="l">kstest(PIT, uniform) 双侧 p</td><td>p ≥ 0.05</td><td class="num">20/22</td></tr>
+  <tr><td>G2 ECE</td><td class="l">7 档加权可靠性偏差</td><td>≤ 0.05</td><td class="pass num">22/22</td></tr>
+  <tr><td>G3 s_oos</td><td class="l">Var(resid,ddof=1)/mean(σ_eff²)</td><td>[0.85, 1.15]</td><td class="fail num">9/22</td></tr>
+  <tr><td>G4 PIT 均值</td><td class="l">mean(u)</td><td>[0.46, 0.54]</td><td class="pass num">22/22</td></tr>
+  <tr><td>G5 覆盖率</td><td class="l">exact 分位区间命中率</td><td>[0.83, 0.95]</td><td class="pass num">22/22</td></tr>
+</table>
+<p class="note">注：除 ECE=5% 有裁决 D2 依据外，[0.85,1.15]/[0.46,0.54]/[0.83,0.95] 为工程经验容差带，原文针对「20 折折外平均」设定，非按单年样本量统计推导。</p>
+
+<h2>3. s_oos 方差比：22 格实测 vs 冻结带 [0.85,1.15]</h2>
+<div id="c1" class="chart"></div>
+<p class="note">阴影为合格带；KMIA 中长时效整体上超，KORD 两端各有破界。</p>
+
+<h2>4. 各门禁独立通过数（满分 22）</h2>
+<div id="c2" class="chart sm"></div>
+
+<h2>5. 22 格原始结果（结算 CSV 原值，未美化）</h2>
+<table>
+  <colgroup><col style="width:13%"><col style="width:7%"><col style="width:9%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>
+  <tr><th>cell</th><th>n</th><th>s_oos</th><th>s过</th><th>KS p</th><th>KS过</th><th>ECE</th><th>PIT均值</th><th>覆盖</th><th>全过</th></tr>
+  <tbody id="tbody"></tbody>
+</table>
+
+<h2>6. 失效模式归类（V1 冻结门禁口径）</h2>
+<ul>
+  <li><span class="tag fail">A 上超/欠自信 s_oos&gt;1.15，11 格</span>KMIA 18~72h 全线（1.159~1.364）+ KORD_24（1.193）。</li>
+  <li><span class="tag fail">B 下低/过自信 s_oos&lt;0.85，2 格</span>KORD_36（0.833）、KORD_60（0.818）。</li>
+  <li><span class="tag fail">C KS 拒绝 p&lt;0.05，2 格</span>KORD_48（p=0.0454，s_oos 本身过）、KORD_72（p=0.0141，s_oos 本身过）。</li>
+</ul>
+
+<h2>7. 审核方补证实证（只读 parquet，非门禁判定）</h2>
+<h3>7.1 ±3°F 诊断窗外占比（Q5）</h3>
+<div id="c3" class="chart"></div>
+<p class="note">KORD 各格 41%~71% 观测落在 μ±3°F 外，KMIA 10%~28%，全样本均值 40.5%。七档±3°F 诊断窗对 KORD 漏检约 2/3 样本——属诊断分桶覆盖问题，非模型分布缺失尾部。</p>
+<h3>7.2 PIT 方差 vs 理论均匀值 1/12=0.0833（Q6）</h3>
+<div id="c4" class="chart sm"></div>
+<p class="note">22 格 PIT 方差 0.0834~0.0917，均值 0.0879，均贴近理论值，无 U 型塌陷；当前无迫切补方差门禁必要。</p>
+<h3>7.3 N_eff 与 Finf 95% 带（F(N_eff,∞)≡χ²/N_eff）</h3>
+<ul>
+  <li>KMIA rho₁=0.118~0.315，N_eff 189~287；KORD rho₁ 多数 &lt;0.1，N_eff 225~357。</li>
+  <li>Finf 带内：KMIA 12/18/36；KORD 12/18/30/42/48/54/66/72（后两者仅 KS 挂）。</li>
+  <li>Finf 带外：KMIA 24/30/42/48/54/60/66/72；KORD 24（微破上界）、36/60（破下界）。KMIA_30=1.364 在更宽 Fstd 带外，属确定性上超。</li>
+</ul>
+
+<h2>8. 处置三分框架（本次不执行，归档）</h2>
+<div class="grid2">
+  <div class="stat">
+    <div class="k">第一类 → 投注/定价模块</div>
+    <ul><li>Q1 连续衰减 / σ_adj=σ_eos·√s_oos / Kelly 折减</li><li>Q7 生产锚 exact、proxy 对照</li><li>本模块只交影响与成因，标定使用由投注模块裁决</li></ul>
+  </div>
+  <div class="stat">
+    <div class="k">第二类 → V2.0 盲测升级（换尺子，不重训）</div>
+    <ul><li>Q2 N_eff 动态非对称 F 带</li><li>Q3 单年抽样口径替代 CV 平均紧带</li><li>Q4 补 CvM；Q5 按市场档位积分 ECE；Q6 PIT 方差通用带（低优先）</li></ul>
+  </div>
+</div>
+<div class="stat" style="margin-top:14px;">
+  <div class="k">第三类 → 谨慎反推重训（先实验，不直接重训）</div>
+  <ul><li>Q8 先做 clip vs 去 clip 对照回测；7.2 去截断改贝叶斯/Ridge；lead 单调正则须先证显著超 CV 噪声，论证不过不做。</li></ul>
+</div>
+
+<h2>9. 复现工件与命令</h2>
+<div class="code">py scripts/evaluate_p4_2019_settlement.py --execute-settlement --confirm-waiver P4-2019-OOS-SCOPE-WAIVER-001</div>
+<ul class="note">
+  <li>统计：evidence/p4_2019_settlement_statistics.csv ｜ 逐日数组：data/processed/audit_arrays/2019_oos_p4_settlement_arrays.parquet</li>
+  <li>V1 合并备料：docs/audit/V1_22格合并备料_20261020.csv ｜ 冻结 flag：evidence/preregistered_2019_authorization.flag</li>
+  <li>预注册：specs/preregistration-p4-active10-retrain.md §七</li>
+</ul>
+
+</div>
+
+<script>
+var ROWS=[
+["KMIA_12",365,1.060,1,0.1107,1,0.0134,0.488,0.871,1],
+["KMIA_18",365,1.159,0,0.7466,1,0.0091,0.500,0.871,0],
+["KMIA_24",364,1.236,0,0.2260,1,0.0075,0.516,0.890,0],
+["KMIA_30",364,1.364,0,0.5727,1,0.0153,0.512,0.860,0],
+["KMIA_36",364,1.185,0,0.7637,1,0.0119,0.497,0.868,0],
+["KMIA_42",364,1.255,0,0.4780,1,0.0171,0.507,0.868,0],
+["KMIA_48",363,1.294,0,0.3456,1,0.0132,0.513,0.882,0],
+["KMIA_54",363,1.285,0,0.2579,1,0.0107,0.511,0.860,0],
+["KMIA_60",363,1.231,0,0.5527,1,0.0150,0.495,0.862,0],
+["KMIA_66",363,1.184,0,0.5304,1,0.0119,0.501,0.871,0],
+["KMIA_72",362,1.208,0,0.4583,1,0.0113,0.514,0.859,0],
+["KORD_12",365,0.888,1,0.2549,1,0.0063,0.510,0.937,1],
+["KORD_18",365,1.048,1,0.9191,1,0.0046,0.507,0.910,1],
+["KORD_24",364,1.193,0,0.0563,1,0.0044,0.521,0.885,0],
+["KORD_30",364,1.015,1,0.1310,1,0.0052,0.516,0.898,1],
+["KORD_36",364,0.833,0,0.2817,1,0.0061,0.514,0.926,0],
+["KORD_42",364,1.010,1,0.4807,1,0.0015,0.511,0.915,1],
+["KORD_48",363,1.105,1,0.0454,0,0.0057,0.519,0.884,0],
+["KORD_54",363,1.000,1,0.1404,1,0.0068,0.515,0.898,1],
+["KORD_60",363,0.818,0,0.5226,1,0.0051,0.514,0.928,0],
+["KORD_66",363,0.907,1,0.4900,1,0.0044,0.508,0.906,1],
+["KORD_72",362,1.078,1,0.0141,0,0.0056,0.521,0.873,0]
+];
+function yn(v){return v?'<span class="pass">过</span>':'<span class="fail">否</span>';}
+var tb=document.getElementById("tbody");
+ROWS.forEach(function(r){
+  var tr=document.createElement("tr");
+  tr.innerHTML="<td class='l'>"+r[0]+"</td><td class='num'>"+r[1]+"</td><td class='num'>"+r[2].toFixed(3)+"</td><td>"+yn(r[3])+"</td><td class='num'>"+r[4].toFixed(4)+"</td><td>"+yn(r[5])+"</td><td class='num'>"+r[6].toFixed(4)+"</td><td class='num'>"+r[7].toFixed(3)+"</td><td class='num'>"+r[8].toFixed(3)+"</td><td>"+yn(r[9])+"</td>";
+  tb.appendChild(tr);
+});
+var LABELS=["M12","M18","M24","M30","M36","M42","M48","M54","M60","M66","M72","K12","K18","K24","K30","K36","K42","K48","K54","K60","K66","K72"];
+function mk(id,opt){var c=echarts.init(document.getElementById(id));c.setOption(opt);window.addEventListener("resize",function(){c.resize();});}
+mk("c1",{
+  title:{text:"s_oos vs 冻结带[0.85,1.15]",left:"center",textStyle:{fontSize:14}},
+  tooltip:{trigger:"axis",triggerOn:"click",renderMode:"richText",confine:true},
+  grid:{left:50,right:20,top:50,bottom:90,containLabel:true},
+  xAxis:{type:"category",axisLabel:{rotate:45},data:LABELS},
+  yAxis:{type:"value",min:0.7,max:1.45,name:"s_oos"},
+  series:[{type:"bar",data:ROWS.map(function(r){return r[2];}),
+    markArea:{itemStyle:{opacity:0.12},data:[[{yAxis:0.85},{yAxis:1.15}]]},
+    markLine:{silent:true,symbol:"none",data:[{yAxis:1.15},{yAxis:0.85}]}
+  }]
+});
+mk("c2",{
+  title:{text:"各门禁独立通过数（满分22）",left:"center",textStyle:{fontSize:14}},
+  tooltip:{trigger:"axis",triggerOn:"click",renderMode:"richText",confine:true},
+  grid:{left:50,right:20,top:50,bottom:40,containLabel:true},
+  xAxis:{type:"category",data:["ECE","PIT均值","覆盖率","KS","s_oos","五道全过"]},
+  yAxis:{type:"value",max:22},
+  series:[{type:"bar",data:[22,22,22,20,9,7],label:{show:true,position:"top"}}]
+});
+mk("c3",{
+  title:{text:"±3°F 诊断窗外观测占比",left:"center",textStyle:{fontSize:14}},
+  tooltip:{trigger:"axis",triggerOn:"click",renderMode:"richText",confine:true},
+  grid:{left:50,right:20,top:50,bottom:90,containLabel:true},
+  xAxis:{type:"category",axisLabel:{rotate:45},data:LABELS},
+  yAxis:{type:"value",max:0.8,name:"窗外比例"},
+  series:[{type:"bar",data:[0.192,0.101,0.275,0.234,0.195,0.115,0.270,0.234,0.207,0.129,0.262,0.658,0.337,0.684,0.681,0.673,0.412,0.708,0.694,0.661,0.477,0.710]}]
+});
+mk("c4",{
+  title:{text:"PIT 方差 vs 理论 0.0833",left:"center",textStyle:{fontSize:14}},
+  tooltip:{trigger:"axis",triggerOn:"click",renderMode:"richText",confine:true},
+  grid:{left:50,right:20,top:50,bottom:90,containLabel:true},
+  xAxis:{type:"category",axisLabel:{rotate:45},data:LABELS},
+  yAxis:{type:"value",min:0.075,max:0.095,name:"PIT方差"},
+  series:[{type:"line",data:[0.0824,0.0883,0.0889,0.0916,0.0874,0.0908,0.0917,0.0910,0.0866,0.0858,0.0894,0.0872,0.0844,0.0910,0.0882,0.0837,0.0842,0.0901,0.0909,0.0834,0.0868,0.0891],
+    markLine:{silent:true,symbol:"none",data:[{yAxis:0.0833}]}
+  }]
+});
+</script>
+</body>
+</html>
