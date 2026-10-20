@@ -1,0 +1,9 @@
+station,season,anchor_lead,n,c_train_val_raw,c_train_clipped,hit_bound
+KORD,Winter,18,1715,1.105486,1.105486,False
+KORD,Spring,18,1748,1.084203,1.084203,False
+KORD,Summer,18,1748,1.040819,1.040819,False
+KORD,Autumn,18,1729,1.079393,1.079393,False
+KMIA,Winter,18,1715,1.097439,1.097439,False
+KMIA,Spring,18,1748,1.135775,1.135775,False
+KMIA,Summer,18,1748,1.12736,1.12736,False
+KMIA,Autumn,18,1729,1.117658,1.117658,False

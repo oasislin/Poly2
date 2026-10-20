@@ -97,4 +97,13 @@
 | **R-16** | 交易模块归档 | 依据方案 B 将 `src/`（27）、`tests/`（20）、`scripts/`（5）共 52 文件移入 `docs/archive/trading_modules/` 并新建 `README.md`（共 53 文件）；保留 `src/risk/stream_watchdog.py` 原位依赖；全量现役测试通过（649 passed） | ✅ 已完成 |
 | **R-18** | 代码卫生 | 移出 `src/data_acquisition/` 中的 Wunderground 历史抓取脚本至 `docs/archive/wunderground_scripts/`，清理 `__init__.py`，跑通单测（157 passed, 4 skipped） | ✅ 已完成 |
 
+---
+
+## 六、 V1 盲测完善支线 T3 阶段一检测记录 (2026-10-20)
+
+| 编号 | 事项名称 | 原始发现与实验设计 | 最新状态 | 处置依据 / 对应工单 / 证据 |
+| :--- | :--- | :--- | :--- | :--- |
+| **DECISION-20261020-01** | T3 阶段一 P-1 c_train 截断离线对照实验（E8-a/E8-b，KORD/KMIA） | 1. **E8-a 锚点原值复算（2000-2018）**：8 个站×季锚点（KORD/KMIA × 4季）未截断 $c_{\text{train}}$ 范围为 $[1.040819, 1.135775]$，**触界计数 0 / 8**，均未触碰 $[0.85, 1.35]$ 上下界。<br>2. **E8-b 留一年滚动对照（2000-2018，152 折）**：未截断 $c_{\text{train}}$ 范围为 $[1.035384, 1.154511]$，**触界计数 0 / 152**。Variant A (clip[0.85, 1.35]) 与 Variant B (完全不截断) 在所有 152 折测试年中的 $s_{\text{oos}}$、CRPS 与 90% coverage 完全逐位一致。<br>3. **实证结论**：实测推翻假说 H1（1.35 截断导致样本外失真），实证支持观察 H2（c_train 截断非失真因果，18h 标量缺乏 lead 维度及年际波动由分散度独立承担）。 | **阶段一检测完成，待审核方机械判定** | 1. 任务书：`docs/audit/T3-第三类重训检测_开发端任务书_20261020.md`<br>2. 检测脚本：`scripts/audit_t3/offline_t3_detection.py` (SHA-256: `39bda1b202eb317fdfb2e13e0e56e32ab8da5cc22d0fe43aa2eee636f4443ac3`)<br>3. 原始数据：`evidence/audit_t3/t3_e8a_anchor_raw.csv` (SHA-256: `c7880c2a3e2e96d1bb338d46efc09b20aa9882230ba05ba6d4995aaae56683a5`)<br>4. 对照数据：`evidence/audit_t3/t3_e8b_rolling_loyo.csv` (SHA-256: `6dffbbc4fd9a5b91da4ad1999cd3226e779f679ef8d6223d4768a74909375585`)<br>5. 提交凭据：见本次 Commit 2 (`feat(audit): T3 阶段一 c_train 截断离线对照 E8-a/E8-b（KORD/KMIA）`) |
+
+
 
