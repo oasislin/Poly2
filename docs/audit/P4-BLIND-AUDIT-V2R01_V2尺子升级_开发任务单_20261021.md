@@ -94,7 +94,18 @@ parquet 列：`target_date, tmax_f, month, season, ens_mean, ens_var, cell, mu_c
   - s_oos 带内：V1 原固定 [0.85, 1.15] 为 9/22；V2 Finf 带内为 11/22（救回 2 格：KMIA 18h/36h）；V2 Fstd 带内为 19/22（救回 10 格：KORD 24/36/60h，KMIA 18/24/36/42/60/66/72h；仅 KMIA 30h/48h/54h 仍超界）。
   - 均匀性：V1 原 KS 通过 20/22（KORD 48h/72h 挂掉）；V2 方案乙 reject_uniform 全体 False（0/22 否决，22/22 均不拒绝，CvM 救回两格边缘悬崖）。
   - ECE 均值（FIX1 档级加权修正）：V1 原 7 档 0.87%；V2 11 档档级直接可靠性 ECE 均值 1.18%，多分箱平均敏感性极差 0.78%（22/22 格 ece_2f 与 ece_bins20 严格不等，min diff 0.03%，max diff 1.69%），全部 22 格 ECE 均远低于 5% 门限。
-- 审核方机械判定：＿＿（待填）
+- 审核方机械判定（2026-10-21 FIX1 终审，独立复算，两步分离）：
+
+  **复核方式**：审核方从 parquet 独立重建 CDF 重算 22 格档级 ECE、s_oos/ρ₁/N_eff/Finf/Fstd、KS/CvM/reject_uniform/pit_var，与两 CSV 逐格对账。
+
+  - **Q2/Q3 F 带 → 通过**：原始观测值 finf_in 11/22、fstd_in 19/22；独立复算无漂移。双带并列、无法定门。
+  - **Q4 方案乙 → 通过**：原始观测值 reject_uniform 0/22；独立复算一致，KORD_48/72 边缘被 CvM 救回。
+  - **Q5 ECE（FIX1 后）→ 通过**：原始观测值 ece_2f 独立复算 22/22 匹配（NONE mismatch）；ece_2f≠ece_bins20 22/22（min 0.000334 / max 0.016930）；ece_2f 均值 0.011835、ece_range 均值 0.007836；四口径 ECE 全部 <0.05（max 0.019610）。判定阈值=档级直接可靠性 ECE 与概率桶分离。结论=口径缺陷已闭合。
+  - **Q6 PIT → 通过**：pit_var 0.082422~0.091727 贴理论 1/12，10 档和=1，复算一致。
+  - **SHA-256**：脚本 e821c0aa…、对照 572cc7cb… MATCH；metrics ae615945…（开发初抄漏首字符，已按本地实算更正）。
+  - **airgap**：开发附真实输出 `6 passed in 0.59s`、退出码 0；审核本地 pytest 7.4.3<8.3 未复跑，采纳开发片段。
+
+  **终审结论：四项全部通过，V2R01 尺子升级闭环。** 不产出综合 candidate_pass（依 §11-Q6）；ECE 法定阈值与 PIT 通用带边界留审核方/用户，本轮不代判。已 push（用户授权），工作树干净。
 
 ## 11. 开发端拷问裁定（2026-10-21，本节优先级高于前文歧义表述）
 
