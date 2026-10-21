@@ -85,15 +85,15 @@ parquet 列：`target_date, tmax_f, month, season, ens_mean, ens_var, cell, mu_c
 
 ## 10. 执行结果（开发回交后由审核方填写）
 
-- 脚本路径 / SHA-256：`scripts/audit_v2/reliability_v2.py` / `e9db6509b34f0dc78f7806765b78741399bef8eb112aaa14244f13e90e47c7d3`
+- 脚本路径 / SHA-256：`scripts/audit_v2/reliability_v2.py` / `e821c0aa0079f483f3510698f919751886d908bae145e3cd5385eae9c14a68ba`
 - 指标 CSV / 对照 CSV / SHA-256：
-  - 指标表：`evidence/audit_v2/p4blind_v2r01_metrics.csv` (22 行) / `4bca84563fd95ae90f582c22aad20ae58fd7649cd56dff77118a7fc98ef66eb8`
-  - 对照表：`evidence/audit_v2/p4blind_v2r01_comparison.csv` (22 行) / `bfd7f231e4911bab80b0621f22cf48c07c363f4365239267bc55d9c9391a1594`
+  - 指标表：`evidence/audit_v2/p4blind_v2r01_metrics.csv` (22 行) / `ae615945bc35a72fb9f9c2de04f26033637ad080f7cf70fc66b514065ccb611a`
+  - 对照表：`evidence/audit_v2/p4blind_v2r01_comparison.csv` (22 行) / `572cc7cb8f033ddda8317d0e6b729ea8dc041cb085e1e1f0be3ffb022da6af21`
 - 复现命令 / 退出码：`python3 scripts/audit_v2/reliability_v2.py --run` / `0`
 - 下沉布尔原始汇总：
   - s_oos 带内：V1 原固定 [0.85, 1.15] 为 9/22；V2 Finf 带内为 11/22（救回 2 格：KMIA 18h/36h）；V2 Fstd 带内为 19/22（救回 10 格：KORD 24/36/60h，KMIA 18/24/36/42/60/66/72h；仅 KMIA 30h/48h/54h 仍超界）。
   - 均匀性：V1 原 KS 通过 20/22（KORD 48h/72h 挂掉）；V2 方案乙 reject_uniform 全体 False（0/22 否决，22/22 均不拒绝，CvM 救回两格边缘悬崖）。
-  - ECE 均值：V1 原 7 档 0.87%；V2 2°F 全覆盖梯子 0.92%，多分箱平均敏感性极差 0.43%，全部 22 格 ECE 均低于 2%（远低于 5% 门限）。
+  - ECE 均值（FIX1 档级加权修正）：V1 原 7 档 0.87%；V2 11 档档级直接可靠性 ECE 均值 1.18%，多分箱平均敏感性极差 0.78%（22/22 格 ece_2f 与 ece_bins20 严格不等，min diff 0.03%，max diff 1.69%），全部 22 格 ECE 均远低于 5% 门限。
 - 审核方机械判定：＿＿（待填）
 
 ## 11. 开发端拷问裁定（2026-10-21，本节优先级高于前文歧义表述）

@@ -168,9 +168,13 @@ def evaluate_cell_v2(
     reject_uniform = bool((ks_p < 0.05) and (cvm_p < 0.05))
 
     # ---------------------------------------------------------
-    # Task C (Q5): Fixed 2°F Bracket Ladder ECE + Bin Sensitivity
+    # Task C (Q5): Fixed 2°F Bracket Ladder ECE + Bin Sensitivity (FIX1 Updated)
     # ---------------------------------------------------------
-    # Scheme A (Ruling Q1): Daily local 2°F ladder with 100% full coverage
+    # 1. 11-bracket level direct reliability ECE (Ruling FIX1)
+    bracket_probs: Dict[int, List[float]] = {k: [] for k in range(11)}
+    bracket_hits: Dict[int, List[int]] = {k: [] for k in range(11)}
+
+    # Flat probability-hit pairs across all brackets for probability-bin ECE sensitivity
     probs_2f: List[float] = []
     hits_2f: List[int] = []
 
@@ -195,32 +199,38 @@ def evaluate_cell_v2(
         # Center bracket: [c0 - 1, c0 + 1)
         # 4 brackets left: [c0 - 3, c0 - 1), [c0 - 5, c0 - 3), [c0 - 7, c0 - 5), [c0 - 9, c0 - 7)
         # 4 brackets right: [c0 + 1, c0 + 3), [c0 + 3, c0 + 5), [c0 + 5, c0 + 7), [c0 + 7, c0 + 9)
-        # Left catch-all: [-inf, c0 - 9)
-        # Right catch-all: [c0 + 9, +inf)
+        # Left catch-all (Bracket 0): [-inf, c0 - 9)
+        # Right catch-all (Bracket 10): [c0 + 9, +inf)
         lower_bound = c0 - 9
         upper_bound = c0 + 9
 
         day_probs = []
         day_hits = []
 
-        # Left catch-all
+        # Left catch-all (Bracket 0)
         p_left = float(np.clip(cdf_fn(lower_bound), 0.0, 1.0))
         h_left = 1 if y_i < lower_bound else 0
+        bracket_probs[0].append(p_left)
+        bracket_hits[0].append(h_left)
         day_probs.append(p_left)
         day_hits.append(h_left)
 
-        # 9 interior 2°F brackets
-        for k in range(9):
-            b_lo = lower_bound + 2 * k
+        # 9 interior 2°F brackets (Brackets 1..9)
+        for k in range(1, 10):
+            b_lo = lower_bound + 2 * (k - 1)
             b_hi = b_lo + 2
             p_k = float(np.clip(cdf_fn(b_hi) - cdf_fn(b_lo), 0.0, 1.0))
             h_k = 1 if (b_lo <= y_i < b_hi) else 0
+            bracket_probs[k].append(p_k)
+            bracket_hits[k].append(h_k)
             day_probs.append(p_k)
             day_hits.append(h_k)
 
-        # Right catch-all
+        # Right catch-all (Bracket 10)
         p_right = float(np.clip(1.0 - cdf_fn(upper_bound), 0.0, 1.0))
         h_right = 1 if y_i >= upper_bound else 0
+        bracket_probs[10].append(p_right)
+        bracket_hits[10].append(h_right)
         day_probs.append(p_right)
         day_hits.append(h_right)
 
@@ -238,11 +248,17 @@ def evaluate_cell_v2(
             probs_7bin_v1.append(p_v1)
             hits_7bin_v1.append(h_v1)
 
-    # Compute ECEs under different binning specifications
-    ece_2f = compute_weighted_ece(probs_2f, hits_2f, num_bins=20)
+    # Compute 11-bracket level direct reliability ECE (FIX1 mandate)
+    bracket_errors = [
+        abs(float(np.mean(bracket_probs[k])) - float(np.mean(bracket_hits[k])))
+        for k in range(11)
+    ]
+    ece_2f = float(np.mean(bracket_errors))
+
+    # Compute probability-bin ECEs for bin sensitivity analysis
     ece_7bin_v1 = compute_weighted_ece(probs_7bin_v1, hits_7bin_v1, num_bins=20)
     ece_bins10 = compute_weighted_ece(probs_2f, hits_2f, num_bins=10)
-    ece_bins20 = compute_weighted_ece(probs_2f, hits_2f, num_bins=20)  # equal-width 20-bin on 2°F ladder
+    ece_bins20 = compute_weighted_ece(probs_2f, hits_2f, num_bins=20)
 
     ece_set = [ece_2f, ece_7bin_v1, ece_bins10, ece_bins20]
     ece_range = float(max(ece_set) - min(ece_set))
