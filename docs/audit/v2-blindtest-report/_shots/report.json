@@ -1,0 +1,90 @@
+{
+  "src": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\V2_2019双城盲测_尺子升级报告_20261021.html",
+  "url": "file:///C:/SynologyDrive/Project/Poly%20Way2/docs/audit/v2-blindtest-report/V2_2019%E5%8F%8C%E5%9F%8E%E7%9B%B2%E6%B5%8B_%E5%B0%BA%E5%AD%90%E5%8D%87%E7%BA%A7%E6%8A%A5%E5%91%8A_20261021.html",
+  "outdir": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\_shots",
+  "include": [
+    "lint",
+    "screenshots",
+    "structure"
+  ],
+  "shots": {
+    "desktop": {
+      "screenshot": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\_shots\\V2_2019双城盲测_尺子升级报告_20261021_desktop.jpg",
+      "screenshotBytes": 323647,
+      "truncated": false,
+      "structure": {
+        "title": "P4 双城 TMax 2019 样本外盲测 V2.0 尺子升级报告",
+        "firstH1": "P4 双城（KORD / KMIA）TMax 2019 样本外盲测 · V2.0 尺子升级报告",
+        "viewport": {
+          "w": 1418,
+          "h": 746
+        },
+        "fullpage": {
+          "w": 1418,
+          "h": 4548
+        },
+        "counts": {
+          "section": 0,
+          "h1": 1,
+          "h2": 9,
+          "img": 0,
+          "canvas": 4,
+          "svg": 0,
+          "links": 0,
+          "buttons": 0
+        }
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "horizontalOverflow": [],
+      "resourceErrors": [],
+      "reportSource": "cdp"
+    }
+  },
+  "engine": "chrome_cli",
+  "chromiumExec": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "engineDegraded": true,
+  "engineDegradedReason": "playwright 未装",
+  "elapsedSec": 5.7,
+  "schemaVersion": 2,
+  "status": "pass",
+  "engineInfo": {
+    "name": "chrome_cli",
+    "degraded": true,
+    "degradedReasons": [
+      "playwright 未装"
+    ]
+  },
+  "input": {
+    "original": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\V2_2019双城盲测_尺子升级报告_20261021.html",
+    "resolvedPath": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\V2_2019双城盲测_尺子升级报告_20261021.html",
+    "baseUrl": "file:///C:/SynologyDrive/Project/Poly%20Way2/docs/audit/v2-blindtest-report/V2_2019%E5%8F%8C%E5%9F%8E%E7%9B%B2%E6%B5%8B_%E5%B0%BA%E5%AD%90%E5%8D%87%E7%BA%A7%E6%8A%A5%E5%91%8A_20261021.html",
+    "protocol": "file",
+    "cwd": "C:\\SynologyDrive\\Project\\Poly Way2",
+    "mediaMode": {
+      "reducedMotion": true
+    }
+  },
+  "artifacts": {
+    "screenshots": [
+      {
+        "viewport": "desktop",
+        "path": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\_shots\\V2_2019双城盲测_尺子升级报告_20261021_desktop.jpg",
+        "size": 323647,
+        "visualCoverage": {
+          "complete": true,
+          "reason": null
+        }
+      }
+    ]
+  },
+  "summary": {
+    "blocker": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 0
+  },
+  "findings": [],
+  "prioritizedActions": [],
+  "reportPath": "C:\\SynologyDrive\\Project\\Poly Way2\\docs\\audit\\v2-blindtest-report\\_shots\\report.json"
+}
