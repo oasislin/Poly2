@@ -55,7 +55,7 @@
 | **Ticket 02** | [#135](https://github.com/oasislin/Poly2/issues/135) | `Phase 2 Task 08 - Ticket 02: feat(contract): 实现物理模型与 manifest SHA256 版本戳强校验看门狗` | **Frontier 就绪** / 依赖 #134 已解除 |
 | **Ticket 03** | [#136](https://github.com/oasislin/Poly2/issues/136) | `Phase 2 Task 08 - Ticket 03: feat(contract): 实现从 V2 盲测 CSV 自动导出 22 格静态参数表的转换器与校验器` | **Frontier 就绪** / 依赖 #134 已解除 |
 | **Ticket 04** | [#137](https://github.com/oasislin/Poly2/issues/137) | `Phase 2 Task 08 - Ticket 04: feat(contract): 实现物理模型重测触发与契约更新审计流水线` | Blocked by #135, #136 |
-| **Ticket 05** | [#138](https://github.com/oasislin/Poly2/issues/138) | `Phase 2 Task 08 - Ticket 05: test(contract): 编写参数契约、版本戳校验与防污染契约测试集` | Blocked by #137 |
+| **Ticket 05** | [#138](https://github.com/oasislin/Poly2/issues/138) | `Phase 2 Task 08 - Ticket 05: test(contract): 编写参数契约、版本戳校验与防污染契约测试集` | Blocked by #137, Ticket 26 |
 | **Ticket 06** | [#139](https://github.com/oasislin/Poly2/issues/139) | `Phase 2 Task 08 - Ticket 06: feat(pricing): 实现 Q7 覆盖率双轨分工与 exact / gaussian_proxy 计算解耦` | **Frontier 就绪** / 依赖 #134 已解除 |
 | **Ticket 07** | [#140](https://github.com/oasislin/Poly2/issues/140) | `Phase 2 Task 08 - Ticket 07: feat(pricing): 实现基于 s_oos 的定价端方差自适应膨胀 σ_adj 计算引擎` | Blocked by #136, #139 |
 | **Ticket 08** | [#141](https://github.com/oasislin/Poly2/issues/141) | `Phase 2 Task 08 - Ticket 08: feat(pricing): 承接 Task 04 交易 EV 引擎并实现 S1 盘口穿透探针计算 (DR-2026-1014-01)` | Blocked by #140 |
@@ -75,7 +75,8 @@
 | **Ticket 22** | [#155](https://github.com/oasislin/Poly2/issues/155) | `Phase 2 Task 08 - Ticket 22: feat(simulation): 集成纸面盘实时资金守恒与连续净 EV 观测看门狗` | Blocked by #154 |
 | **Ticket 23** | [#156](https://github.com/oasislin/Poly2/issues/156) | `Phase 2 Task 08 - Ticket 23: feat(calibration): 搭建 F-2 参数两步标定脚手架 (M-5 判词落地)` | Blocked by #149, #154 |
 | **Ticket 24** | [#157](https://github.com/oasislin/Poly2/issues/157) | `Phase 2 Task 08 - Ticket 24: test(simulation): 纸面盘端到端 48h 仿真验收测试集` | Blocked by #155, #156 |
-| **Ticket 25** | [#158](https://github.com/oasislin/Poly2/issues/158) | `Phase 2 Task 08 - Ticket 25: fix(contract): 修订物理参数契约数据模型缺陷并加固不可变与严格解析` | |
+| **Ticket 25** | [#158](https://github.com/oasislin/Poly2/issues/158) | `Phase 2 Task 08 - Ticket 25: fix(contract): 修订物理参数契约数据模型缺陷并加固不可变与严格解析` | **✅ 已完成 (Closed / CHK-14 通过)** |
+| **Ticket 26** | [#159](https://github.com/oasislin/Poly2/issues/159) | `Phase 2 Task 08 - Ticket 26: feat(contract): 建立物理参数受控域治理模块（两级域声明、消费影响域登记与算法解耦）` | **Frontier 就绪** / 依赖 Ticket 01/25 已解除 |
 
 ---
 

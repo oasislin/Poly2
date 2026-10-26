@@ -19,6 +19,8 @@ import re
 from types import MappingProxyType
 from typing import Any, Dict, List, Mapping, Set, Tuple
 
+from src.contract.parameter_domains import validate_cell_parameters
+
 
 # W2 Scope Authorized Grid Constants (Structural Dimensions, NOT Thresholds)
 AUTHORIZED_STATIONS: Tuple[str, ...] = ("KORD", "KMIA")
@@ -105,6 +107,10 @@ class CellCalibrationRecord:
     cvm_stat: float  # Cramer-von Mises test statistic
     cvm_p: float  # Cramer-von Mises p-value
     ece_range: float  # Full range ECE for auxiliary audit
+
+    def __post_init__(self) -> None:
+        """委托参数受控域校验（Ticket 26 / ADR-0019 附录 A）。"""
+        validate_cell_parameters(self)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize record to dictionary."""
