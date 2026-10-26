@@ -161,7 +161,7 @@ def _setup_synthetic_environment(
     canonical_manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
 
     contract = PhysicalParamContract(
-        contract_version="1.0.0",
+        contract_version=CONTRACT_VERSION,
         manifest_sha256=canonical_manifest_sha,
         model_weights_sha256=model_weights_sha256,
         created_at="2026-10-26T00:00:00Z",
@@ -392,3 +392,52 @@ def test_contract_version_and_guard_constants():
     assert CONTRACT_VERSION == "ADR-0019-Ticket01-v1"
     assert 6 not in AUTHORIZED_LEADS_FOR_GUARD
     assert len(AUTHORIZED_LEADS_FOR_GUARD) == 11
+
+
+def test_contract_version_mismatch_raises_stale_model_parameters_error(tmp_path: Path):
+    """Verify mismatch between injected contract version and CONTRACT_VERSION raises StaleModelParametersError."""
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    tampered_contract = PhysicalParamContract(
+        contract_version="OUTDATED-SCHEMA-v0",
+        manifest_sha256=contract.manifest_sha256,
+        model_weights_sha256=contract.model_weights_sha256,
+        created_at=contract.created_at,
+        cells=contract.cells,
+    )
+    watchdog = ContractVersionWatchdog(
+        manifest_path=manifest_path, contract=tampered_contract
+    )
+    with pytest.raises(
+        StaleModelParametersError,
+        match=r"Contract contract_version mismatch: expected='ADR-0019-Ticket01-v1', actual='OUTDATED-SCHEMA-v0'",
+    ):
+        watchdog.check()
+
+
+def test_non_authorized_station_in_manifest_ignored(tmp_path: Path):
+    """Verify models for non-authorized stations (e.g. KATL) are silently skipped."""
+    manifest_path, contract = _setup_synthetic_environment(
+        tmp_path, include_other_station=True
+    )
+    watchdog = ContractVersionWatchdog(manifest_path=manifest_path, contract=contract)
+    report = watchdog.check()
+    assert report.is_valid is True
+    assert report.verified_cells_count == TOTAL_AUTHORIZED_CELLS  # 22
+
+
+def test_real_repo_manifest_read_only_smoke():
+    """Integration smoke test: read-only verification against actual data/models/manifest.json."""
+    manifest_path = Path("data/models/manifest.json")
+    if not manifest_path.exists():
+        pytest.skip("data/models/manifest.json not found in repository")
+
+    watchdog = ContractVersionWatchdog(manifest_path=manifest_path, contract=None)
+    report = watchdog.check()
+
+    assert report.is_valid is True
+    assert report.verified_cells_count == TOTAL_AUTHORIZED_CELLS  # 22
+    assert report.failed_entries == 0
+    assert report.skipped_6h_entries == 64
+    assert report.bypassed is False
+    assert report.checked_at != ""
+

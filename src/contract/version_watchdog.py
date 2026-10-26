@@ -6,7 +6,7 @@ Implements startup-time fail-closed verification of physical model parameter fil
 and manifest.json checksums. Guarantees that:
 - Deployed .pkl binaries match exactly the declared SHA256 in manifest.json.
 - Injected contract manifest anchor matches canonical manifest SHA256.
-- Injected contract model weights hashes match active binaries.
+- Injected contract model weights hashes match active binaries (Fail-Closed).
 - All 22 statutory calibration grid cells (KORD/KMIA * 11 lead hours) are verified.
 - 6h lead models are explicitly excluded from blocking enforcement (WARN-only).
 - Defense-in-depth security: production bypass is strictly prohibited.
@@ -21,7 +21,7 @@ import pickle
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Set, Tuple, Union
 
 from src.contract.parameter_contract import (
     AUTHORIZED_LEAD_HOURS,
@@ -52,7 +52,7 @@ class ContractGuardrailError(Exception):
 
 
 class StaleModelParametersError(ContractGuardrailError):
-    """SHA256 不匹配 → 陈旧参数注入."""
+    """SHA256 不匹配或版本过旧 → 陈旧参数注入."""
 
     pass
 
@@ -101,55 +101,57 @@ class ContractVersionWatchdog:
     ) -> WatchdogVerificationReport:
         """
         Verify manifest checksums and physical model parameter binaries.
-
-        Three lines of defense:
-        - Defense 1: skip_when_env defaults to None (fail-closed, must check).
-        - Defense 2: POLY_ENV in ('production', 'prod') strictly rejects any bypass attempt.
-        - Defense 3: When bypass is active in non-prod, logs CRITICAL audit warning.
+        Executes three defense lines and a four-step fail-closed workflow.
         """
-        poly_env = (os.environ.get("POLY_ENV") or "").lower()
-        is_production = poly_env in ("production", "prod")
+        bypass_report = self._handle_bypass_defense(skip_when_env)
+        if bypass_report is not None:
+            return bypass_report
 
-        if skip_when_env is not None:
-            if is_production:
-                raise SecurityViolationError(
-                    f"Cannot bypass contract watchdog in production environment (POLY_ENV='{poly_env}')"
-                )
-            if os.environ.get(skip_when_env) == "1":
-                logger.critical(
-                    "[ContractWatchdog] TEST BYPASS ACTIVATED via env '%s' - STRICTLY PROHIBITED IN PRODUCTION",
-                    skip_when_env,
-                )
-                return WatchdogVerificationReport(
-                    is_valid=True,
-                    verified_cells_count=0,
-                    failed_entries=0,
-                    skipped_6h_entries=0,
-                    bypassed=True,
-                    checked_at=datetime.now(timezone.utc).isoformat(),
-                )
-
-        # Full verification workflow (Fail-Closed)
         manifest = self._load_manifest()
         canonical_sha256 = self._compute_canonical_manifest_sha256(manifest)
+        self._verify_contract_anchors(canonical_sha256)
 
-        if self.contract is not None:
-            if self.contract.manifest_sha256 != canonical_sha256:
-                raise StaleModelParametersError(
-                    f"Contract manifest_sha256 mismatch: "
-                    f"expected='{self.contract.manifest_sha256}', actual='{canonical_sha256}'"
-                )
-
-        verified_count, skipped_6h = self._verify_model_weights_sha256(manifest)
+        verified_cells_count, skipped_6h = self._verify_model_weights(manifest)
 
         return WatchdogVerificationReport(
             is_valid=True,
-            verified_cells_count=verified_count,
+            verified_cells_count=verified_cells_count,
             failed_entries=0,
             skipped_6h_entries=skipped_6h,
             bypassed=False,
             checked_at=datetime.now(timezone.utc).isoformat(),
         )
+
+    def _handle_bypass_defense(
+        self, skip_when_env: Optional[str]
+    ) -> Optional[WatchdogVerificationReport]:
+        """Enforce production mutual exclusion and test environment bypass."""
+        poly_env = (os.environ.get("POLY_ENV") or "").lower()
+        is_production = poly_env in ("production", "prod")
+
+        if skip_when_env is None:
+            return None
+
+        if is_production:
+            raise SecurityViolationError(
+                f"Cannot bypass contract watchdog in production environment (POLY_ENV='{poly_env}')"
+            )
+
+        if os.environ.get(skip_when_env) == "1":
+            logger.critical(
+                "[ContractWatchdog] TEST BYPASS ACTIVATED via env '%s' - STRICTLY PROHIBITED IN PRODUCTION",
+                skip_when_env,
+            )
+            return WatchdogVerificationReport(
+                is_valid=True,
+                verified_cells_count=0,
+                failed_entries=0,
+                skipped_6h_entries=0,
+                bypassed=True,
+                checked_at=datetime.now(timezone.utc).isoformat(),
+            )
+
+        return None
 
     def _load_manifest(self) -> Dict[str, Any]:
         """Load manifest.json from disk with structural fail-closed assertions."""
@@ -182,15 +184,33 @@ class ContractVersionWatchdog:
         ).encode("utf-8")
         return hashlib.sha256(serialized).hexdigest()
 
-    def _verify_model_weights_sha256(
+    def _verify_contract_anchors(self, canonical_sha256: str) -> None:
+        """Verify injected contract version and manifest SHA256 anchors."""
+        if self.contract is None:
+            return
+
+        if self.contract.contract_version != CONTRACT_VERSION:
+            raise StaleModelParametersError(
+                f"Contract contract_version mismatch: "
+                f"expected='{CONTRACT_VERSION}', actual='{self.contract.contract_version}'"
+            )
+
+        if self.contract.manifest_sha256 != canonical_sha256:
+            raise StaleModelParametersError(
+                f"Contract manifest_sha256 mismatch: "
+                f"expected='{self.contract.manifest_sha256}', actual='{canonical_sha256}'"
+            )
+
+    def _verify_model_weights(
         self, manifest: Dict[str, Any]
     ) -> Tuple[int, int]:
         """
-        Verify physical .pkl binaries for statutory grid cells against manifest.
-        Returns (verified_count, skipped_6h_count).
+        Verify physical model binaries across statutory grid cells against manifest.
+        Tracks distinct (station, lead_hours) cell coverage.
+        Returns (distinct_verified_cells_count, skipped_6h_count).
         """
         models = manifest["models"]
-        verified_count = 0
+        seen_cells: Set[Tuple[str, int]] = set()
         skipped_6h = 0
 
         for fname, meta in models.items():
@@ -202,11 +222,9 @@ class ContractVersionWatchdog:
             station = str(meta["station"]).upper()
             lead = int(meta["lead_hours"])
 
-            # Filter statutory stations: only KORD and KMIA are in statutory scope
             if station not in AUTHORIZED_STATIONS:
                 continue
 
-            # Check lead hours
             if lead not in AUTHORIZED_LEADS_FOR_GUARD:
                 if lead == 6:
                     logger.warning(
@@ -219,61 +237,63 @@ class ContractVersionWatchdog:
                 continue
 
             cell_key = f"{station}_{lead}h"
-            file_path = self.manifest_path.parent / fname
+            self._verify_single_model_file(fname, meta, cell_key)
+            seen_cells.add((station, lead))
 
-            # 1. File existence check
-            if not file_path.exists():
-                raise PickleCorruptionError(
-                    f"Missing model parameter file declared in manifest: {file_path}"
-                )
-
-            # 2. File size check (reject 0 bytes corrupt)
-            file_size = file_path.stat().st_size
-            if file_size == 0:
-                raise PickleCorruptionError(
-                    f"Model parameter file is 0 bytes corrupt: {file_path}"
-                )
-
-            # 3. Read content
-            with open(file_path, "rb") as f:
-                content = f.read()
-
-            # 4. Pickle deserialization check
-            try:
-                pickle.loads(content)
-            except (pickle.UnpicklingError, EOFError) as exc:
-                raise PickleCorruptionError(
-                    f"Failed to unpickle model file (corrupt): {file_path}: {exc}"
-                ) from exc
-
-            # 5. SHA256 against manifest declaration
-            actual_sha256 = hashlib.sha256(content).hexdigest().lower()
-            declared_sha256 = str(meta["sha256"]).lower()
-            if actual_sha256 != declared_sha256:
-                raise StaleModelParametersError(
-                    f"Model SHA256 mismatch for '{fname}': "
-                    f"expected='{declared_sha256}', actual='{actual_sha256}'"
-                )
-
-            # 6. SHA256 against contract anchor (if injected)
-            if self.contract is not None and cell_key in self.contract.model_weights_sha256:
-                expected_contract_sha = str(
-                    self.contract.model_weights_sha256[cell_key]
-                ).lower()
-                if actual_sha256 != expected_contract_sha:
-                    raise StaleModelParametersError(
-                        f"Contract model_weights_sha256 mismatch for cell '{cell_key}': "
-                        f"expected='{expected_contract_sha}', actual='{actual_sha256}'"
-                    )
-
-            verified_count += 1
-
-        # Fail-Closed Hard Assertion: must verify exactly 22 statutory cells
         expected_total = TOTAL_AUTHORIZED_CELLS  # 22
-        if verified_count != expected_total:
+        if len(seen_cells) != expected_total:
             raise ContractGuardrailError(
-                f"Incomplete statutory cell coverage: verified={verified_count} "
-                f"expected={expected_total} (missing {expected_total - verified_count} cells)"
+                f"Incomplete statutory cell coverage: verified={len(seen_cells)} "
+                f"expected={expected_total} (missing {expected_total - len(seen_cells)} cells)"
             )
 
-        return verified_count, skipped_6h
+        return len(seen_cells), skipped_6h
+
+    def _verify_single_model_file(
+        self, fname: str, meta: Dict[str, Any], cell_key: str
+    ) -> None:
+        """Verify existence, size, pickle integrity, and SHA256 for a single model file."""
+        file_path = self.manifest_path.parent / fname
+
+        if not file_path.exists():
+            raise PickleCorruptionError(
+                f"Missing model parameter file declared in manifest: {file_path}"
+            )
+
+        if file_path.stat().st_size == 0:
+            raise PickleCorruptionError(
+                f"Model parameter file is 0 bytes corrupt: {file_path}"
+            )
+
+        with open(file_path, "rb") as f:
+            content = f.read()
+
+        try:
+            pickle.loads(content)
+        except (pickle.UnpicklingError, EOFError, AttributeError, ValueError, TypeError) as exc:
+            raise PickleCorruptionError(
+                f"Failed to unpickle model file (corrupt): {file_path}: {exc}"
+            ) from exc
+
+        actual_sha256 = hashlib.sha256(content).hexdigest().lower()
+        declared_sha256 = str(meta["sha256"]).lower()
+        if actual_sha256 != declared_sha256:
+            raise StaleModelParametersError(
+                f"Model SHA256 mismatch for '{fname}': "
+                f"expected='{declared_sha256}', actual='{actual_sha256}'"
+            )
+
+        if self.contract is not None and self.contract.model_weights_sha256:
+            if cell_key not in self.contract.model_weights_sha256:
+                raise StaleModelParametersError(
+                    f"Contract model_weights_sha256 missing cell '{cell_key}': "
+                    f"expected in contract model_weights_sha256"
+                )
+            expected_contract_sha = str(
+                self.contract.model_weights_sha256[cell_key]
+            ).lower()
+            if actual_sha256 != expected_contract_sha:
+                raise StaleModelParametersError(
+                    f"Contract model_weights_sha256 mismatch for cell '{cell_key}': "
+                    f"expected='{expected_contract_sha}', actual='{actual_sha256}'"
+                )
