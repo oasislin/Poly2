@@ -265,6 +265,26 @@ class ContractVersionWatchdog:
 
         return station, lead
 
+    @staticmethod
+    def _handle_non_statutory_lead(fname: str, station: str, lead: int) -> int:
+        """Handle logging and exemption counter for models with non-statutory leads."""
+        if lead == 6:
+            logger.warning(
+                "[ContractWatchdog] 6h lead model SKIPPED from betting contract verification: "
+                "station=%s, model=%s",
+                station,
+                fname,
+            )
+            return 1
+        logger.debug(
+            "[ContractWatchdog] Non-statutory lead model SKIPPED: "
+            "station=%s, lead=%s, model=%s",
+            station,
+            lead,
+            fname,
+        )
+        return 0
+
     def _verify_model_weights(
         self, manifest: Dict[str, Any]
     ) -> Tuple[int, int]:
@@ -285,22 +305,7 @@ class ContractVersionWatchdog:
                 continue
 
             if lead not in AUTHORIZED_LEADS_FOR_GUARD:
-                if lead == 6:
-                    logger.warning(
-                        "[ContractWatchdog] 6h lead model SKIPPED from betting contract verification: "
-                        "station=%s, model=%s",
-                        station,
-                        fname,
-                    )
-                    skipped_6h += 1
-                else:
-                    logger.debug(
-                        "[ContractWatchdog] Non-statutory lead model SKIPPED: "
-                        "station=%s, lead=%s, model=%s",
-                        station,
-                        lead,
-                        fname,
-                    )
+                skipped_6h += self._handle_non_statutory_lead(fname, station, lead)
                 continue
 
             self._verify_single_model_file(fname, meta)

@@ -277,61 +277,10 @@ def _build_cells_dict(
     return cells_dict
 
 
-def _extract_model_weights_from_manifest(
-    manifest_dict: Dict[str, Any]
-) -> Dict[str, str]:
-    """
-    Extract model file SHA256 hashes for statutory betting contract from manifest.
-    Filter conditions per ADR-0019 / Ticket 03:
-    - station in AUTHORIZED_STATIONS
-    - lead_hours in AUTHORIZED_LEADS_FOR_GUARD (12..72h, explicitly excludes 6h)
-    - str(meta.get("variable", "")).lower() == "max"
-
-    CRITICAL RULES:
-    - Do NOT filter by status (Ruling D6: AUX tags have no permission/exclusion meaning;
-      60h lead across all seasons is labeled AUXILIARY_POOLED_FALLBACK).
-    - Do NOT determine variable via filename substring; use meta['variable'].
-    - Variable 'min' (88 models) is explicitly excluded for Phase 2 Task 08 Class 1 scope;
-      will be extended when tmin enters betting layer.
-    """
-    if "models" not in manifest_dict or not isinstance(manifest_dict["models"], dict):
-        raise ContractConversionError("Manifest missing 'models' dictionary")
-
-    models = manifest_dict["models"]
-    weights_map: Dict[str, str] = {}
-    seasons_by_cell: Dict[Tuple[str, int], Set[Tuple[str, str]]] = {}
-
-    for fname, meta in models.items():
-        if not isinstance(meta, dict):
-            raise ContractConversionError(f"Model entry '{fname}' metadata must be a dictionary")
-
-        station_raw = meta.get("station")
-        lead_raw = meta.get("lead_hours")
-        var_raw = meta.get("variable")
-        if station_raw is None or lead_raw is None or var_raw is None:
-            continue
-
-        station = str(station_raw).upper()
-        try:
-            lead = int(lead_raw)
-        except (ValueError, TypeError):
-            continue
-
-        var = str(var_raw).lower()
-
-        # Strict filter per ADR-0019 / Ruling D6
-        if station in AUTHORIZED_STATIONS and lead in AUTHORIZED_LEADS_FOR_GUARD and var == "max":
-            sha = str(meta.get("sha256", "")).lower()
-            if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
-                raise ContractConversionError(
-                    f"Model '{fname}' has invalid SHA256 in manifest: '{sha}' (must be 64-hex)"
-                )
-            weights_map[fname] = sha
-            season = str(meta.get("season", ""))
-            seasons_by_cell.setdefault((station, lead), set()).add((season, var))
-
-    # Structural assertions (without hardcoding magic numbers):
-    # 1. Exactly 22 statutory cells must be present in seasons_by_cell
+def _assert_model_weights_structure(
+    seasons_by_cell: Dict[Tuple[str, int], Set[Tuple[str, str]]]
+) -> None:
+    """Assert 22 statutory cells coverage and uniform 4-season max structure."""
     expected_cells = {
         (st, lead) for st in AUTHORIZED_STATIONS for lead in AUTHORIZED_LEADS_FOR_GUARD
     }
@@ -341,7 +290,6 @@ def _extract_model_weights_from_manifest(
             f"Missing model weights coverage for {len(missing_cells)} statutory cells: {sorted(missing_cells)}"
         )
 
-    # 2. Every cell must have a non-empty (season, variable) set, and all 22 cells must have identical sets
     first_set = next(iter(seasons_by_cell.values()))
     if not first_set:
         raise ContractConversionError("Empty (season, variable) set for model weights")
@@ -355,6 +303,60 @@ def _extract_model_weights_from_manifest(
                 f"Non-max variable detected in model weights set for cell {cell}: {s_set}"
             )
 
+
+def _process_single_manifest_model(
+    fname: str,
+    meta: Any,
+    weights_map: Dict[str, str],
+    seasons_by_cell: Dict[Tuple[str, int], Set[Tuple[str, str]]],
+) -> None:
+    """Filter and record statutory physical model entry from manifest."""
+    if not isinstance(meta, dict):
+        raise ContractConversionError(f"Model entry '{fname}' metadata must be a dictionary")
+
+    station_raw = meta.get("station")
+    lead_raw = meta.get("lead_hours")
+    var_raw = meta.get("variable")
+    if station_raw is None or lead_raw is None or var_raw is None:
+        return
+
+    station = str(station_raw).upper()
+    try:
+        lead = int(lead_raw)
+    except (ValueError, TypeError):
+        return
+
+    var = str(var_raw).lower()
+    # Strict filter per ADR-0019 / Ruling D6 (no status filtering, no filename substring)
+    if station in AUTHORIZED_STATIONS and lead in AUTHORIZED_LEADS_FOR_GUARD and var == "max":
+        sha = str(meta.get("sha256", "")).lower()
+        if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+            raise ContractConversionError(
+                f"Model '{fname}' has invalid SHA256 in manifest: '{sha}' (must be 64-hex)"
+            )
+        weights_map[fname] = sha
+        season = str(meta.get("season", ""))
+        seasons_by_cell.setdefault((station, lead), set()).add((season, var))
+
+
+def _extract_model_weights_from_manifest(
+    manifest_dict: Dict[str, Any]
+) -> Dict[str, str]:
+    """
+    Extract model file SHA256 hashes for statutory betting contract from manifest.
+    Filter conditions: station in AUTHORIZED_STATIONS, lead in AUTHORIZED_LEADS_FOR_GUARD, var == 'max'.
+    """
+    if "models" not in manifest_dict or not isinstance(manifest_dict["models"], dict):
+        raise ContractConversionError("Manifest missing 'models' dictionary")
+
+    models = manifest_dict["models"]
+    weights_map: Dict[str, str] = {}
+    seasons_by_cell: Dict[Tuple[str, int], Set[Tuple[str, str]]] = {}
+
+    for fname, meta in models.items():
+        _process_single_manifest_model(fname, meta, weights_map, seasons_by_cell)
+
+    _assert_model_weights_structure(seasons_by_cell)
     return weights_map
 
 
