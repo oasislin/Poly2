@@ -117,7 +117,7 @@ def _setup_synthetic_environment(
                 "lead_hours": lead,
                 "sha256": declared_sha,
             }
-            model_weights_sha256[cell_key] = actual_sha
+            model_weights_sha256[fname] = actual_sha
             cells_dict[(station, lead)] = _make_dummy_cell_record(station, lead)
 
             if (station, lead) == delete_pkl_cell:
@@ -340,7 +340,8 @@ def test_contract_model_weight_sha256_mismatch(tmp_path: Path):
     """Boundary: Injected contract model weights sha mismatch triggers StaleModelParametersError."""
     manifest_path, contract = _setup_synthetic_environment(tmp_path)
     tampered_weights = dict(contract.model_weights_sha256)
-    tampered_weights["KORD_12h"] = "bad_contract_cell_sha"
+    target_fname = "KORD_Winter_Max_lead12h.pkl"
+    tampered_weights[target_fname] = "e" * 64
 
     tampered_contract = PhysicalParamContract(
         contract_version=contract.contract_version,
@@ -355,7 +356,7 @@ def test_contract_model_weight_sha256_mismatch(tmp_path: Path):
     )
     with pytest.raises(
         StaleModelParametersError,
-        match=r"Contract model_weights_sha256 mismatch for cell 'KORD_12h'",
+        match=r"Contract model_weights_sha256 mismatch for model 'KORD_Winter_Max_lead12h\.pkl'",
     ):
         watchdog.check()
 
@@ -594,6 +595,57 @@ def test_public_canonical_sha256_matches_private_shim():
     shim_hash = ContractVersionWatchdog._compute_canonical_manifest_sha256(manifest_dict)
     assert public_hash == shim_hash
     assert len(public_hash) == 64
+
+
+def test_t19_tampered_model_weight_sha_reports_model_filename(tmp_path: Path):
+    """T19: Tampering a model SHA in contract raises StaleModelParametersError with model filename."""
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    tampered_weights = dict(contract.model_weights_sha256)
+    target_fname = "KMIA_Winter_Max_lead24h.pkl"
+    tampered_weights[target_fname] = "f" * 64
+
+    tampered_contract = PhysicalParamContract(
+        contract_version=contract.contract_version,
+        manifest_sha256=contract.manifest_sha256,
+        model_weights_sha256=tampered_weights,
+        created_at=contract.created_at,
+        cells=contract.cells,
+    )
+
+    watchdog = ContractVersionWatchdog(
+        manifest_path=manifest_path, contract=tampered_contract
+    )
+    with pytest.raises(
+        StaleModelParametersError,
+        match=r"Contract model_weights_sha256 mismatch for model 'KMIA_Winter_Max_lead24h\.pkl'",
+    ):
+        watchdog.check()
+
+
+def test_t20_contract_contains_unverified_model_weights_raises_stale_error(tmp_path: Path):
+    """T20: Contract containing extra model weight entries not verified in manifest raises StaleModelParametersError."""
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    tampered_weights = dict(contract.model_weights_sha256)
+    extra_model_fname = "KORD_Autumn_Max_lead72h.pkl"  # Valid pattern, but not in synthetic manifest (which only has Winter)
+    tampered_weights[extra_model_fname] = "c" * 64
+
+    tampered_contract = PhysicalParamContract(
+        contract_version=contract.contract_version,
+        manifest_sha256=contract.manifest_sha256,
+        model_weights_sha256=tampered_weights,
+        created_at=contract.created_at,
+        cells=contract.cells,
+    )
+
+    watchdog = ContractVersionWatchdog(
+        manifest_path=manifest_path, contract=tampered_contract
+    )
+    with pytest.raises(
+        StaleModelParametersError,
+        match=r"Contract contains 1 model weight entries not verified against manifest",
+    ):
+        watchdog.check()
+
 
 
 

@@ -3,13 +3,14 @@
 Parameter Table Read-Only Validator (Phase 2 Task 08 - Ticket 03 / #136).
 
 Strictly verifies PhysicalParamContract data integrity, exact 22-grid cell coverage,
-outer key vs inner record alignment, and field structure without modifying files
-or recalculating numerical thresholds.
+outer key vs inner record alignment, non-empty 64-hex model weights, and field structure
+without modifying files or recalculating numerical thresholds.
 """
 
+from collections.abc import Mapping
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 
 from src.contract.param_table_converter import ContractConversionError
 from src.contract.parameter_contract import (
@@ -25,7 +26,7 @@ from src.contract.version_watchdog import CONTRACT_VERSION
 class PhysicalParamTableValidator:
     """
     Read-only statutory validator for PhysicalParamContract.
-    Enforces exact 22 grid cells, key consistency, and schema validity.
+    Enforces exact 22 grid cells, key consistency, statutory model weights, and schema validity.
     """
 
     @classmethod
@@ -37,6 +38,7 @@ class PhysicalParamTableValidator:
         cls._validate_schema_version(contract.contract_version)
         cls._validate_exact_22_cells(contract.cells)
         cls._validate_cell_records(contract.cells)
+        cls._validate_model_weights(contract.model_weights_sha256)
         return True
 
     @classmethod
@@ -71,11 +73,11 @@ class PhysicalParamTableValidator:
 
     @classmethod
     def _validate_exact_22_cells(
-        cls, cells: Dict[Tuple[str, int], CellCalibrationRecord]
+        cls, cells: Mapping[Tuple[str, int], CellCalibrationRecord]
     ) -> None:
         """Enforce EXACTLY 22 statutory grid cells coverage."""
-        if not isinstance(cells, dict):
-            raise ContractConversionError(f"Contract cells must be a dictionary, got {type(cells).__name__}")
+        if not isinstance(cells, Mapping):
+            raise ContractConversionError(f"Contract cells must be a Mapping, got {type(cells).__name__}")
 
         expected_cells: Set[Tuple[str, int]] = {
             (s, h) for s in AUTHORIZED_STATIONS for h in AUTHORIZED_LEAD_HOURS
@@ -98,7 +100,7 @@ class PhysicalParamTableValidator:
 
     @classmethod
     def _validate_cell_records(
-        cls, cells: Dict[Tuple[str, int], CellCalibrationRecord]
+        cls, cells: Mapping[Tuple[str, int], CellCalibrationRecord]
     ) -> None:
         """Verify outer key alignment and field sanity across cell records."""
         common_var: Optional[str] = None
@@ -123,4 +125,23 @@ class PhysicalParamTableValidator:
                 raise ContractConversionError(
                     f"Inconsistent variable across grid: expected '{common_var}', "
                     f"got '{record.variable}' in cell ({st}, {lead}h)"
+                )
+
+    @classmethod
+    def _validate_model_weights(
+        cls, model_weights: Mapping[str, str]
+    ) -> None:
+        """
+        Enforce non-empty statutory model weights and 64-hex lowercase hashes (M-2).
+        """
+        if not model_weights:
+            raise ContractConversionError(
+                "Contract model_weights_sha256 cannot be empty; "
+                "must contain statutory physical model weights"
+            )
+        for fname, sha in model_weights.items():
+            if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+                raise ContractConversionError(
+                    f"Model '{fname}' has invalid SHA256 in contract model_weights_sha256: '{sha}'. "
+                    f"Must be 64-character lowercase hexadecimal."
                 )

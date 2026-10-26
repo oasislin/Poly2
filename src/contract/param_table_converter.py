@@ -4,7 +4,8 @@ Parameter Table Converter (Phase 2 Task 08 - Ticket 03 / #136).
 
 Converts V2 continuous calibration blind test CSVs (metrics and comparison)
 into a frozen, statutory 22-grid PhysicalParamContract instance and serialized JSON.
-Strictly adheres to ADR-0019 §三 and zero numerical threshold recalculation rules.
+Strictly adheres to ADR-0019 §三, zero numerical threshold recalculation rules,
+and derives statutory model weights directly from manifest.json.
 """
 
 import argparse
@@ -24,6 +25,7 @@ from src.contract.parameter_contract import (
     PhysicalParamContract,
 )
 from src.contract.version_watchdog import (
+    AUTHORIZED_LEADS_FOR_GUARD,
     CONTRACT_VERSION,
     ContractGuardrailError,
     compute_canonical_manifest_sha256,
@@ -50,10 +52,11 @@ REQUIRED_METRICS_COLUMNS = {
     "ece_range",
 }
 
-# Statutory columns required in comparison CSV
+# Statutory columns required in comparison CSV (including cell for mechanical alignment)
 REQUIRED_COMPARISON_COLUMNS = {
     "station",
     "lead_hours",
+    "cell",
     "v1_coverage_90",
     "v1_coverage_90_pass",
 }
@@ -82,7 +85,7 @@ def _parse_strict_float(val: Any, col_name: str, station: str, lead: int) -> flo
     """Parse strict float without NaN/inf."""
     try:
         f = float(val)
-        if math.isnan(f) or math.isinf(f):
+        if not math.isfinite(f):
             raise ValueError(f"NaN/Inf not permitted: {f}")
         return f
     except (ValueError, TypeError) as exc:
@@ -141,30 +144,17 @@ def _parse_grid_key(row: Dict[str, str], row_idx: int) -> Tuple[str, int]:
     return station, lead
 
 
-def _load_metrics_map(
-    rows: List[Dict[str, str]]
+def _load_csv_grid_map(
+    rows: List[Dict[str, str]], label: str
 ) -> Dict[Tuple[str, int], Dict[str, str]]:
-    """Map metrics rows by (station, lead_hours) with duplicate checking."""
-    metrics_map: Dict[Tuple[str, int], Dict[str, str]] = {}
+    """Map CSV rows by (station, lead_hours) with duplicate checking."""
+    grid_map: Dict[Tuple[str, int], Dict[str, str]] = {}
     for idx, row in enumerate(rows, start=1):
         key = _parse_grid_key(row, idx)
-        if key in metrics_map:
-            raise ContractConversionError(f"Duplicate cell found in metrics CSV: {key}")
-        metrics_map[key] = row
-    return metrics_map
-
-
-def _load_comparison_map(
-    rows: List[Dict[str, str]]
-) -> Dict[Tuple[str, int], Dict[str, str]]:
-    """Map comparison rows by (station, lead_hours) with duplicate checking."""
-    comp_map: Dict[Tuple[str, int], Dict[str, str]] = {}
-    for idx, row in enumerate(rows, start=1):
-        key = _parse_grid_key(row, idx)
-        if key in comp_map:
-            raise ContractConversionError(f"Duplicate cell found in comparison CSV: {key}")
-        comp_map[key] = row
-    return comp_map
+        if key in grid_map:
+            raise ContractConversionError(f"Duplicate cell found in {label} CSV: {key}")
+        grid_map[key] = row
+    return grid_map
 
 
 def _assert_exact_22_cells(cells_keys: Set[Tuple[str, int]]) -> None:
@@ -186,6 +176,38 @@ def _assert_exact_22_cells(cells_keys: Set[Tuple[str, int]]) -> None:
         )
 
 
+def _parse_and_validate_cell_str(
+    cell_str: str, station: str, lead: int, source_label: str
+) -> str:
+    """
+    Validate cell column string format and mechanical alignment with station and lead.
+    (R-1 / B-1). Format must be '<station>_<lead>h_<variable>'.
+    """
+    parts = cell_str.split("_")
+    if len(parts) != 3:
+        raise ContractConversionError(
+            f"Invalid cell format '{cell_str}' in {source_label}: "
+            f"expected '<station>_<lead>h_<variable>', got '{cell_str}'"
+        )
+    st_part, lead_part, var_part = parts[0].upper(), parts[1].lower(), parts[2].lower()
+    if st_part != station:
+        raise ContractConversionError(
+            f"Cell station segment '{st_part}' does not match row station '{station}' "
+            f"in {source_label} for cell '{cell_str}'"
+        )
+    expected_lead = f"{lead}h"
+    if lead_part != expected_lead:
+        raise ContractConversionError(
+            f"Cell lead segment '{lead_part}' does not match row lead '{expected_lead}' "
+            f"in {source_label} for cell '{cell_str}'"
+        )
+    if not var_part:
+        raise ContractConversionError(
+            f"Empty variable segment in cell '{cell_str}' in {source_label}"
+        )
+    return var_part
+
+
 def _build_single_cell_record(
     station: str,
     lead: int,
@@ -194,22 +216,28 @@ def _build_single_cell_record(
     expected_var: Optional[str] = None,
 ) -> Tuple[CellCalibrationRecord, str]:
     """Parse a single cell calibration record from joined metrics and comparison rows."""
-    cell_raw = str(m_row.get("cell", "")).strip()
-    var_parsed = cell_raw.rsplit("_", 1)[-1].lower() if "_" in cell_raw else ""
-    if not var_parsed:
+    m_cell = str(m_row.get("cell", "")).strip()
+    c_cell = str(c_row.get("cell", "")).strip()
+
+    m_var = _parse_and_validate_cell_str(m_cell, station, lead, "metrics CSV")
+    c_var = _parse_and_validate_cell_str(c_cell, station, lead, "comparison CSV")
+
+    if m_var != c_var:
         raise ContractConversionError(
-            f"Failed to parse variable from cell '{cell_raw}' for ({station}, {lead}h)"
+            f"Variable mismatch between metrics ('{m_var}') and comparison ('{c_var}') "
+            f"for cell ({station}, {lead}h)"
         )
 
-    if expected_var is not None and var_parsed != expected_var:
+    if expected_var is not None and m_var != expected_var:
         raise ContractConversionError(
-            f"Variable mismatch across rows: expected '{expected_var}', got '{var_parsed}' for ({station}, {lead}h)"
+            f"Variable mismatch across rows: expected '{expected_var}', got '{m_var}' "
+            f"for cell ({station}, {lead}h)"
         )
 
     record = CellCalibrationRecord(
         station=station,
         lead_hours=lead,
-        variable=var_parsed,
+        variable=m_var,
         s_oos=_parse_strict_float(m_row["s_oos"], "s_oos", station, lead),
         fstd_lo=_parse_strict_float(m_row["fstd_lo"], "fstd_lo", station, lead),
         fstd_hi=_parse_strict_float(m_row["fstd_hi"], "fstd_hi", station, lead),
@@ -225,7 +253,7 @@ def _build_single_cell_record(
         cvm_p=_parse_strict_float(m_row["cvm_p"], "cvm_p", station, lead),
         ece_range=_parse_strict_float(m_row["ece_range"], "ece_range", station, lead),
     )
-    return record, var_parsed
+    return record, m_var
 
 
 def _build_cells_dict(
@@ -249,17 +277,124 @@ def _build_cells_dict(
     return cells_dict
 
 
+def _extract_model_weights_from_manifest(
+    manifest_dict: Dict[str, Any]
+) -> Dict[str, str]:
+    """
+    Extract model file SHA256 hashes for statutory betting contract from manifest.
+    Filter conditions per ADR-0019 / Ticket 03:
+    - station in AUTHORIZED_STATIONS
+    - lead_hours in AUTHORIZED_LEADS_FOR_GUARD (12..72h, explicitly excludes 6h)
+    - str(meta.get("variable", "")).lower() == "max"
+
+    CRITICAL RULES:
+    - Do NOT filter by status (Ruling D6: AUX tags have no permission/exclusion meaning;
+      60h lead across all seasons is labeled AUXILIARY_POOLED_FALLBACK).
+    - Do NOT determine variable via filename substring; use meta['variable'].
+    - Variable 'min' (88 models) is explicitly excluded for Phase 2 Task 08 Class 1 scope;
+      will be extended when tmin enters betting layer.
+    """
+    if "models" not in manifest_dict or not isinstance(manifest_dict["models"], dict):
+        raise ContractConversionError("Manifest missing 'models' dictionary")
+
+    models = manifest_dict["models"]
+    weights_map: Dict[str, str] = {}
+    seasons_by_cell: Dict[Tuple[str, int], Set[Tuple[str, str]]] = {}
+
+    for fname, meta in models.items():
+        if not isinstance(meta, dict):
+            raise ContractConversionError(f"Model entry '{fname}' metadata must be a dictionary")
+
+        station_raw = meta.get("station")
+        lead_raw = meta.get("lead_hours")
+        var_raw = meta.get("variable")
+        if station_raw is None or lead_raw is None or var_raw is None:
+            continue
+
+        station = str(station_raw).upper()
+        try:
+            lead = int(lead_raw)
+        except (ValueError, TypeError):
+            continue
+
+        var = str(var_raw).lower()
+
+        # Strict filter per ADR-0019 / Ruling D6
+        if station in AUTHORIZED_STATIONS and lead in AUTHORIZED_LEADS_FOR_GUARD and var == "max":
+            sha = str(meta.get("sha256", "")).lower()
+            if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+                raise ContractConversionError(
+                    f"Model '{fname}' has invalid SHA256 in manifest: '{sha}' (must be 64-hex)"
+                )
+            weights_map[fname] = sha
+            season = str(meta.get("season", ""))
+            seasons_by_cell.setdefault((station, lead), set()).add((season, var))
+
+    # Structural assertions (without hardcoding magic numbers):
+    # 1. Exactly 22 statutory cells must be present in seasons_by_cell
+    expected_cells = {
+        (st, lead) for st in AUTHORIZED_STATIONS for lead in AUTHORIZED_LEADS_FOR_GUARD
+    }
+    missing_cells = expected_cells - set(seasons_by_cell.keys())
+    if missing_cells:
+        raise ContractConversionError(
+            f"Missing model weights coverage for {len(missing_cells)} statutory cells: {sorted(missing_cells)}"
+        )
+
+    # 2. Every cell must have a non-empty (season, variable) set, and all 22 cells must have identical sets
+    first_set = next(iter(seasons_by_cell.values()))
+    if not first_set:
+        raise ContractConversionError("Empty (season, variable) set for model weights")
+    for cell, s_set in seasons_by_cell.items():
+        if s_set != first_set:
+            raise ContractConversionError(
+                f"Inconsistent (season, variable) set for cell {cell}: expected {first_set}, got {s_set}"
+            )
+        if any(v != "max" for _, v in s_set):
+            raise ContractConversionError(
+                f"Non-max variable detected in model weights set for cell {cell}: {s_set}"
+            )
+
+    return weights_map
+
+
+def _load_manifest_sha_and_weights(
+    manifest_path: Optional[Union[str, Path]]
+) -> Tuple[str, Dict[str, str]]:
+    """
+    Resolve canonical SHA256 and statutory weights from manifest.json.
+    (M-1: Fails closed with ContractConversionError if manifest_path is None or missing).
+    """
+    if manifest_path is None:
+        raise ContractConversionError(
+            "manifest_path cannot be None; manifest is required for statutory model weights and canonical hash"
+        )
+    m_file = Path(manifest_path)
+    if not m_file.exists():
+        raise ContractConversionError(f"Manifest file not found: {m_file}")
+
+    try:
+        with open(m_file, "r", encoding="utf-8") as f:
+            manifest_dict = json.load(f)
+    except Exception as exc:
+        raise ContractConversionError(f"Failed to read manifest JSON at {m_file}: {exc}") from exc
+
+    canonical_sha = compute_canonical_manifest_sha256(manifest_dict)
+    weights_map = _extract_model_weights_from_manifest(manifest_dict)
+    return canonical_sha, weights_map
+
+
 def convert_csv_to_contract(
     metrics_csv_path: Union[str, Path],
     comparison_csv_path: Union[str, Path],
     manifest_path: Optional[Union[str, Path]] = None,
     *,
-    model_weights_sha256: Optional[Dict[str, str]] = None,
     created_at: Optional[str] = None,
 ) -> PhysicalParamContract:
     """
     Convert V2 metrics and comparison CSVs into a statutory 22-grid PhysicalParamContract.
     Strictly verifies EXACT 22 cell coverage, fail-closed type validation, and ADR-0019 alignment.
+    Derives model_weights_sha256 directly from manifest.json (external injection prohibited).
     """
     m_path = Path(metrics_csv_path)
     c_path = Path(comparison_csv_path)
@@ -267,15 +402,14 @@ def convert_csv_to_contract(
     m_rows = _read_and_validate_csv(m_path, REQUIRED_METRICS_COLUMNS, "Metrics")
     c_rows = _read_and_validate_csv(c_path, REQUIRED_COMPARISON_COLUMNS, "Comparison")
 
-    m_map = _load_metrics_map(m_rows)
-    c_map = _load_comparison_map(c_rows)
+    m_map = _load_csv_grid_map(m_rows, "metrics")
+    c_map = _load_csv_grid_map(c_rows, "comparison")
 
     _assert_exact_22_cells(set(m_map.keys()))
     _assert_exact_22_cells(set(c_map.keys()))
 
     cells_dict = _build_cells_dict(m_map, c_map)
-    manifest_sha = _resolve_manifest_sha(manifest_path)
-    weights_map = dict(model_weights_sha256 or {})
+    manifest_sha, weights_map = _load_manifest_sha_and_weights(manifest_path)
     ts = created_at or datetime.now(timezone.utc).isoformat()
 
     return PhysicalParamContract(
@@ -285,21 +419,6 @@ def convert_csv_to_contract(
         created_at=ts,
         cells=cells_dict,
     )
-
-
-def _resolve_manifest_sha(manifest_path: Optional[Union[str, Path]]) -> str:
-    """Resolve canonical SHA256 of manifest.json if provided, else return empty string."""
-    if manifest_path is None:
-        return ""
-    m_file = Path(manifest_path)
-    if not m_file.exists():
-        raise ContractConversionError(f"Manifest file not found: {m_file}")
-    try:
-        with open(m_file, "r", encoding="utf-8") as f:
-            manifest_dict = json.load(f)
-        return compute_canonical_manifest_sha256(manifest_dict)
-    except Exception as exc:
-        raise ContractConversionError(f"Failed to read/hash manifest at {m_file}: {exc}") from exc
 
 
 def export_contract_to_json(
@@ -329,7 +448,7 @@ def main() -> None:
     )
     out_path = export_contract_to_json(contract, args.output)
     print(f"Contract successfully exported to: {out_path}")
-    print(f"Total cells: {len(contract.cells)}, Version: {contract.contract_version}")
+    print(f"Total cells: {len(contract.cells)}, Weights: {len(contract.model_weights_sha256)}, Version: {contract.contract_version}")
 
 
 if __name__ == "__main__":

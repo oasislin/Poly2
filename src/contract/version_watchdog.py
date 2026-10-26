@@ -275,6 +275,7 @@ class ContractVersionWatchdog:
         """
         models = manifest["models"]
         seen_cells: Set[Tuple[str, int]] = set()
+        verified_contract_files: Set[str] = set()
         skipped_6h = 0
 
         for fname, meta in models.items():
@@ -302,9 +303,10 @@ class ContractVersionWatchdog:
                     )
                 continue
 
-            cell_key = f"{station}_{lead}h"
-            self._verify_single_model_file(fname, meta, cell_key)
+            self._verify_single_model_file(fname, meta)
             seen_cells.add((station, lead))
+            if self.contract and fname in self.contract.model_weights_sha256:
+                verified_contract_files.add(fname)
 
         expected_total = TOTAL_AUTHORIZED_CELLS  # 22
         if len(seen_cells) != expected_total:
@@ -313,10 +315,12 @@ class ContractVersionWatchdog:
                 f"expected={expected_total} (missing {expected_total - len(seen_cells)} cells)"
             )
 
+        self._verify_contract_weights_complete(verified_contract_files)
+
         return len(seen_cells), skipped_6h
 
     def _verify_single_model_file(
-        self, fname: str, meta: Dict[str, Any], cell_key: str
+        self, fname: str, meta: Dict[str, Any]
     ) -> None:
         """Verify existence, size, pickle integrity, and SHA256 for a single model file."""
         declared_sha = meta.get("sha256")
@@ -353,26 +357,48 @@ class ContractVersionWatchdog:
                 f"expected='{expected_manifest_sha}', actual='{actual_sha256}'"
             )
 
-        self._verify_contract_weight_match(cell_key, actual_sha256)
+        self._verify_contract_weight_match(fname, actual_sha256)
 
     def _verify_contract_weight_match(
-        self, cell_key: str, actual_sha256: str
+        self, fname: str, actual_sha256: str
     ) -> None:
         """Verify model file SHA256 against injected contract weights map."""
-        if self.contract is None or not self.contract.model_weights_sha256:
+        if self.contract is None:
             return
 
-        if cell_key not in self.contract.model_weights_sha256:
-            raise StaleModelParametersError(
-                f"Contract model_weights_sha256 missing cell '{cell_key}': "
-                f"expected in contract model_weights_sha256"
+        if not self.contract.model_weights_sha256:
+            logger.warning(
+                "[ContractWatchdog] Injected contract has empty model_weights_sha256; "
+                "skipping binary hash match (historical compatibility branch)"
             )
+            return
+
+        if fname not in self.contract.model_weights_sha256:
+            return
 
         expected_contract_sha = str(
-            self.contract.model_weights_sha256[cell_key]
+            self.contract.model_weights_sha256[fname]
         ).lower()
         if actual_sha256 != expected_contract_sha:
             raise StaleModelParametersError(
-                f"Contract model_weights_sha256 mismatch for cell '{cell_key}': "
+                f"Contract model_weights_sha256 mismatch for model '{fname}': "
                 f"expected='{expected_contract_sha}', actual='{actual_sha256}'"
+            )
+
+    def _verify_contract_weights_complete(
+        self, verified_files: Set[str]
+    ) -> None:
+        """
+        Assert all model weights declared in injected contract were verified against active models.
+        (ADR-0019 / Ticket 03 D-3).
+        """
+        if self.contract is None or not self.contract.model_weights_sha256:
+            return
+
+        declared_files = set(self.contract.model_weights_sha256.keys())
+        unverified = declared_files - verified_files
+        if unverified:
+            raise StaleModelParametersError(
+                f"Contract contains {len(unverified)} model weight entries not verified against manifest: "
+                f"{sorted(unverified)}"
             )

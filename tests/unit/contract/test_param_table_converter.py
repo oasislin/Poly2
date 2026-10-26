@@ -4,7 +4,7 @@ Unit tests for Parameter Table Converter (Phase 2 Task 08 - Ticket 03 / #136).
 Validates:
 - T1: Real CSV full conversion (cells == 22, KORD 11, KMIA 11)
 - T2: Missing 1 cell raises ContractConversionError listing missing cell
-- T3: Extra 23rd cell raises ContractConversionError listing extra cell
+- T3: Extra 23rd cell raises ContractConversionError (_parse_grid_key rejects lead 6)
 - T4: Duplicate cell raises ContractConversionError
 - T5: Invalid station or invalid lead raises ContractConversionError
 - T6: Missing required column raises ContractConversionError listing missing column
@@ -13,6 +13,11 @@ Validates:
 - T9: to_dict -> from_dict roundtrip equality
 - T13: Integration: contract injected into watchdog passes check()
 - T14: manifest_sha256 matches compute_canonical_manifest_sha256 verbatim
+- Export: export_contract_to_json writes valid formatted JSON
+- T16: Model weights derived from manifest with 88 models and M-1 manifest_path check
+- T17: Structural assertion of 4 seasons x max variable per cell across 22 cells
+- T18: Missing model file in manifest raises ContractConversionError
+- T21: Bidirectional mechanical cell column alignment check (station/lead/variable)
 """
 
 import csv
@@ -61,7 +66,7 @@ def _write_csv_rows(path: Path, rows: List[Dict[str, str]]) -> None:
 
 
 def test_t1_real_csv_full_conversion():
-    """T1: Real CSV full conversion produces exactly 22 statutory cells (11 KORD, 11 KMIA)."""
+    """T1: Real CSV full conversion produces exactly 22 statutory cells and 88 model weights."""
     if not METRICS_REAL_PATH.exists() or not COMPARISON_REAL_PATH.exists():
         pytest.skip("Real evidence CSV files not found")
 
@@ -74,6 +79,7 @@ def test_t1_real_csv_full_conversion():
     assert isinstance(contract, PhysicalParamContract)
     assert len(contract.cells) == TOTAL_AUTHORIZED_CELLS  # 22
     assert contract.contract_version == CONTRACT_VERSION
+    assert len(contract.model_weights_sha256) == 88
 
     kord_cells = [c for c in contract.cells.values() if c.station == "KORD"]
     kmia_cells = [c for c in contract.cells.values() if c.station == "KMIA"]
@@ -91,7 +97,7 @@ def test_t1_real_csv_full_conversion():
 
 
 def test_t2_missing_single_cell_raises_error(tmp_path: Path):
-    """T2: Omission of a single statutory cell raises ContractConversionError listing the missing cell."""
+    """T2: Omission of a single statutory cell raises ContractConversionError listing missing cell."""
     m_rows = _read_csv_rows(METRICS_REAL_PATH)
     c_rows = _read_csv_rows(COMPARISON_REAL_PATH)
 
@@ -105,23 +111,24 @@ def test_t2_missing_single_cell_raises_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"missing 1 cells.*KORD.*72") as exc_info:
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
     assert "missing 1 cells" in str(exc_info.value)
 
 
 def test_t3_extra_23rd_cell_raises_error(tmp_path: Path):
-    """T3: Inclusion of a 23rd cell (or non-statutory cell) raises ContractConversionError listing extra."""
+    """T3: Inclusion of a non-statutory lead 6h raises ContractConversionError via _parse_grid_key."""
     m_rows = _read_csv_rows(METRICS_REAL_PATH)
     c_rows = _read_csv_rows(COMPARISON_REAL_PATH)
 
-    # Duplicate a row but with non-statutory lead 6h
+    # Add a row with non-statutory lead 6h
     extra_m = dict(m_rows[0])
     extra_m["lead_hours"] = "6"
     extra_m["cell"] = "KORD_6h_tmax"
 
     extra_c = dict(c_rows[0])
     extra_c["lead_hours"] = "6"
+    extra_c["cell"] = "KORD_6h_tmax"
 
     m_rows.append(extra_m)
     c_rows.append(extra_c)
@@ -132,7 +139,7 @@ def test_t3_extra_23rd_cell_raises_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"Unauthorized lead_hours '6'"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
 
 def test_t4_duplicate_cell_raises_error(tmp_path: Path):
@@ -149,7 +156,7 @@ def test_t4_duplicate_cell_raises_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"Duplicate cell found in metrics CSV"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
 
 def test_t5_unauthorized_station_raises_error(tmp_path: Path):
@@ -164,7 +171,7 @@ def test_t5_unauthorized_station_raises_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"Unauthorized station 'KATL'"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
 
 def test_t6_missing_required_column_raises_error(tmp_path: Path):
@@ -182,7 +189,7 @@ def test_t6_missing_required_column_raises_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"missing required columns:.*s_oos"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
 
 def test_t7_invalid_boolean_values_raise_error(tmp_path: Path):
@@ -199,22 +206,23 @@ def test_t7_invalid_boolean_values_raise_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"Strictly only 'True' or 'False' allowed"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
     # Set boolean to 'yes'
     m_rows[0]["fstd_in"] = "yes"
     _write_csv_rows(m_file, m_rows)
     with pytest.raises(ContractConversionError, match=r"Strictly only 'True' or 'False' allowed"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
 
-def test_t8_variable_inconsistency_raises_error(tmp_path: Path):
+def test_t8_variable_inconsistency_across_rows_raises_error(tmp_path: Path):
     """T8: Variable mismatch across rows raises ContractConversionError."""
     m_rows = _read_csv_rows(METRICS_REAL_PATH)
     c_rows = _read_csv_rows(COMPARISON_REAL_PATH)
 
-    # Change one cell to tmin
+    # Change one cell in metrics and comparison to tmin
     m_rows[5]["cell"] = "KORD_42h_tmin"
+    c_rows[5]["cell"] = "KORD_42h_tmin"
 
     m_file = tmp_path / "metrics_inconsistent_var.csv"
     c_file = tmp_path / "comp_inconsistent_var.csv"
@@ -222,7 +230,7 @@ def test_t8_variable_inconsistency_raises_error(tmp_path: Path):
     _write_csv_rows(c_file, c_rows)
 
     with pytest.raises(ContractConversionError, match=r"Variable mismatch across rows"):
-        convert_csv_to_contract(m_file, c_file)
+        convert_csv_to_contract(m_file, c_file, manifest_path=MANIFEST_REAL_PATH)
 
 
 def test_t9_to_dict_from_dict_roundtrip():
@@ -303,3 +311,123 @@ def test_export_contract_to_json(tmp_path: Path):
     assert loaded["contract_version"] == CONTRACT_VERSION
     assert len(loaded["cells"]) == 22
     assert "KORD_12h" in loaded["cells"]
+    assert len(loaded["model_weights_sha256"]) == 88
+
+
+def test_t16_model_weights_derived_from_manifest():
+    """T16: Model weights derived from manifest with 88 models, and M-1 manifest_path=None check."""
+    # M-1 check: manifest_path=None raises ContractConversionError
+    with pytest.raises(ContractConversionError, match="manifest_path cannot be None"):
+        convert_csv_to_contract(
+            metrics_csv_path=METRICS_REAL_PATH,
+            comparison_csv_path=COMPARISON_REAL_PATH,
+            manifest_path=None,
+        )
+
+    # Normal derivation
+    contract = convert_csv_to_contract(
+        metrics_csv_path=METRICS_REAL_PATH,
+        comparison_csv_path=COMPARISON_REAL_PATH,
+        manifest_path=MANIFEST_REAL_PATH,
+    )
+    weights = contract.model_weights_sha256
+    assert len(weights) == 88
+    for fname, sha in weights.items():
+        assert fname.endswith(".pkl")
+        assert len(sha) == 64
+        assert all(c in "0123456789abcdef" for c in sha)
+        assert "_lead6h" not in fname  # 6h explicitly excluded
+
+
+def test_t17_structural_assertion_seasons_and_variable_consistency():
+    """T17: Structural assertion: each cell has 4 seasons of max variable, identical across 22 cells."""
+    contract = convert_csv_to_contract(
+        metrics_csv_path=METRICS_REAL_PATH,
+        comparison_csv_path=COMPARISON_REAL_PATH,
+        manifest_path=MANIFEST_REAL_PATH,
+    )
+    seasons = {"Winter", "Spring", "Summer", "Autumn"}
+    weights = contract.model_weights_sha256
+
+    for station in AUTHORIZED_STATIONS:
+        for lead in AUTHORIZED_LEAD_HOURS:
+            for season in seasons:
+                expected_fname = f"{station}_{season}_Max_lead{lead}h.pkl"
+                assert expected_fname in weights, f"Missing expected model: {expected_fname}"
+
+
+def test_t18_missing_manifest_model_raises_error(tmp_path: Path):
+    """T18: Omission of a required model file from manifest raises ContractConversionError."""
+    with open(MANIFEST_REAL_PATH, "r", encoding="utf-8") as f:
+        manifest_data = json.load(f)
+
+    # Delete one required seasonal model from manifest -> triggers inconsistent set error
+    del manifest_data["models"]["KORD_Winter_Max_lead12h.pkl"]
+
+    tampered_manifest = tmp_path / "tampered_manifest.json"
+    tampered_manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(ContractConversionError, match=r"Inconsistent \(season, variable\) set for cell \('KORD', 12\)"):
+        convert_csv_to_contract(
+            metrics_csv_path=METRICS_REAL_PATH,
+            comparison_csv_path=COMPARISON_REAL_PATH,
+            manifest_path=tampered_manifest,
+        )
+
+    # Also test deleting all 4 seasons of a cell -> triggers missing cell coverage error
+    for s in ["Spring", "Summer", "Autumn"]:
+        del manifest_data["models"][f"KORD_{s}_Max_lead12h.pkl"]
+    tampered_manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+    with pytest.raises(ContractConversionError, match=r"Missing model weights coverage for 1 statutory cells"):
+        convert_csv_to_contract(
+            metrics_csv_path=METRICS_REAL_PATH,
+            comparison_csv_path=COMPARISON_REAL_PATH,
+            manifest_path=tampered_manifest,
+        )
+
+
+def test_t21_mechanical_cell_column_alignment_assertion(tmp_path: Path):
+    """T21: (R-1 / B-1) Mechanical cell string alignment check against station/lead/variable."""
+    m_rows = _read_csv_rows(METRICS_REAL_PATH)
+    c_rows = _read_csv_rows(COMPARISON_REAL_PATH)
+
+    # 1. Metrics cell station mismatch
+    bad_m = [dict(r) for r in m_rows]
+    bad_m[0]["cell"] = "KMIA_12h_tmax"  # row station is KORD
+    m_file1 = tmp_path / "m1.csv"
+    _write_csv_rows(m_file1, bad_m)
+    with pytest.raises(ContractConversionError, match="Cell station segment 'KMIA' does not match"):
+        convert_csv_to_contract(m_file1, COMPARISON_REAL_PATH, MANIFEST_REAL_PATH)
+
+    # 2. Metrics cell lead mismatch
+    bad_m = [dict(r) for r in m_rows]
+    bad_m[0]["cell"] = "KORD_18h_tmax"  # row lead is 12
+    m_file2 = tmp_path / "m2.csv"
+    _write_csv_rows(m_file2, bad_m)
+    with pytest.raises(ContractConversionError, match="Cell lead segment '18h' does not match"):
+        convert_csv_to_contract(m_file2, COMPARISON_REAL_PATH, MANIFEST_REAL_PATH)
+
+    # 3. Comparison cell station mismatch
+    bad_c = [dict(r) for r in c_rows]
+    bad_c[0]["cell"] = "KMIA_12h_tmax"  # row station is KORD
+    c_file3 = tmp_path / "c3.csv"
+    _write_csv_rows(c_file3, bad_c)
+    with pytest.raises(ContractConversionError, match="Cell station segment 'KMIA' does not match"):
+        convert_csv_to_contract(METRICS_REAL_PATH, c_file3, MANIFEST_REAL_PATH)
+
+    # 4. Comparison cell lead mismatch
+    bad_c = [dict(r) for r in c_rows]
+    bad_c[0]["cell"] = "KORD_24h_tmax"  # row lead is 12
+    c_file4 = tmp_path / "c4.csv"
+    _write_csv_rows(c_file4, bad_c)
+    with pytest.raises(ContractConversionError, match="Cell lead segment '24h' does not match"):
+        convert_csv_to_contract(METRICS_REAL_PATH, c_file4, MANIFEST_REAL_PATH)
+
+    # 5. Variable mismatch between metrics and comparison
+    bad_c = [dict(r) for r in c_rows]
+    bad_c[0]["cell"] = "KORD_12h_tmin"  # metrics has tmax
+    c_file5 = tmp_path / "c5.csv"
+    _write_csv_rows(c_file5, bad_c)
+    with pytest.raises(ContractConversionError, match="Variable mismatch between metrics"):
+        convert_csv_to_contract(METRICS_REAL_PATH, c_file5, MANIFEST_REAL_PATH)

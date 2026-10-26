@@ -176,3 +176,28 @@ def test_validate_json_file_not_found(tmp_path: Path):
     """Test validate_json on nonexistent file raises ContractConversionError."""
     with pytest.raises(ContractConversionError, match=r"Contract JSON file not found"):
         PhysicalParamTableValidator.validate_json(tmp_path / "nonexistent.json")
+
+
+def test_t22_validator_model_weights_validation():
+    """T22: Validator enforces non-empty model_weights_sha256 and strict 64-hex lowercase hashes."""
+    contract = _get_valid_contract()
+
+    # 1. Empty model_weights_sha256 in contract raises ContractConversionError
+    empty_weights_contract = PhysicalParamContract(
+        contract_version=contract.contract_version,
+        manifest_sha256=contract.manifest_sha256,
+        model_weights_sha256={},
+        created_at=contract.created_at,
+        cells=contract.cells,
+    )
+    with pytest.raises(ContractConversionError, match="model_weights_sha256 cannot be empty"):
+        PhysicalParamTableValidator.validate(empty_weights_contract)
+
+    # 2. Direct unit test of _validate_model_weights rejecting invalid hashes
+    valid_key = "KORD_Winter_Max_lead12h.pkl"
+    with pytest.raises(ContractConversionError, match="invalid SHA256 in contract model_weights_sha256"):
+        PhysicalParamTableValidator._validate_model_weights({valid_key: "short_hash"})
+
+    with pytest.raises(ContractConversionError, match="invalid SHA256 in contract model_weights_sha256"):
+        PhysicalParamTableValidator._validate_model_weights({valid_key: "g" * 64})  # 'g' is non-hex
+
