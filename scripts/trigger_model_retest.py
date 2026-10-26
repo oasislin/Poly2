@@ -114,7 +114,7 @@ def compute_file_sha256(path: Path) -> str:
 
 
 def get_git_commit(cwd: Path) -> str:
-    """Retrieve current Git HEAD SHA256, returning UNKNOWN on failure."""
+    """Retrieve execution-time Git HEAD SHA256 (records invocation base commit)."""
     try:
         res = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -384,6 +384,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Explicitly request dry-run simulation mode (default)",
     )
+    parser.add_argument(
+        "--audit-output",
+        type=str,
+        default="",
+        help="Custom path for audit JSON (defaults to evidence/audit_v2/retest_pipeline_audit.json)",
+    )
     return parser.parse_args()
 
 
@@ -401,7 +407,14 @@ def main() -> None:
             dry_run = True
             waiver_id = ""
 
-        config = RetestPipelineConfig(dry_run=dry_run, waiver_id=waiver_id)
+        audit_path = (
+            Path(args.audit_output)
+            if args.audit_output
+            else (PROJECT_ROOT / "evidence" / "audit_v2" / "retest_pipeline_audit.json")
+        )
+        config = RetestPipelineConfig(
+            dry_run=dry_run, waiver_id=waiver_id, audit_output=audit_path
+        )
         summary = execute_retest_pipeline(config)
         print("\n" + "=" * 80)
         print("  RETEST PIPELINE AUDIT SUMMARY")

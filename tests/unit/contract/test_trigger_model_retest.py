@@ -223,9 +223,17 @@ def test_cli_execution_with_empty_waiver_fails_closed():
     assert "Real execution requires explicit valid --confirm-retest <WAIVER_ID>" in res.stderr or "Real execution requires explicit valid" in res.stdout
 
 
-def test_cli_dry_run_exits_code_0():
-    """CLI execution with default/dry-run exits with code 0."""
-    cmd = [sys.executable, "scripts/trigger_model_retest.py", "--dry-run"]
+def test_cli_dry_run_exits_code_0(tmp_path):
+    """CLI execution with default/dry-run exits with code 0 without dirtying repo working tree."""
+    cli_audit_file = tmp_path / "cli_audit.json"
+    cmd = [
+        sys.executable,
+        "scripts/trigger_model_retest.py",
+        "--dry-run",
+        "--audit-output",
+        str(cli_audit_file),
+    ]
     res = subprocess.run(cmd, capture_output=True, text=True)
     assert res.returncode == 0
     assert "RETEST PIPELINE AUDIT SUMMARY" in res.stdout
+    assert cli_audit_file.exists()
