@@ -2,7 +2,7 @@
 
 > **任务标识**：`Phase 2 Task 08`  
 > **GitHub Spec 主 Issue**：[#133](https://github.com/oasislin/Poly2/issues/133)  
-> **治理工单（B 线）**：`P8-CLASS1-LAUNCH` / `CHK-01` ~ `CHK-08`  
+> **治理工单（B 线）**：`P8-CLASS1-LAUNCH` / `CHK-01` ~ `CHK-11`  
 > **法定 ADR**：`docs/adr/ADR-0019：物理模型参数向投注算法消费契约与解耦架构.md`  
 > **宪法与裁决依据**：P7-ALGO-VERDICT（M-1/M-2/M-4/F-2）、P7-ALGO-2 DR-2026-1014-01~04  
 > **状态**：**APPROVED / READY_FOR_DEV**
