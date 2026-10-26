@@ -10,6 +10,16 @@ from src.contract.parameter_contract import (
     AUTHORIZED_LEAD_HOURS,
     TOTAL_AUTHORIZED_CELLS,
 )
+from src.contract.version_watchdog import (
+    ContractGuardrailError,
+    StaleModelParametersError,
+    PickleCorruptionError,
+    SecurityViolationError,
+    ContractVersionWatchdog,
+    WatchdogVerificationReport,
+    CONTRACT_VERSION,
+    AUTHORIZED_LEADS_FOR_GUARD,
+)
 
 __all__ = [
     "CellCalibrationRecord",
@@ -18,4 +28,12 @@ __all__ = [
     "AUTHORIZED_STATIONS",
     "AUTHORIZED_LEAD_HOURS",
     "TOTAL_AUTHORIZED_CELLS",
+    "ContractGuardrailError",
+    "StaleModelParametersError",
+    "PickleCorruptionError",
+    "SecurityViolationError",
+    "ContractVersionWatchdog",
+    "WatchdogVerificationReport",
+    "CONTRACT_VERSION",
+    "AUTHORIZED_LEADS_FOR_GUARD",
 ]
