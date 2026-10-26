@@ -75,6 +75,7 @@
 | **Ticket 22** | [#155](https://github.com/oasislin/Poly2/issues/155) | `Phase 2 Task 08 - Ticket 22: feat(simulation): 集成纸面盘实时资金守恒与连续净 EV 观测看门狗` | Blocked by #154 |
 | **Ticket 23** | [#156](https://github.com/oasislin/Poly2/issues/156) | `Phase 2 Task 08 - Ticket 23: feat(calibration): 搭建 F-2 参数两步标定脚手架 (M-5 判词落地)` | Blocked by #149, #154 |
 | **Ticket 24** | [#157](https://github.com/oasislin/Poly2/issues/157) | `Phase 2 Task 08 - Ticket 24: test(simulation): 纸面盘端到端 48h 仿真验收测试集` | Blocked by #155, #156 |
+| **Ticket 25** | [#158](https://github.com/oasislin/Poly2/issues/158) | `Phase 2 Task 08 - Ticket 25: fix(contract): 修订物理参数契约数据模型缺陷并加固不可变与严格解析` | |
 
 ---
 
