@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-10-26T10:03:26.195855+00:00",
+  "git_commit": "6ce4f4bef0acf99a022bb13e97edb2172445ae85",
+  "pipeline_mode": "dry-run",
+  "status": "DRY_RUN_COMPLETED",
+  "waiver_id": "",
+  "stages": {
+    "stage1_settlement": {
+      "status": "SKIPPED",
+      "passed": null,
+      "command": "SKIPPED",
+      "reason": "dry_run mode"
+    },
+    "stage2_ruler_upgrade": {
+      "status": "SKIPPED",
+      "passed": null,
+      "command": "SKIPPED",
+      "reason": "dry_run mode"
+    },
+    "stage3_contract_conversion": {
+      "status": "PASSED",
+      "passed": true,
+      "metrics_csv": "evidence/audit_v2/p4blind_v2r01_metrics.csv",
+      "comparison_csv": "evidence/audit_v2/p4blind_v2r01_comparison.csv",
+      "output_json": "data/contracts/physical_param_contract.json"
+    },
+    "stage4_gate_verification": {
+      "status": "PASSED",
+      "passed": true,
+      "validator_passed": true,
+      "watchdog_passed": true,
+      "verified_cells_count": 22,
+      "skipped_6h_entries": 64
+    },
+    "stage5_m5_reconciliation": {
+      "statutory_consumption_cells": 22,
+      "statutory_model_weights": 88,
+      "trading_master_models": 144,
+      "full_watchdog_models": 176,
+      "all_passed": true
+    }
+  },
+  "asset_counts": {
+    "statutory_consumption_cells": 22,
+    "statutory_model_weights": 88,
+    "trading_master_models": 144,
+    "full_watchdog_models": 176
+  },
+  "m5_reconciliation": {
+    "statutory_consumption_cells": 22,
+    "statutory_model_weights": 88,
+    "trading_master_models": 144,
+    "full_watchdog_models": 176,
+    "all_passed": true
+  },
+  "file_checksums": {
+    "evaluate_script": "4389b5a12588b779f56945036a12b9ba9966298976b6eef1a54c344a0403c739",
+    "reliability_script": "e821c0aa0079f483f3510698f919751886d908bae145e3cd5385eae9c14a68ba",
+    "manifest_json": "8bb364e26b8228a50372cfbcd7b0f7a5378b083b99bcb648c727d5e8c4de98eb",
+    "settlement_stats_csv": "3ed2350d49e88e1f48131a386b299ea3d1cbe0f54bcbb68078bdb1bd3bb7936f",
+    "settlement_arrays_parquet": "3225362fa0e15f4a9907929f8ffe7d882e7c33d1254697d3e4ab9921bf470e70",
+    "metrics_csv": "ae615945bc35a72fb9f9c2de04f26033637ad080f7cf70fc66b514065ccb611a",
+    "comparison_csv": "572cc7cb8f033ddda8317d0e6b729ea8dc041cb085e1e1f0be3ffb022da6af21",
+    "contract_json": "315e21e7347e322c79bcbd781987831ecdb151bdc939fa9c11f45dfd48c0608c"
+  },
+  "all_stages_passed": null
+}
