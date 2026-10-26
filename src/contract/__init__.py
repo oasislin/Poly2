@@ -22,6 +22,14 @@ from src.contract.version_watchdog import (
     AUTHORIZED_LEADS_FOR_GUARD,
     compute_canonical_manifest_sha256,
 )
+from src.contract.param_table_converter import (
+    ContractConversionError,
+    convert_csv_to_contract,
+    export_contract_to_json,
+)
+from src.contract.param_table_validator import (
+    PhysicalParamTableValidator,
+)
 
 __all__ = [
     "CellCalibrationRecord",
@@ -40,4 +48,8 @@ __all__ = [
     "CONTRACT_VERSION",
     "AUTHORIZED_LEADS_FOR_GUARD",
     "compute_canonical_manifest_sha256",
+    "ContractConversionError",
+    "convert_csv_to_contract",
+    "export_contract_to_json",
+    "PhysicalParamTableValidator",
 ]
