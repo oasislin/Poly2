@@ -51,6 +51,12 @@ class ContractGuardrailError(Exception):
     pass
 
 
+class ManifestIntegrityError(ContractGuardrailError):
+    """manifest.json 文件缺失 / 损坏 / 非法 JSON / 结构或必要字段缺失."""
+
+    pass
+
+
 class StaleModelParametersError(ContractGuardrailError):
     """SHA256 不匹配或版本过旧 → 陈旧参数注入."""
 
@@ -58,7 +64,7 @@ class StaleModelParametersError(ContractGuardrailError):
 
 
 class PickleCorruptionError(ContractGuardrailError):
-    """文件缺失 / 0 字节 / pickle 损坏 / manifest 无法解析."""
+    """物理模型 .pkl 文件缺失 / 0 字节 / pickle 反序列化损坏."""
 
     pass
 
@@ -74,11 +80,17 @@ class WatchdogVerificationReport:
     """看门狗校验结果（不可变）."""
 
     is_valid: bool
+    """True 当且仅当全量校验真实执行且全部通过；跳过/绕过一律为 False."""
     verified_cells_count: int
+    """通过校验的法定网格单元数（22 格完全覆盖）."""
     failed_entries: int
+    """校验失败的模型条目数。Fail-Closed 模式下遇错即抛出异常，正常返回时恒为 0（保留供扩展诊断）."""
     skipped_6h_entries: int
+    """跳过校验的 6h lead 模型条目数（按 ADR-0019 豁免，仅记录 warning）."""
     bypassed: bool
+    """是否处于测试环境受控绕过状态."""
     checked_at: str
+    """ISO 格式的 UTC 时间戳."""
 
 
 class ContractVersionWatchdog:
@@ -102,6 +114,12 @@ class ContractVersionWatchdog:
         """
         Verify manifest checksums and physical model parameter binaries.
         Executes three defense lines and a four-step fail-closed workflow.
+
+        :param skip_when_env: Name of environment variable to check for test bypass.
+            Takes effect ONLY when its value is strictly literal '1'.
+            In production (POLY_ENV in ('production', 'prod')), any attempt to set this
+            variable to '1' raises SecurityViolationError. When unset or not '1', full check runs.
+        :return: WatchdogVerificationReport with verification results.
         """
         bypass_report = self._handle_bypass_defense(skip_when_env)
         if bypass_report is not None:
@@ -126,24 +144,31 @@ class ContractVersionWatchdog:
         self, skip_when_env: Optional[str]
     ) -> Optional[WatchdogVerificationReport]:
         """Enforce production mutual exclusion and test environment bypass."""
-        poly_env = (os.environ.get("POLY_ENV") or "").lower()
-        is_production = poly_env in ("production", "prod")
-
         if skip_when_env is None:
             return None
 
-        if is_production:
-            raise SecurityViolationError(
-                f"Cannot bypass contract watchdog in production environment (POLY_ENV='{poly_env}')"
-            )
+        env_val = os.environ.get(skip_when_env)
+        poly_env = (os.environ.get("POLY_ENV") or "").lower()
+        is_production = poly_env in ("production", "prod")
 
-        if os.environ.get(skip_when_env) == "1":
+        # Defense Line 2: If in production and bypass variable is set to allowed value "1", strictly reject.
+        # If variable is not set (or not "1"), ignore skip_when_env and proceed with full check.
+        if is_production:
+            if env_val == "1":
+                raise SecurityViolationError(
+                    f"Cannot bypass contract watchdog in production environment "
+                    f"(POLY_ENV='{poly_env}', {skip_when_env}='1')"
+                )
+            return None
+
+        # Defense Line 3: In non-production, bypass ONLY when variable is strictly literal "1".
+        if env_val == "1":
             logger.critical(
-                "[ContractWatchdog] TEST BYPASS ACTIVATED via env '%s' - STRICTLY PROHIBITED IN PRODUCTION",
+                "[ContractWatchdog] TEST BYPASS ACTIVATED via env '%s'='1' - STRICTLY PROHIBITED IN PRODUCTION",
                 skip_when_env,
             )
             return WatchdogVerificationReport(
-                is_valid=True,
+                is_valid=False,
                 verified_cells_count=0,
                 failed_entries=0,
                 skipped_6h_entries=0,
@@ -156,23 +181,25 @@ class ContractVersionWatchdog:
     def _load_manifest(self) -> Dict[str, Any]:
         """Load manifest.json from disk with structural fail-closed assertions."""
         if not self.manifest_path.exists():
-            raise PickleCorruptionError(f"Manifest file not found: {self.manifest_path}")
+            raise ManifestIntegrityError(
+                f"Manifest file not found: {self.manifest_path}"
+            )
 
         try:
             with open(self.manifest_path, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
         except (json.JSONDecodeError, ValueError) as exc:
-            raise PickleCorruptionError(
+            raise ManifestIntegrityError(
                 f"Failed to parse manifest JSON at {self.manifest_path}: {exc}"
             ) from exc
 
         if not isinstance(manifest, dict):
-            raise PickleCorruptionError(
+            raise ManifestIntegrityError(
                 f"Manifest root must be a JSON object, got {type(manifest).__name__}"
             )
 
         if "models" not in manifest or not isinstance(manifest["models"], dict):
-            raise PickleCorruptionError("Manifest missing 'models' dictionary")
+            raise ManifestIntegrityError("Manifest missing 'models' dictionary")
 
         return manifest
 
@@ -185,7 +212,11 @@ class ContractVersionWatchdog:
         return hashlib.sha256(serialized).hexdigest()
 
     def _verify_contract_anchors(self, canonical_sha256: str) -> None:
-        """Verify injected contract version and manifest SHA256 anchors."""
+        """
+        Verify injected contract version and manifest SHA256 anchors.
+        Enforces schema version gate: contract artifacts across different schema
+        versions are strictly rejected (StaleModelParametersError).
+        """
         if self.contract is None:
             return
 
@@ -201,6 +232,30 @@ class ContractVersionWatchdog:
                 f"expected='{self.contract.manifest_sha256}', actual='{canonical_sha256}'"
             )
 
+    def _parse_model_entry(self, fname: str, meta: Any) -> Tuple[str, int]:
+        """Parse and validate station and lead_hours from manifest model entry."""
+        if not isinstance(meta, dict):
+            raise ManifestIntegrityError(
+                f"Model entry '{fname}' metadata must be a dictionary"
+            )
+
+        station_raw = meta.get("station")
+        lead_raw = meta.get("lead_hours")
+        if station_raw is None or lead_raw is None:
+            raise ManifestIntegrityError(
+                f"Model entry '{fname}' missing required fields ('station', 'lead_hours')"
+            )
+
+        station = str(station_raw).upper()
+        try:
+            lead = int(lead_raw)
+        except (ValueError, TypeError) as exc:
+            raise ManifestIntegrityError(
+                f"Model entry '{fname}' has invalid 'lead_hours': {lead_raw}"
+            ) from exc
+
+        return station, lead
+
     def _verify_model_weights(
         self, manifest: Dict[str, Any]
     ) -> Tuple[int, int]:
@@ -214,13 +269,7 @@ class ContractVersionWatchdog:
         skipped_6h = 0
 
         for fname, meta in models.items():
-            if not isinstance(meta, dict):
-                raise PickleCorruptionError(
-                    f"Model entry '{fname}' metadata must be a dictionary"
-                )
-
-            station = str(meta["station"]).upper()
-            lead = int(meta["lead_hours"])
+            station, lead = self._parse_model_entry(fname, meta)
 
             if station not in AUTHORIZED_STATIONS:
                 continue
@@ -234,6 +283,14 @@ class ContractVersionWatchdog:
                         fname,
                     )
                     skipped_6h += 1
+                else:
+                    logger.debug(
+                        "[ContractWatchdog] Non-statutory lead model SKIPPED: "
+                        "station=%s, lead=%s, model=%s",
+                        station,
+                        lead,
+                        fname,
+                    )
                 continue
 
             cell_key = f"{station}_{lead}h"
@@ -253,6 +310,10 @@ class ContractVersionWatchdog:
         self, fname: str, meta: Dict[str, Any], cell_key: str
     ) -> None:
         """Verify existence, size, pickle integrity, and SHA256 for a single model file."""
+        declared_sha = meta.get("sha256")
+        if declared_sha is None:
+            raise ManifestIntegrityError(f"Model entry '{fname}' missing 'sha256'")
+
         file_path = self.manifest_path.parent / fname
 
         if not file_path.exists():
@@ -276,24 +337,33 @@ class ContractVersionWatchdog:
             ) from exc
 
         actual_sha256 = hashlib.sha256(content).hexdigest().lower()
-        declared_sha256 = str(meta["sha256"]).lower()
-        if actual_sha256 != declared_sha256:
+        expected_manifest_sha = str(declared_sha).lower()
+        if actual_sha256 != expected_manifest_sha:
             raise StaleModelParametersError(
                 f"Model SHA256 mismatch for '{fname}': "
-                f"expected='{declared_sha256}', actual='{actual_sha256}'"
+                f"expected='{expected_manifest_sha}', actual='{actual_sha256}'"
             )
 
-        if self.contract is not None and self.contract.model_weights_sha256:
-            if cell_key not in self.contract.model_weights_sha256:
-                raise StaleModelParametersError(
-                    f"Contract model_weights_sha256 missing cell '{cell_key}': "
-                    f"expected in contract model_weights_sha256"
-                )
-            expected_contract_sha = str(
-                self.contract.model_weights_sha256[cell_key]
-            ).lower()
-            if actual_sha256 != expected_contract_sha:
-                raise StaleModelParametersError(
-                    f"Contract model_weights_sha256 mismatch for cell '{cell_key}': "
-                    f"expected='{expected_contract_sha}', actual='{actual_sha256}'"
-                )
+        self._verify_contract_weight_match(cell_key, actual_sha256)
+
+    def _verify_contract_weight_match(
+        self, cell_key: str, actual_sha256: str
+    ) -> None:
+        """Verify model file SHA256 against injected contract weights map."""
+        if self.contract is None or not self.contract.model_weights_sha256:
+            return
+
+        if cell_key not in self.contract.model_weights_sha256:
+            raise StaleModelParametersError(
+                f"Contract model_weights_sha256 missing cell '{cell_key}': "
+                f"expected in contract model_weights_sha256"
+            )
+
+        expected_contract_sha = str(
+            self.contract.model_weights_sha256[cell_key]
+        ).lower()
+        if actual_sha256 != expected_contract_sha:
+            raise StaleModelParametersError(
+                f"Contract model_weights_sha256 mismatch for cell '{cell_key}': "
+                f"expected='{expected_contract_sha}', actual='{actual_sha256}'"
+            )

@@ -32,6 +32,7 @@ from src.contract.version_watchdog import (
     CONTRACT_VERSION,
     ContractGuardrailError,
     ContractVersionWatchdog,
+    ManifestIntegrityError,
     PickleCorruptionError,
     SecurityViolationError,
     StaleModelParametersError,
@@ -262,7 +263,7 @@ def test_t6_test_env_controlled_bypass(
     with caplog.at_level(logging.CRITICAL):
         report = watchdog.check(skip_when_env="ALLOW_TEST_BYPASS")
 
-    assert report.is_valid is True
+    assert report.is_valid is False
     assert report.bypassed is True
     assert report.verified_cells_count == 0
     assert "TEST BYPASS ACTIVATED" in caplog.text
@@ -298,19 +299,19 @@ def test_t8_6h_lead_warn_only(
 
 
 def test_manifest_file_not_found(tmp_path: Path):
-    """Boundary: Nonexistent manifest file raises PickleCorruptionError."""
+    """Boundary: Nonexistent manifest file raises ManifestIntegrityError."""
     watchdog = ContractVersionWatchdog(manifest_path=tmp_path / "nonexistent.json")
-    with pytest.raises(PickleCorruptionError, match=r"Manifest file not found"):
+    with pytest.raises(ManifestIntegrityError, match=r"Manifest file not found"):
         watchdog.check()
 
 
 def test_manifest_invalid_json(tmp_path: Path):
-    """Boundary: Corrupted JSON in manifest.json raises PickleCorruptionError."""
+    """Boundary: Corrupted JSON in manifest.json raises ManifestIntegrityError."""
     bad_manifest = tmp_path / "manifest.json"
     bad_manifest.write_text("{invalid json", encoding="utf-8")
 
     watchdog = ContractVersionWatchdog(manifest_path=bad_manifest)
-    with pytest.raises(PickleCorruptionError, match=r"Failed to parse manifest JSON"):
+    with pytest.raises(ManifestIntegrityError, match=r"Failed to parse manifest JSON"):
         watchdog.check()
 
 
@@ -381,6 +382,7 @@ def test_corrupted_pickle_content(tmp_path: Path):
 
 def test_exception_inheritance_hierarchy():
     """Verify clean zero cross-layer exception inheritance."""
+    assert issubclass(ManifestIntegrityError, ContractGuardrailError)
     assert issubclass(StaleModelParametersError, ContractGuardrailError)
     assert issubclass(PickleCorruptionError, ContractGuardrailError)
     assert issubclass(SecurityViolationError, ContractGuardrailError)
@@ -440,4 +442,140 @@ def test_real_repo_manifest_read_only_smoke():
     assert report.skipped_6h_entries == 64
     assert report.bypassed is False
     assert report.checked_at != ""
+
+
+def test_bypass_report_is_not_valid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    R-1 Regression: Ensure bypass report explicitly sets is_valid=False.
+    Protects downstream consumers (e.g. `if report.is_valid:`) from treating
+    an unverified bypass state as a valid verification pass.
+    """
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    monkeypatch.setenv("POLY_ENV", "test")
+    monkeypatch.setenv("ALLOW_BYPASS", "1")
+    watchdog = ContractVersionWatchdog(manifest_path=manifest_path, contract=contract)
+    report = watchdog.check(skip_when_env="ALLOW_BYPASS")
+    assert report.bypassed is True
+    assert report.is_valid is False
+    assert report.verified_cells_count == 0
+
+
+def test_production_param_without_envvar_runs_full_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    R-2: In production, passing skip_when_env without setting the env var to '1'
+    must ignore the parameter and run the full check normally.
+    """
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    monkeypatch.setenv("POLY_ENV", "production")
+    monkeypatch.delenv("UNSET_BYPASS_VAR", raising=False)
+    watchdog = ContractVersionWatchdog(manifest_path=manifest_path, contract=contract)
+    report = watchdog.check(skip_when_env="UNSET_BYPASS_VAR")
+    assert report.is_valid is True
+    assert report.verified_cells_count == TOTAL_AUTHORIZED_CELLS
+    assert report.bypassed is False
+
+
+def test_production_bypass_attempt_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    R-2: In production, setting skip_when_env var to '1' strictly raises SecurityViolationError.
+    """
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    monkeypatch.setenv("POLY_ENV", "production")
+    monkeypatch.setenv("ATTEMPT_BYPASS", "1")
+    watchdog = ContractVersionWatchdog(manifest_path=manifest_path, contract=contract)
+    with pytest.raises(SecurityViolationError, match=r"production environment"):
+        watchdog.check(skip_when_env="ATTEMPT_BYPASS")
+
+
+def test_bypass_env_value_must_be_literal_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    R-4: Test bypass only activates when the environment variable is strictly literal '1'.
+    Values like 'true', 'yes', 'TRUE' do NOT trigger bypass and proceed to full verification.
+    """
+    manifest_path, contract = _setup_synthetic_environment(tmp_path)
+    monkeypatch.setenv("POLY_ENV", "development")
+    monkeypatch.setenv("BYPASS_FLAG", "true")
+    watchdog = ContractVersionWatchdog(manifest_path=manifest_path, contract=contract)
+    report = watchdog.check(skip_when_env="BYPASS_FLAG")
+    assert report.bypassed is False
+    assert report.is_valid is True
+    assert report.verified_cells_count == TOTAL_AUTHORIZED_CELLS
+
+
+def test_manifest_missing_lead_hours_raises_manifest_integrity_error(tmp_path: Path):
+    """R-5: Manifest model entry missing 'lead_hours' raises ManifestIntegrityError (not bare KeyError)."""
+    bad_manifest_dict = {
+        "models": {
+            "KORD_Winter_Max_lead12h.pkl": {
+                "station": "KORD",
+                "sha256": "abc",
+            }
+        }
+    }
+    mpath = tmp_path / "manifest.json"
+    mpath.write_text(json.dumps(bad_manifest_dict), encoding="utf-8")
+    watchdog = ContractVersionWatchdog(manifest_path=mpath)
+    with pytest.raises(ManifestIntegrityError, match=r"missing required fields") as exc_info:
+        watchdog.check()
+    assert issubclass(type(exc_info.value), ContractGuardrailError)
+    assert not issubclass(type(exc_info.value), KeyError)
+
+
+def test_manifest_missing_station_raises_manifest_integrity_error(tmp_path: Path):
+    """R-5: Manifest model entry missing 'station' raises ManifestIntegrityError (not bare KeyError)."""
+    bad_manifest_dict = {
+        "models": {
+            "KORD_Winter_Max_lead12h.pkl": {
+                "lead_hours": 12,
+                "sha256": "abc",
+            }
+        }
+    }
+    mpath = tmp_path / "manifest.json"
+    mpath.write_text(json.dumps(bad_manifest_dict), encoding="utf-8")
+    watchdog = ContractVersionWatchdog(manifest_path=mpath)
+    with pytest.raises(ManifestIntegrityError, match=r"missing required fields"):
+        watchdog.check()
+
+
+def test_manifest_entry_not_dict_raises_manifest_integrity_error(tmp_path: Path):
+    """R-5: Manifest model entry that is not a dict raises ManifestIntegrityError."""
+    bad_manifest_dict = {
+        "models": {
+            "KORD_Winter_Max_lead12h.pkl": "invalid-string-not-dict"
+        }
+    }
+    mpath = tmp_path / "manifest.json"
+    mpath.write_text(json.dumps(bad_manifest_dict), encoding="utf-8")
+    watchdog = ContractVersionWatchdog(manifest_path=mpath)
+    with pytest.raises(ManifestIntegrityError, match=r"metadata must be a dictionary"):
+        watchdog.check()
+
+
+def test_manifest_missing_sha256_raises_manifest_integrity_error(tmp_path: Path):
+    """R-5: Manifest model entry missing 'sha256' raises ManifestIntegrityError."""
+    fname = "KORD_Winter_Max_lead12h.pkl"
+    (tmp_path / fname).write_bytes(b"some-bytes")
+    bad_manifest_dict = {
+        "models": {
+            fname: {
+                "station": "KORD",
+                "lead_hours": 12,
+            }
+        }
+    }
+    mpath = tmp_path / "manifest.json"
+    mpath.write_text(json.dumps(bad_manifest_dict), encoding="utf-8")
+    watchdog = ContractVersionWatchdog(manifest_path=mpath)
+    with pytest.raises(ManifestIntegrityError, match=r"missing 'sha256'"):
+        watchdog.check()
+
 

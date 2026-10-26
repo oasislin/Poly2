@@ -12,6 +12,7 @@ from src.contract.parameter_contract import (
 )
 from src.contract.version_watchdog import (
     ContractGuardrailError,
+    ManifestIntegrityError,
     StaleModelParametersError,
     PickleCorruptionError,
     SecurityViolationError,
@@ -29,6 +30,7 @@ __all__ = [
     "AUTHORIZED_LEAD_HOURS",
     "TOTAL_AUTHORIZED_CELLS",
     "ContractGuardrailError",
+    "ManifestIntegrityError",
     "StaleModelParametersError",
     "PickleCorruptionError",
     "SecurityViolationError",
