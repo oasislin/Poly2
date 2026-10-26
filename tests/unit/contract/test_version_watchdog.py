@@ -37,6 +37,7 @@ from src.contract.version_watchdog import (
     SecurityViolationError,
     StaleModelParametersError,
     WatchdogVerificationReport,
+    compute_canonical_manifest_sha256,
 )
 
 
@@ -577,5 +578,22 @@ def test_manifest_missing_sha256_raises_manifest_integrity_error(tmp_path: Path)
     watchdog = ContractVersionWatchdog(manifest_path=mpath)
     with pytest.raises(ManifestIntegrityError, match=r"missing 'sha256'"):
         watchdog.check()
+
+
+def test_public_canonical_sha256_matches_private_shim():
+    """
+    D-1: Verify public compute_canonical_manifest_sha256 exactly matches
+    the private ContractVersionWatchdog._compute_canonical_manifest_sha256 shim.
+    """
+    manifest_dict = {
+        "manifest_version": "2.2.0-phase",
+        "models": {"test.pkl": {"sha256": "1234abcd"}},
+        "station_universe": ["KORD", "KMIA"],
+    }
+    public_hash = compute_canonical_manifest_sha256(manifest_dict)
+    shim_hash = ContractVersionWatchdog._compute_canonical_manifest_sha256(manifest_dict)
+    assert public_hash == shim_hash
+    assert len(public_hash) == 64
+
 
 

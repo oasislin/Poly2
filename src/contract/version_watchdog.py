@@ -93,6 +93,18 @@ class WatchdogVerificationReport:
     """ISO 格式的 UTC 时间戳."""
 
 
+def compute_canonical_manifest_sha256(manifest: Dict[str, Any]) -> str:
+    """
+    Compute canonical, deterministic SHA256 of manifest dictionary.
+    Single source of truth for manifest hashing used across version watchdog
+    and parameter contract converters (ADR-0019 / Ticket 03 D-1).
+    """
+    serialized = json.dumps(
+        manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
+
+
 class ContractVersionWatchdog:
     """
     Physical model version watchdog implementing ADR-0019 §二.6.
@@ -205,11 +217,8 @@ class ContractVersionWatchdog:
 
     @staticmethod
     def _compute_canonical_manifest_sha256(manifest: Dict[str, Any]) -> str:
-        """Compute canonical, deterministic SHA256 of manifest dictionary."""
-        serialized = json.dumps(
-            manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
-        return hashlib.sha256(serialized).hexdigest()
+        """Deprecated shim: 委托公开函数，保持既有调用点不变。"""
+        return compute_canonical_manifest_sha256(manifest)
 
     def _verify_contract_anchors(self, canonical_sha256: str) -> None:
         """

@@ -20,6 +20,7 @@ from src.contract.version_watchdog import (
     WatchdogVerificationReport,
     CONTRACT_VERSION,
     AUTHORIZED_LEADS_FOR_GUARD,
+    compute_canonical_manifest_sha256,
 )
 
 __all__ = [
@@ -38,4 +39,5 @@ __all__ = [
     "WatchdogVerificationReport",
     "CONTRACT_VERSION",
     "AUTHORIZED_LEADS_FOR_GUARD",
+    "compute_canonical_manifest_sha256",
 ]
