@@ -1,15 +1,19 @@
 """
-Unit tests for Physical Parameter Consumption Contract (Ticket 01 / Phase 2 Task 08).
+Unit tests for Physical Parameter Consumption Contract (Ticket 01 & Ticket 25 / Phase 2 Task 08).
 Validates ADR-0019 specifications:
 - Strongly typed, immutable CellCalibrationRecord with mandatory & indirect consumption fields.
 - Zero hardcoded threshold constants or fallback defaults (Fail-Closed).
 - Dynamic PhysicalForecastOutput with Decimal discrete probabilities.
 - 22-cell structure (KORD/KMIA * 11 lead hours) without global averaging.
-- Frozen immutability preventing downstream tampering.
+- Frozen immutability preventing downstream tampering (MappingProxyType).
+- Bidirectional cell coverage validation (missing & extra).
+- Strict boolean and finite float parsing.
+- Manifest model filename pattern enforcement for model_weights_sha256.
 """
 
 from dataclasses import FrozenInstanceError
 from decimal import Decimal
+import math
 import pytest
 
 from src.contract.parameter_contract import (
@@ -19,7 +23,12 @@ from src.contract.parameter_contract import (
     AUTHORIZED_STATIONS,
     AUTHORIZED_LEAD_HOURS,
     TOTAL_AUTHORIZED_CELLS,
+    MODEL_FILENAME_PATTERN,
 )
+
+
+VALID_MODEL_FNAME = "KORD_Winter_Max_lead12h.pkl"
+VALID_SHA256 = "a" * 64
 
 
 def _make_sample_record(station: str = "KORD", lead_hours: int = 12) -> CellCalibrationRecord:
@@ -44,6 +53,10 @@ def _make_sample_record(station: str = "KORD", lead_hours: int = 12) -> CellCali
         ece_range=0.0078,
     )
 
+
+# ---------------------------------------------------------
+# Existing 12 Tests (Updated for Ticket 25 contract specs)
+# ---------------------------------------------------------
 
 def test_cell_calibration_record_creation_and_frozen():
     """Verify record initializes properly and enforces immutability."""
@@ -133,7 +146,7 @@ def test_physical_param_contract_get_cell_success():
     contract = PhysicalParamContract(
         contract_version="1.0.0",
         manifest_sha256="test_sha256_mock_hash",
-        model_weights_sha256={"KORD_tmax": "hash123"},
+        model_weights_sha256={VALID_MODEL_FNAME: VALID_SHA256},
         created_at="2026-10-21T00:00:00Z",
         cells={("KORD", 12): r12, ("KORD", 18): r18},
     )
@@ -170,7 +183,7 @@ def test_physical_param_contract_validation_success():
     contract = PhysicalParamContract(
         contract_version="1.0.0",
         manifest_sha256="mock_manifest_sha",
-        model_weights_sha256={"model": "hash"},
+        model_weights_sha256={VALID_MODEL_FNAME: VALID_SHA256},
         created_at="2026-10-21T00:00:00Z",
         cells=cells,
     )
@@ -195,7 +208,7 @@ def test_physical_param_contract_validation_missing_cell_raises():
         created_at="2026-10-21T00:00:00Z",
         cells=cells,
     )
-    with pytest.raises(ValueError, match="Missing 1 required calibration cells: KMIA_72h"):
+    with pytest.raises(ValueError, match="missing 1 cells: KMIA_72h"):
         contract.validate_cells_coverage()
 
 
@@ -245,7 +258,7 @@ def test_physical_param_contract_dict_roundtrip():
     contract = PhysicalParamContract(
         contract_version="1.0.0",
         manifest_sha256="abc123sha",
-        model_weights_sha256={"KORD_tmax": "sha_weight_1"},
+        model_weights_sha256={VALID_MODEL_FNAME: VALID_SHA256},
         created_at="2026-10-21T12:00:00Z",
         cells=cells,
     )
@@ -253,15 +266,16 @@ def test_physical_param_contract_dict_roundtrip():
 
     assert d["contract_version"] == "1.0.0"
     assert d["manifest_sha256"] == "abc123sha"
-    assert d["model_weights_sha256"] == {"KORD_tmax": "sha_weight_1"}
+    assert d["model_weights_sha256"] == {VALID_MODEL_FNAME: VALID_SHA256}
     assert d["created_at"] == "2026-10-21T12:00:00Z"
+    assert d["total_cells"] == 2
     assert "cells" in d
     assert len(d["cells"]) == 2
 
     reconstructed = PhysicalParamContract.from_dict(d)
     assert reconstructed.contract_version == "1.0.0"
     assert reconstructed.manifest_sha256 == "abc123sha"
-    assert reconstructed.model_weights_sha256 == {"KORD_tmax": "sha_weight_1"}
+    assert reconstructed.model_weights_sha256 == {VALID_MODEL_FNAME: VALID_SHA256}
     assert reconstructed.get_cell("KORD", 12) == contract.get_cell("KORD", 12)
     assert reconstructed.get_cell("KMIA", 18) == contract.get_cell("KMIA", 18)
 
@@ -274,9 +288,185 @@ def test_physical_param_contract_key_mismatch_raises_value_error():
         "manifest_sha256": "sha",
         "model_weights_sha256": {},
         "created_at": "2026-10-21T00:00:00Z",
+        "total_cells": 1,
         "cells": {
             "KMIA_30h": record.to_dict()  # Mismatch: key says KMIA_30h but record is KORD_12h
         },
     }
     with pytest.raises(ValueError, match="Cell key mismatch: outer key 'KMIA_30h' does not match"):
         PhysicalParamContract.from_dict(d)
+
+
+# ---------------------------------------------------------
+# New Tests N1 ~ N8 (Ticket 25 / R-A ~ R-G Hardening)
+# ---------------------------------------------------------
+
+def test_n1_physical_param_contract_validation_missing_cells_detail():
+    """N1 (D1): validate_cells_coverage reports missing N cells with details."""
+    cells = {}
+    for st in AUTHORIZED_STATIONS:
+        for lead in AUTHORIZED_LEAD_HOURS:
+            if (st, lead) in {("KORD", 12), ("KMIA", 18)}:
+                continue
+            cells[(st, lead)] = _make_sample_record(st, lead)
+
+    contract = PhysicalParamContract(
+        contract_version="1.0.0",
+        manifest_sha256="sha",
+        model_weights_sha256={},
+        created_at="2026-10-21T00:00:00Z",
+        cells=cells,
+    )
+    with pytest.raises(ValueError) as excinfo:
+        contract.validate_cells_coverage()
+    msg = str(excinfo.value)
+    assert "missing 2 cells" in msg
+    assert "KMIA_18h" in msg
+    assert "KORD_12h" in msg
+
+
+def test_n2_physical_param_contract_validation_extra_cells_detail():
+    """N2 (D2): validate_cells_coverage reports extra N cells with details."""
+    cells = {}
+    for st in AUTHORIZED_STATIONS:
+        for lead in AUTHORIZED_LEAD_HOURS:
+            cells[(st, lead)] = _make_sample_record(st, lead)
+
+    # Inject an extra unauthorized cell
+    cells[("KORD", 6)] = _make_sample_record("KORD", 12)  # tuple key has 6h
+
+    contract = PhysicalParamContract(
+        contract_version="1.0.0",
+        manifest_sha256="sha",
+        model_weights_sha256={},
+        created_at="2026-10-21T00:00:00Z",
+        cells=cells,
+    )
+    with pytest.raises(ValueError) as excinfo:
+        contract.validate_cells_coverage()
+    msg = str(excinfo.value)
+    assert "extra 1 cells" in msg
+    assert "KORD_6h" in msg
+
+
+def test_n3_physical_param_contract_immutability_mapping_proxy():
+    """N3 (D3): Direct in-place mutation of cells and model_weights raises TypeError."""
+    contract = PhysicalParamContract(
+        contract_version="1.0.0",
+        manifest_sha256="sha",
+        model_weights_sha256={VALID_MODEL_FNAME: VALID_SHA256},
+        created_at="2026-10-21T00:00:00Z",
+        cells={("KORD", 12): _make_sample_record("KORD", 12)},
+    )
+
+    with pytest.raises(TypeError):
+        contract.cells[("KMIA", 30)] = _make_sample_record("KMIA", 30)  # type: ignore
+
+    with pytest.raises(TypeError):
+        contract.model_weights_sha256["new_model.pkl"] = "b" * 64  # type: ignore
+
+
+def test_n4_cell_calibration_record_strict_bool_parsing():
+    """N4 (D4): Strict bool parser accepts True/False/'True'/'False', rejects 1/0/'true'/'yes'."""
+    record = _make_sample_record("KORD", 12)
+    d = record.to_dict()
+
+    # Valid string booleans
+    d["fstd_in"] = "True"
+    d["v1_coverage_90_pass"] = "False"
+    rec = CellCalibrationRecord.from_dict(d)
+    assert rec.fstd_in is True
+    assert rec.v1_coverage_90_pass is False
+
+    # Invalid booleans
+    for invalid_val in [1, 0, "1", "0", "true", "false", "yes", "no", None]:
+        d["fstd_in"] = invalid_val
+        with pytest.raises(ValueError, match="Invalid strict boolean for field 'fstd_in'"):
+            CellCalibrationRecord.from_dict(d)
+
+
+def test_n5_cell_calibration_record_finite_float_parsing():
+    """N5 (D5): Finite float parser rejects NaN and infinities with field name."""
+    record = _make_sample_record("KORD", 12)
+    d = record.to_dict()
+
+    for invalid_float in [float("nan"), float("inf"), float("-inf")]:
+        d["s_oos"] = invalid_float
+        with pytest.raises(ValueError, match="Float field 's_oos' must be finite"):
+            CellCalibrationRecord.from_dict(d)
+
+
+def test_n6_cell_calibration_record_from_dict_unauthorized_station_or_lead_raises():
+    """N6 (D6): from_dict rejects unauthorized station or lead hours."""
+    record = _make_sample_record("KORD", 12)
+    d = record.to_dict()
+
+    d["station"] = "KJFK"
+    with pytest.raises(ValueError, match="Invalid station 'KJFK'"):
+        CellCalibrationRecord.from_dict(d)
+
+    d["station"] = "KORD"
+    d["lead_hours"] = 6
+    with pytest.raises(ValueError, match="Invalid lead_hours '6'"):
+        CellCalibrationRecord.from_dict(d)
+
+
+def test_n7_physical_param_contract_from_dict_total_cells_validation():
+    """N7 (D7): total_cells must be present and match actual cell count."""
+    record = _make_sample_record("KORD", 12)
+    d = {
+        "contract_version": "1.0.0",
+        "manifest_sha256": "sha",
+        "model_weights_sha256": {},
+        "created_at": "2026-10-21T00:00:00Z",
+        "cells": {"KORD_12h": record.to_dict()},
+    }
+
+    # Missing total_cells
+    with pytest.raises(ValueError, match="Missing mandatory field 'total_cells'"):
+        PhysicalParamContract.from_dict(d)
+
+    # Mismatched total_cells
+    d["total_cells"] = 2
+    with pytest.raises(ValueError, match="Field 'total_cells' \\(2\\) does not match actual cell count \\(1\\)"):
+        PhysicalParamContract.from_dict(d)
+
+    # Matched total_cells
+    d["total_cells"] = 1
+    contract = PhysicalParamContract.from_dict(d)
+    assert len(contract.cells) == 1
+
+
+def test_n8_physical_param_contract_model_weights_sha256_pattern_and_hex():
+    """N8 (D8): Enforces manifest model filename pattern and 64-hex SHA256."""
+    r12 = _make_sample_record("KORD", 12)
+
+    # Prohibited cell-key semantic (e.g. 'KORD_12h')
+    with pytest.raises(ValueError, match="Invalid model filename key 'KORD_12h' in model_weights_sha256"):
+        PhysicalParamContract(
+            contract_version="1.0.0",
+            manifest_sha256="sha",
+            model_weights_sha256={"KORD_12h": VALID_SHA256},
+            created_at="2026-10-21T00:00:00Z",
+            cells={("KORD", 12): r12},
+        )
+
+    # Non-64-hex SHA256
+    with pytest.raises(ValueError, match="Invalid SHA256 hex string for model"):
+        PhysicalParamContract(
+            contract_version="1.0.0",
+            manifest_sha256="sha",
+            model_weights_sha256={VALID_MODEL_FNAME: "not_a_64_hex_hash"},
+            created_at="2026-10-21T00:00:00Z",
+            cells={("KORD", 12): r12},
+        )
+
+    # Valid manifest model filename and 64-hex hash
+    contract = PhysicalParamContract(
+        contract_version="1.0.0",
+        manifest_sha256="sha",
+        model_weights_sha256={VALID_MODEL_FNAME: VALID_SHA256},
+        created_at="2026-10-21T00:00:00Z",
+        cells={("KORD", 12): r12},
+    )
+    assert len(contract.model_weights_sha256) == 1

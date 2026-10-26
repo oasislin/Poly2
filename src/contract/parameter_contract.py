@@ -14,13 +14,64 @@ Guarantees:
 
 from dataclasses import asdict, dataclass
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple
+import math
+import re
+from types import MappingProxyType
+from typing import Any, Dict, List, Mapping, Set, Tuple
 
 
 # W2 Scope Authorized Grid Constants (Structural Dimensions, NOT Thresholds)
 AUTHORIZED_STATIONS: Tuple[str, ...] = ("KORD", "KMIA")
 AUTHORIZED_LEAD_HOURS: Tuple[int, ...] = (12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72)
 TOTAL_AUTHORIZED_CELLS: int = len(AUTHORIZED_STATIONS) * len(AUTHORIZED_LEAD_HOURS)  # 22
+
+# Model filename regex pattern in manifest (ADR-0019 / Ticket 25).
+# Key space semantic: filename of individual physical model file in manifest.json.
+# Explicitly PROHIBITED: using cell key '{station}_{lead}h' as keys in model_weights_sha256.
+# Note: Validation of non-empty and set completeness belongs to param_table_validator / watchdog.
+MODEL_FILENAME_PATTERN: str = (
+    r"^[A-Z]{4}_(Winter|Spring|Summer|Autumn)_(Max|Min)_lead(6|12|18|24|30|36|42|48|54|60|66|72)h(_[a-z]+)?\.pkl$"
+)
+_COMPILED_MODEL_FILENAME_PATTERN = re.compile(MODEL_FILENAME_PATTERN)
+_HEX64_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _parse_strict_bool(value: Any, field_name: str) -> bool:
+    """
+    Strict boolean parser (ADR-0019 / Ticket 25).
+    Accepts strictly bool instances, or strings exactly equal to 'True' or 'False'.
+    Rejects integer 1/0, lowercase 'true'/'false', 'yes', etc. with ValueError.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        if value == "True":
+            return True
+        if value == "False":
+            return False
+    raise ValueError(
+        f"Invalid strict boolean for field '{field_name}': {repr(value)}. "
+        f"Must be strictly bool (True/False) or str 'True'/'False'."
+    )
+
+
+def _parse_finite_float(value: Any, field_name: str) -> float:
+    """
+    Strict finite float parser (ADR-0019 / Ticket 25).
+    Converts value to float and enforces math.isfinite().
+    Rejects NaN, +inf, -inf with ValueError.
+    """
+    try:
+        val = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid float for field '{field_name}': {repr(value)}"
+        ) from exc
+    if not math.isfinite(val):
+        raise ValueError(
+            f"Float field '{field_name}' must be finite, got {val}"
+        )
+    return val
 
 
 @dataclass(frozen=True)
@@ -62,27 +113,43 @@ class CellCalibrationRecord:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CellCalibrationRecord":
         """
-        Deserialize record from dictionary with strict key presence.
-        Fails closed on missing fields; zero fallback defaults.
+        Deserialize record from dictionary with strict key presence and type validation.
+        Fails closed on missing fields, NaN/inf floats, non-strict booleans, or unauthorized station/lead.
         """
+        station = str(data["station"]).upper()
+        if station not in AUTHORIZED_STATIONS:
+            raise ValueError(
+                f"Invalid station '{station}'. Authorized stations: {AUTHORIZED_STATIONS}"
+            )
+        lead_hours = int(data["lead_hours"])
+        if lead_hours not in AUTHORIZED_LEAD_HOURS:
+            raise ValueError(
+                f"Invalid lead_hours '{lead_hours}'. Authorized lead hours: {AUTHORIZED_LEAD_HOURS}"
+            )
+        variable = str(data["variable"]).lower()
+
         return cls(
-            station=str(data["station"]).upper(),
-            lead_hours=int(data["lead_hours"]),
-            variable=str(data["variable"]).lower(),
-            s_oos=float(data["s_oos"]),
-            fstd_lo=float(data["fstd_lo"]),
-            fstd_hi=float(data["fstd_hi"]),
-            fstd_in=bool(data["fstd_in"]),
-            ece_2f=float(data["ece_2f"]),
-            v1_coverage_90=float(data["v1_coverage_90"]),
-            v1_coverage_90_pass=bool(data["v1_coverage_90_pass"]),
-            pit_mean=float(data["pit_mean"]),
-            pit_var=float(data["pit_var"]),
-            reject_uniform=bool(data["reject_uniform"]),
-            neff=float(data["neff"]),
-            cvm_stat=float(data["cvm_stat"]),
-            cvm_p=float(data["cvm_p"]),
-            ece_range=float(data["ece_range"]),
+            station=station,
+            lead_hours=lead_hours,
+            variable=variable,
+            s_oos=_parse_finite_float(data["s_oos"], "s_oos"),
+            fstd_lo=_parse_finite_float(data["fstd_lo"], "fstd_lo"),
+            fstd_hi=_parse_finite_float(data["fstd_hi"], "fstd_hi"),
+            fstd_in=_parse_strict_bool(data["fstd_in"], "fstd_in"),
+            ece_2f=_parse_finite_float(data["ece_2f"], "ece_2f"),
+            v1_coverage_90=_parse_finite_float(data["v1_coverage_90"], "v1_coverage_90"),
+            v1_coverage_90_pass=_parse_strict_bool(
+                data["v1_coverage_90_pass"], "v1_coverage_90_pass"
+            ),
+            pit_mean=_parse_finite_float(data["pit_mean"], "pit_mean"),
+            pit_var=_parse_finite_float(data["pit_var"], "pit_var"),
+            reject_uniform=_parse_strict_bool(
+                data["reject_uniform"], "reject_uniform"
+            ),
+            neff=_parse_finite_float(data["neff"], "neff"),
+            cvm_stat=_parse_finite_float(data["cvm_stat"], "cvm_stat"),
+            cvm_p=_parse_finite_float(data["cvm_p"], "cvm_p"),
+            ece_range=_parse_finite_float(data["ece_range"], "ece_range"),
         )
 
 
@@ -139,9 +206,36 @@ class PhysicalParamContract:
 
     contract_version: str
     manifest_sha256: str
-    model_weights_sha256: Dict[str, str]
+    model_weights_sha256: Mapping[str, str]
     created_at: str
-    cells: Dict[Tuple[str, int], CellCalibrationRecord]
+    cells: Mapping[Tuple[str, int], CellCalibrationRecord]
+
+    def __post_init__(self) -> None:
+        """
+        Validate model_weights_sha256 structure if present and enforce true immutability.
+        Note: Does not enforce non-empty (responsibility of param_table_validator).
+        """
+        # Validate model weights key format and hex SHA if non-empty
+        for fname, sha in self.model_weights_sha256.items():
+            if not _COMPILED_MODEL_FILENAME_PATTERN.match(fname):
+                raise ValueError(
+                    f"Invalid model filename key '{fname}' in model_weights_sha256: "
+                    f"must match pattern {MODEL_FILENAME_PATTERN}. "
+                    f"Key space semantic MUST be manifest model filename (not cell key)."
+                )
+            if not _HEX64_PATTERN.match(sha):
+                raise ValueError(
+                    f"Invalid SHA256 hex string for model '{fname}': '{sha}'. "
+                    f"Must be 64-character lowercase hexadecimal."
+                )
+
+        # Freeze dictionaries with MappingProxyType for deep immutability (R-B / D3)
+        object.__setattr__(
+            self, "cells", MappingProxyType(dict(self.cells))
+        )
+        object.__setattr__(
+            self, "model_weights_sha256", MappingProxyType(dict(self.model_weights_sha256))
+        )
 
     def get_cell(self, station: str, lead_hours: int) -> CellCalibrationRecord:
         """
@@ -159,18 +253,28 @@ class PhysicalParamContract:
     def validate_cells_coverage(self) -> bool:
         """
         Verify that all 22 authorized cells (KORD/KMIA * 11 lead hours) are present.
+        Performs bidirectional check: validates zero missing cells and zero extra cells.
         Pure structure check; contains ZERO numerical threshold checks.
-        Raises ValueError with missing cell keys if validation fails.
+        Raises ValueError with missing/extra cell keys if validation fails.
         """
-        missing: List[str] = []
-        for st in AUTHORIZED_STATIONS:
-            for lead in AUTHORIZED_LEAD_HOURS:
-                if (st, lead) not in self.cells:
-                    missing.append(f"{st}_{lead}h")
+        expected_cells = {
+            (st, lead) for st in AUTHORIZED_STATIONS for lead in AUTHORIZED_LEAD_HOURS
+        }
+        present_cells = set(self.cells.keys())
 
-        if missing:
+        missing_cells = expected_cells - present_cells
+        extra_cells = present_cells - expected_cells
+
+        if missing_cells or extra_cells:
+            parts = []
+            if missing_cells:
+                missing_str = ", ".join(sorted(f"{st}_{lead}h" for st, lead in missing_cells))
+                parts.append(f"missing {len(missing_cells)} cells: {missing_str}")
+            if extra_cells:
+                extra_str = ", ".join(sorted(f"{st}_{lead}h" for st, lead in extra_cells))
+                parts.append(f"extra {len(extra_cells)} cells: {extra_str}")
             raise ValueError(
-                f"Missing {len(missing)} required calibration cells: {', '.join(missing)}. "
+                f"Cell coverage mismatch: {'; '.join(parts)}. "
                 f"Expected exactly {TOTAL_AUTHORIZED_CELLS} cells."
             )
         return True
@@ -185,7 +289,7 @@ class PhysicalParamContract:
         return {
             "contract_version": self.contract_version,
             "manifest_sha256": self.manifest_sha256,
-            "model_weights_sha256": self.model_weights_sha256,
+            "model_weights_sha256": dict(self.model_weights_sha256),
             "created_at": self.created_at,
             "total_cells": len(self.cells),
             "cells": serialized_cells,
@@ -195,12 +299,20 @@ class PhysicalParamContract:
     def from_dict(cls, data: Dict[str, Any]) -> "PhysicalParamContract":
         """
         Deserialize contract from dictionary with strict validation.
-        Validates outer key consistency with internal cell identity.
-        Fails closed with KeyError if any required metadata is missing.
+        Validates outer key consistency with internal cell identity and total_cells.
+        Fails closed with KeyError/ValueError if any required metadata is invalid or missing.
         """
-        cells: Dict[Tuple[str, int], CellCalibrationRecord] = {}
-        raw_cells = data["cells"]
+        if "total_cells" not in data:
+            raise ValueError("Missing mandatory field 'total_cells' in contract data")
 
+        raw_cells = data["cells"]
+        total_cells = int(data["total_cells"])
+        if total_cells != len(raw_cells):
+            raise ValueError(
+                f"Field 'total_cells' ({total_cells}) does not match actual cell count ({len(raw_cells)})"
+            )
+
+        cells: Dict[Tuple[str, int], CellCalibrationRecord] = {}
         for expected_key, cell_dict in raw_cells.items():
             record = CellCalibrationRecord.from_dict(cell_dict)
             cell_key = f"{record.station}_{record.lead_hours}h"
@@ -214,7 +326,7 @@ class PhysicalParamContract:
         contract = cls(
             contract_version=str(data["contract_version"]),
             manifest_sha256=str(data["manifest_sha256"]),
-            model_weights_sha256=dict(data["model_weights_sha256"]),
+            model_weights_sha256=dict(data.get("model_weights_sha256", {})),
             created_at=str(data["created_at"]),
             cells=cells,
         )
