@@ -1,6 +1,6 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-10-10 20:55:00
+updated: 2026-10-27 10:20:00
 ---
 # 项目状态（唯一状态入口）
 
@@ -17,7 +17,9 @@ updated: 2026-10-10 20:55:00
   - 6h 池化回退层相位分层重训与 TMax 方差衰减补齐（工单 `P7-W1-POOLPHASE`）：已全量验收封卷并合流入 `main`（PR #132），状态 `COMPLETED_SEALED`，全库测试基线 1006 passed，拔旗令 `P7-FLAG2-REMOVAL-R1` 签署生效；
   - 宪法文档与演化全景对账（工单 `P7-DOC-RECON`）：PR #131 已正式合流至 `main`，原独立工单 `P7-DOC-README` 标记为 `SUPERSEDED_BY(P7-DOC-RECON)` 并随 PR #131 执结闭环；
   - 长线规划入册与新会话交接包组装（工单 `P7-TRANSITION-DOC`）：已执结归档；
-  - 第一类物理参数受控域治理与契约解耦（工单 `P8-CLASS1-LAUNCH` / `Ticket 26`）：完成 `src/contract/parameter_domains.py` 两级受控域模块建立与 `CellCalibrationRecord` 委托校验，T01~T21 测试全绿，解耦算法层魔法数字，为 Ticket 05 铺平门禁。
+  - 第一类物理参数受控域治理与契约解耦（工单 `P8-CLASS1-LAUNCH` / `Ticket 26`）：完成 `src/contract/parameter_domains.py` 两级受控域模块建立与 `CellCalibrationRecord` 委托校验，T01~T21 测试全绿，解耦算法层魔法数字，为 Ticket 05 铺平门禁；
+  - 参数契约安全集成与防污染封盘（工单 `P8-CLASS1-LAUNCH` / `Ticket 05`）：完成 8 项安全防御用例，通过 CHK-18 签署复核，参数契约层全量封盘；
+  - Q7 覆盖率双轨分工与计算解耦（工单 `P8-CLASS1-LAUNCH` / `Ticket 06`）：完成 `src/pricing/coverage_dual_track.py` 覆盖率双轨模块，实现 exact（事后审计）与 gaussian_proxy（在线定价）彻底解耦，三不混用与无状态上下文强校验（T01~T14 全绿）。
 - **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 与 `evidence/p6_tmax_methodology_closure.*` 冻结归档；主干 `main` 基线更新至 `5c4a4c9`（PR #132 合流），后续任何改动一律须新裁决令；生产代码（`src/` 与 `scripts/`）严格零无授权编辑。（修订依据：P6 终裁与 P7 治理纪律 2026-10-10）
 - **待办事项（Backlog 全景）**：
   - **工单 P7-DOC-README**：状态 `SUPERSEDED_BY(P7-DOC-RECON)`（已并入 PR #131 执结闭环）。

@@ -93,7 +93,9 @@ flowchart TD
   - `Task 07`：只读纸面盘短闭环已通过，后续进入连续观察运行期；
   - **Phase 2 Task 08（第一类投注定价算法与受控域契约治理）推进**：
     - **Ticket 01~04 / 25 闭环**：物理参数消费契约模型、看门狗、转换器校验器及重测审计流水线已全部通过 CHK-09 ~ CHK-16 复核封盘；
-    - **Ticket 26 闭环**：建立 `src/contract/parameter_domains.py` 两级受控域治理模块（Tier 1 数学定义域 Fail-Closed 与 Tier 2 F-2 锁），彻底解耦算法层魔法数字，测试集 T01~T21 全绿。
+    - **Ticket 26 闭环**：建立 `src/contract/parameter_domains.py` 两级受控域治理模块（Tier 1 数学定义域 Fail-Closed 与 Tier 2 F-2 锁），彻底解耦算法层魔法数字，测试集 T01~T21 全绿；
+    - **Ticket 05 闭环**：建立契约安全防污染测试集与运行时哈希防漂移门禁，经 CHK-18 签署复核，参数契约层全量封盘；
+    - **Ticket 06 闭环**：建立 `src/pricing/coverage_dual_track.py`，实现 Q7 覆盖率双轨分工与 exact / gaussian_proxy 彻底解耦，三不混用无状态上下文强校验（T01~T14 全绿）。
 
 ### 3.3 W3 —— 并行横向扩展（纸面盘运行期激活）
 - **依赖声明**：W3 开工时间不得早于 W2 纸面盘只读观测模式平稳启动运行；
