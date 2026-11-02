@@ -1,6 +1,6 @@
 """
-Pricing package root (Phase 2 Task 08 - Ticket 06).
-Exports dual-track coverage classes, data structures, and exceptions.
+Pricing package root (Phase 2 Task 08 - Tickets 06, 07, 08).
+Exports dual-track coverage classes, sigma_adj engine, and penetration probe EV engine.
 """
 
 from src.pricing.coverage_dual_track import (
@@ -15,6 +15,21 @@ from src.pricing.coverage_dual_track import (
     TrackContext,
     UnsupportedDistributionFamilyError,
     Z_90_HALF_WIDTH,
+)
+from src.pricing.penetration_probe import (
+    FEE_BASE_PROVENANCE,
+    FEE_BASE_RATIO,
+    AskBook,
+    F2LockNotReleasedError as PenetrationF2LockNotReleasedError,
+    InvalidOrderBookError,
+    InvalidPenetrationPolicyError,
+    InvalidProbabilityError,
+    NoQualifiedLevelsError,
+    PenetrationError,
+    PenetrationPolicy,
+    ProbeResult,
+    compute_probe,
+    load_penetration_policy,
 )
 from src.pricing.sigma_adj import (
     ADR_SIGMA_ADJ_REFERENCE,
@@ -33,6 +48,7 @@ from src.pricing.sigma_adj import (
 
 __all__ = [
     "ADR_SIGMA_ADJ_REFERENCE",
+    "AskBook",
     "CellRecordProtocol",
     "CoverageInterval",
     "CoverageRate",
@@ -40,19 +56,31 @@ __all__ = [
     "CoverageTrackMisuseError",
     "ExactCoverageTrack",
     "F2LockNotReleasedError",
+    "FEE_BASE_PROVENANCE",
+    "FEE_BASE_RATIO",
     "GaussianProxyCoverageTrack",
     "InvalidCoverageInputError",
+    "InvalidOrderBookError",
+    "InvalidPenetrationPolicyError",
+    "InvalidProbabilityError",
     "InvalidSigmaAdjInputError",
     "InvalidSigmaAdjPolicyError",
     "NOMINAL_INTERVAL_LEVEL",
+    "NoQualifiedLevelsError",
     "ParameterContractProtocol",
+    "PenetrationError",
+    "PenetrationF2LockNotReleasedError",
+    "PenetrationPolicy",
+    "ProbeResult",
     "SigmaAdjError",
     "SigmaAdjLockState",
     "SigmaAdjPolicy",
     "TrackContext",
     "UnsupportedDistributionFamilyError",
     "Z_90_HALF_WIDTH",
+    "compute_probe",
     "compute_sigma_adj",
+    "load_penetration_policy",
     "load_sigma_adj_policy",
     "sigma_adj_for_cell",
 ]

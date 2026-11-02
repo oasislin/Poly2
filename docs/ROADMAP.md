@@ -96,7 +96,8 @@ flowchart TD
     - **Ticket 26 闭环**：建立 `src/contract/parameter_domains.py` 两级受控域治理模块（Tier 1 数学定义域 Fail-Closed 与 Tier 2 F-2 锁），彻底解耦算法层魔法数字，测试集 T01~T21 全绿；
     - **Ticket 05 闭环**：建立契约安全防污染测试集与运行时哈希防漂移门禁，经 CHK-18 签署复核，参数契约层全量封盘；
     - **Ticket 06 闭环**：建立 `src/pricing/coverage_dual_track.py`，实现 Q7 覆盖率双轨分工与 exact / gaussian_proxy 彻底解耦，三不混用无状态上下文强校验（T01~T14 全绿）；
-    - **Ticket 07 闭环**：建立 `src/pricing/sigma_adj.py`，实现基于 $s_{\text{oos}}$ 的方差自适应膨胀 $\sigma_{\text{adj}}$ 计算引擎与 F-2 锁熔断保护，T01~T16 全绿且 AST 零浮点字面量挂锁。
+    - **Ticket 07 闭环**：建立 `src/pricing/sigma_adj.py`，实现基于 $s_{\text{oos}}$ 的方差自适应膨胀 $\sigma_{\text{adj}}$ 计算引擎与 F-2 锁熔断保护，经 CHK-20 签署复核结项；
+    - **Ticket 08 闭环**：建立 `src/pricing/penetration_probe.py`，承接交易 EV 引擎最小内核并实现 S1 盘口穿透探针计算（DR-2026-1014-01），落地先均价后折算动态费率与 F-2 挂锁熔断（T01~T14 全绿）。
 
 ### 3.3 W3 —— 并行横向扩展（纸面盘运行期激活）
 - **依赖声明**：W3 开工时间不得早于 W2 纸面盘只读观测模式平稳启动运行；

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-10-29 14:10:00
+updated: 2026-11-02 15:15:00
 ---
 # 项目状态（唯一状态入口）
 
@@ -20,7 +20,8 @@ updated: 2026-10-29 14:10:00
   - 第一类物理参数受控域治理与契约解耦（工单 `P8-CLASS1-LAUNCH` / `Ticket 26`）：完成 `src/contract/parameter_domains.py` 两级受控域模块建立与 `CellCalibrationRecord` 委托校验，T01~T21 测试全绿，解耦算法层魔法数字，为 Ticket 05 铺平门禁；
   - 参数契约安全集成与防污染封盘（工单 `P8-CLASS1-LAUNCH` / `Ticket 05`）：完成 8 项安全防御用例，通过 CHK-18 签署复核，参数契约层全量封盘；
   - Q7 覆盖率双轨分工与计算解耦（工单 `P8-CLASS1-LAUNCH` / `Ticket 06`）：完成 `src/pricing/coverage_dual_track.py` 覆盖率双轨模块，实现 exact（事后审计）与 gaussian_proxy（在线定价）彻底解耦，三不混用与无状态上下文强校验（T01~T14 全绿）；
-  - 基于 s_oos 的方差自适应膨胀 σ_adj 计算引擎（工单 `P8-CLASS1-LAUNCH` / `Ticket 07`）：完成 `src/pricing/sigma_adj.py` 纯函数引擎与 F-2 挂锁熔断架构（T01~T16 全绿，零浮点字面量 AST 挂锁），契约解耦待 #156 标定。
+  - 基于 s_oos 的方差自适应膨胀 σ_adj 计算引擎（工单 `P8-CLASS1-LAUNCH` / `Ticket 07`）：完成 `src/pricing/sigma_adj.py` 纯函数引擎与 F-2 挂锁熔断架构，已通过 CHK-20 签署封盘（#140 闭环）；
+  - 交易 EV 引擎与 S1 盘口穿透探针计算（工单 `P8-CLASS1-LAUNCH` / `Ticket 08`）：完成 `src/pricing/penetration_probe.py` 最小 EV 内核与安全容量 $S_{\text{target}}$ 探针计算，落地动态费率折算与 F-2 挂锁熔断防御（T01~T14 全绿）。
 - **冻结产物与专属红线**：`evidence/p4_audit_reliability_v13b_*` 与 `evidence/p6_tmax_methodology_closure.*` 冻结归档；主干 `main` 基线更新至 `5c4a4c9`（PR #132 合流），后续任何改动一律须新裁决令；生产代码（`src/` 与 `scripts/`）严格零无授权编辑。（修订依据：P6 终裁与 P7 治理纪律 2026-10-10）
 - **待办事项（Backlog 全景）**：
   - **工单 P7-DOC-README**：状态 `SUPERSEDED_BY(P7-DOC-RECON)`（已并入 PR #131 执结闭环）。
