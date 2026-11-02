@@ -54,10 +54,13 @@ class SigmaAdjPolicy:
     exponent: float
     floor: float
     provenance: str
-    lock_state: str  # Only "F-2 LOCKED" or "F2_RELEASED"
+    lock_state: SigmaAdjLockState  # Normalized to SigmaAdjLockState
 
     def __post_init__(self) -> None:
-        if self.lock_state not in (SigmaAdjLockState.LOCKED, SigmaAdjLockState.RELEASED):
+        try:
+            normalized_lock = SigmaAdjLockState(self.lock_state)
+            object.__setattr__(self, "lock_state", normalized_lock)
+        except (ValueError, TypeError):
             raise InvalidSigmaAdjPolicyError(
                 f"lock_state must be 'F-2 LOCKED' or 'F2_RELEASED', got '{self.lock_state}'"
             )
@@ -88,7 +91,7 @@ def compute_sigma_adj(s_oos: float, sigma_eff: float, policy: SigmaAdjPolicy) ->
         raise InvalidSigmaAdjPolicyError(
             f"policy must be an instance of SigmaAdjPolicy, got {type(policy).__name__}"
         )
-    if policy.lock_state == SigmaAdjLockState.LOCKED:
+    if policy.lock_state != SigmaAdjLockState.RELEASED:
         raise F2LockNotReleasedError(
             "F-2 lock is active: policy cannot be evaluated until released (#156)."
         )
@@ -116,3 +119,19 @@ def sigma_adj_for_cell(
     """Retrieve s_oos for exact cell from contract and compute sigma_adj without aggregation."""
     cell = contract.get_cell(station, lead_hours)
     return compute_sigma_adj(s_oos=cell.s_oos, sigma_eff=sigma_eff, policy=policy)
+
+
+__all__ = [
+    "ADR_SIGMA_ADJ_REFERENCE",
+    "CellRecordProtocol",
+    "F2LockNotReleasedError",
+    "InvalidSigmaAdjInputError",
+    "InvalidSigmaAdjPolicyError",
+    "ParameterContractProtocol",
+    "SigmaAdjError",
+    "SigmaAdjLockState",
+    "SigmaAdjPolicy",
+    "compute_sigma_adj",
+    "load_sigma_adj_policy",
+    "sigma_adj_for_cell",
+]

@@ -240,3 +240,20 @@ def test_t16_ast_zero_float_literal_in_sigma_adj():
         if isinstance(node, ast.Constant) and isinstance(node.value, float)
     ]
     assert len(floats) == 0, f"Found forbidden float literals in {target_path}: {floats}"
+
+
+def test_no_namespace_leak():
+    """D-1 gate: sigma_adj defines __all__ with no leaked modules or typing symbols."""
+    import src.pricing.sigma_adj as m
+
+    assert hasattr(m, "__all__"), "模块缺少 __all__"
+    assert not ({"Enum", "Protocol", "dataclass", "math"} & set(m.__all__)), "标准库符号泄漏"
+
+
+def test_lock_state_normalized():
+    """D-2 gate: string lock_state is normalized to SigmaAdjLockState enum in __post_init__."""
+    p = SigmaAdjPolicy(exponent=0.5, floor=1.0, provenance="t", lock_state="F2_RELEASED")
+    assert isinstance(p.lock_state, SigmaAdjLockState)
+    assert p.lock_state is SigmaAdjLockState.RELEASED
+    p2 = SigmaAdjPolicy(exponent=0.5, floor=1.0, provenance="t", lock_state="F-2 LOCKED")
+    assert p2.lock_state is SigmaAdjLockState.LOCKED
