@@ -97,7 +97,8 @@ flowchart TD
     - **Ticket 05 闭环**：建立契约安全防污染测试集与运行时哈希防漂移门禁，经 CHK-18 签署复核，参数契约层全量封盘；
     - **Ticket 06 闭环**：建立 `src/pricing/coverage_dual_track.py`，实现 Q7 覆盖率双轨分工与 exact / gaussian_proxy 彻底解耦，三不混用无状态上下文强校验（T01~T14 全绿）；
     - **Ticket 07 闭环**：建立 `src/pricing/sigma_adj.py`，实现基于 $s_{\text{oos}}$ 的方差自适应膨胀 $\sigma_{\text{adj}}$ 计算引擎与 F-2 锁熔断保护，经 CHK-20 签署复核结项；
-    - **Ticket 08 闭环**：建立 `src/pricing/penetration_probe.py`，承接交易 EV 引擎最小内核并实现 S1 盘口穿透探针计算（DR-2026-1014-01），落地先均价后折算动态费率与 F-2 挂锁熔断（T01~T14 全绿）。
+    - **Ticket 08 闭环**：建立 `src/pricing/penetration_probe.py`，承接交易 EV 引擎最小内核并实现 S1 盘口穿透探针计算（DR-2026-1014-01），落地逐层含费边判定与动态费率折算，全闭环 CHK-21 并经 CHK-22 整改复验通过（T01~T16 全绿）；
+    - **Ticket 09 闭环**：建立 `tests/unit/pricing/test_order_probe_evaluator.py`，实现定价层跨模块契约与不变式测试集，固化双轨三不混用、纳秒级性能、$\sigma_{\text{adj}}$ 外展自洽与探针含费边不变式，全量通过 G1~G8 门禁（T01~T12 全绿）。
 
 ### 3.3 W3 —— 并行横向扩展（纸面盘运行期激活）
 - **依赖声明**：W3 开工时间不得早于 W2 纸面盘只读观测模式平稳启动运行；
