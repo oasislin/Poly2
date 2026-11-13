@@ -177,6 +177,9 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   - **D6 动工前正式审查（P0 同级）**：`src/modeling/registry.py`（`load_model` JSON-first→PKL-first）、`src/modeling/resampling.py`、`src/modeling/gaussian_emos.py`、`src/prediction/truncated_probability_engine.py`（族拟合、方差口径与分布核心，直接交互 `shape_params` 入库与先验消费）；
   - **其余在途 `src/` 文件（P1 随模块核对）**：`src/modeling/crps.py`、`src/modeling/degradation.py`、`src/modeling/emos_trainer.py`、`src/modeling/matrix_trainer.py`、`src/metrics/calibration_audit.py`、`src/prediction/constraint_enforcer.py`、`src/prediction/prediction_pipeline.py`、`src/utils/airgap.py`、`src/verification/p5_gate.py`。
 - **治理文档单列（入库时优先）**：`docs/handoffs/` 下的 `P8-ALGO-DEF_搁置项总账_20261110.md`、`P8-ALGO-PENDING_待执行清单_20261106.md`、`P8-ALGO-PENDING_待改进登记_20261108.md`、`P8-MODEL_PENDING_20261110.md` 等治理文档单列分类，G-5 执行时优先入库。
+- **ROADMAP 角色收窄迁移清单（2026-11-13 手术追加）**：
+  1. `docs/项目编号与命名规范_20261021.md` 当前处于历史在途 `M` 状态，暂不触碰；其待写入的四条 ROADMAP 制度（定义/禁载清单/更新规则/单向引用）暂存于 [`P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md §5.2`](P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)，待 G-5 窗口清点该文件在途 diff 后统一合入；
+  2. `docs/ROADMAP.md` 中已标注`[待分流 · 2026-11-13]`的越权项清单，待后续窗口分别迁入目标载体：① `§1.3`/`§2.1`/`§3.1` 资产落盘与审计覆盖状态及 `§4` Backlog 状态表 → `STATUS.md`；② `§3.2` W2 执行成果、Task 08 Ticket 01~09 逐票进度 → `P8-GLOBAL-MAP` / `P8-GitHub工单对账`；③ `§3.2` L88–89 纸面盘仓位缩放规则（绿 1.0x / 黄 0.5x / 红 0.0x）与 `§5` 生产代码时代治理条款 → `Phase 2 执行文件`（预计 v2.2 升版时迁入）。
 - **排期定位**：不阻塞预测半链主线，后续专门安排窗口执行。
 
 ### G-6 待办项：D1-Max 边界断言推迟固化（待与 D1-Min 边界策略整体审完后统一固化） ｜ 待办（分层裁决已批准）
@@ -189,3 +192,7 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   1. `SPEC v2.0`（`docs/audit/P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md`）与 `P8-ALGO-AUDIT_20261112.md`（`docs/audit/P8-ALGO-AUDIT_现状代码与目标全链路算法对照复核_20261112.md`）之 **A-1/A-2 勘误前文件版本确认不存在**（两者均未曾 commit，且原位覆写无 `.bak`/副本留存；`docs/audit/` 中仅存早期 `v1.2` 前驱稿 `..._20261107.md` 及记录 `2026-11-08` 两小时覆写史且注明“对象 B 仅在会话 Artifacts 面板、非文件系统对象”的 `P8-ALGO-DEF-SPEC_V2.0_两处副本差异_20261108.md`）；
   2. 过程性文档（`σ_adj` 讨论摘要、`μ₀` 拷问中间记录、`2026-11-13` 历史回执早期版本）**确认不存在**。
 - **演化链文档清单（在盘未入库，留待 G-5 分流）**：`docs/audit/P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261107.md`（v1.2 祖本） / `docs/audit/P8-ALGO-DEF-SPEC_V2.0_两处副本差异_20261108.md`（两处副本差异） / `docs/audit/P8-ALGO-DEF_第三段条件分布_20261110.md`（第三段条件分布） / `docs/audit/P8-ALGO-DEF_v2.3合入答复_20261110.md`（v2.3 合入答复）。
+
+### G-8 文档对账差异登记（2026-11-13） ｜ 已登记在案
+1. **`Phase 2 执行文件 v2.1` 任务矩阵缺失 `Task 08` 条目**：[`docs/项目方案和执行文档/Phase 2 执行文件 v2.1：盘口定价、套利与执行引擎.md`](../项目方案和执行文档/Phase%202%20执行文件%20v2.1：盘口定价、套利与执行引擎.md) 任务矩阵仅列 `Task 01–07`，`Task 08`（第一类投注定价与契约治理，`#133–#158`）系后续文档（`docs/ROADMAP.md`、`docs/audit/P8-GitHub工单对账_20261110.md` 等）追加所致，执行文件待后续 v2.2 升版并入对账。
+2. **`docs/ROADMAP.md` L18 所记代码落盘状态与实际不符**：原行记录“核心代码 `src/execution/`、`src/bankroll/`、`src/risk/` 2026-09-22 已落盘并通过单测”，与 [`docs/audit/P8-GitHub工单对账_20261110.md`](P8-GitHub工单对账_20261110.md) 实测不符（`src/bankroll`、`src/execution`、`src/simulation` 三目录当前未建成）。已于 `2026-11-13` `ROADMAP.md` 角色收窄手术中将该行改指向 `STATUS.md`，原失真内容留痕于本条。
