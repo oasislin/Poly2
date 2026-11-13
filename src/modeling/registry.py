@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from src.contract.parameter_contract import AUTHORIZED_LEAD_HOURS
 from src.data_processing.constants import ACTIVE_10_STATIONS
 from src.modeling.degradation import DegradationDecision, DegradationHandler
 from src.modeling.emos_trainer import ModelTrainingDiagnostics
@@ -470,6 +471,17 @@ class ModelRegistry:
         sigma_clim_squared: Union[float, np.ndarray, pd.Series],
     ) -> GaussianEMOS:
         """Facade inference: predict calibrated Gaussian distribution with short-lead decay handling."""
+        int_lead = int(round(float(lead_hours)))
+        if int_lead not in AUTHORIZED_LEAD_HOURS:
+            logger.error(
+                "Unauthorized lead time %sh rejected in registry.predict (must be in AUTHORIZED_LEAD_HOURS: %s)",
+                lead_hours,
+                AUTHORIZED_LEAD_HOURS,
+            )
+            raise ValueError(
+                f"Unauthorized lead time {lead_hours}h rejected (must be in AUTHORIZED_LEAD_HOURS: {AUTHORIZED_LEAD_HOURS})"
+            )
+
         season = self.partitioner.get_season(target_date)
         anchors = self._load_available_anchors(station_id, season, target_type)
 
