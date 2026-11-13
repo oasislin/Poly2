@@ -220,7 +220,7 @@ def test_t06_dual_track_latency_p50_benchmark():
 
 
 def test_t07_sigma_adj_22_cells_ratio_and_kmia_max_expansion(released_sigma_policy):
-    """T07: 22 cells match ADR-0019 square root inflation within 1e-12 and KMIA_30h ratio is 1.167832."""
+    """T07: 22 cells match ADR-0019 square root inflation within 1e-12 and KMIA_30h matches statutory ratio."""
     contract_path = Path("data/contracts/physical_param_contract.json")
     with contract_path.open("r", encoding="utf-8") as fp:
         contract = PhysicalParamContract.from_dict(json.load(fp))
@@ -236,7 +236,8 @@ def test_t07_sigma_adj_22_cells_ratio_and_kmia_max_expansion(released_sigma_poli
             kmia_ratio = ratio
 
     assert kmia_ratio is not None, "KMIA_30h was not found in contract cells"
-    assert f"{kmia_ratio:.6f}" == "1.167832", f"KMIA_30h formatted ratio: {kmia_ratio:.8f}"
+    expected_kmia_ratio = math.sqrt(max(1.0, contract.get_cell("KMIA", 30).s_oos))
+    assert f"{kmia_ratio:.6f}" == f"{expected_kmia_ratio:.6f}", f"KMIA_30h formatted ratio: {kmia_ratio:.8f}"
 
 
 def test_t08_sigma_adj_overconfidence_floor_invariance(released_sigma_policy):
@@ -248,8 +249,12 @@ def test_t08_sigma_adj_overconfidence_floor_invariance(released_sigma_policy):
     overconfident = [
         (st, lead, cell) for (st, lead), cell in contract.cells.items() if cell.s_oos < 1.0
     ]
-    assert len(overconfident) == 4
-    expected_cells = {("KORD", 12), ("KORD", 36), ("KORD", 60), ("KORD", 66)}
+    assert len(overconfident) == 10
+    expected_cells = {
+        ("KMIA", 24), ("KMIA", 48), ("KMIA", 72),
+        ("KORD", 12), ("KORD", 24), ("KORD", 30),
+        ("KORD", 36), ("KORD", 54), ("KORD", 60), ("KORD", 72),
+    }
     assert {(st, lead) for st, lead, _ in overconfident} == expected_cells
 
     for st, lead, _ in overconfident:

@@ -215,6 +215,6 @@ RUN_NETWORK_TESTS=1 pytest tests/unit/data_acquisition/test_gefs_fetcher.py::tes
 - **新会话冷启动交接清单**：[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)
 - **双城封盘门禁与事实核验报告**：[`evidence/p6_tmax_methodology_closure.md`](evidence/p6_tmax_methodology_closure.md)
 - **生产评估窗口法医穿透报告**：[`evidence/p6_window_forensic_report.md`](evidence/p6_window_forensic_report.md)
-- **业务方案蓝图**：[`项目方案 (v2.8)：Polymarket 温度市场量化投注系统`](docs/项目方案和执行文档/项目方案%20(v2.8)：Polymarket%20温度市场量化投注系统.md)
-- **Phase 2 执行文件**：[`Phase 2 执行文件 v2.1：盘口定价、套利与执行引擎`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.1：盘口定价、套利与执行引擎.md)
+- **业务方案蓝图**：[`项目方案 (v2.9)：Polymarket 温度市场量化投注系统`](docs/项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md)
+- **Phase 2 执行文件**：[`Phase 2 执行文件 v2.2：盘口定价、套利与执行引擎`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md)
 - **架构决策记录 (ADR)**：[`docs/adr/`](docs/adr/)

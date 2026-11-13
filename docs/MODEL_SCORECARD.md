@@ -14,6 +14,7 @@
 | **维度 2：预测偏差 Bias**<br>(Mean Systematic Bias) | 样本均值预测偏差（℉，带符号）：$\mathbb{E}[\hat{y} - y]$ | $|\text{Bias}| \le 0.50^\circ\text{F}$ | $0.50^\circ\text{F} < |\text{Bias}| \le 1.00^\circ\text{F}$ | $|\text{Bias}| > 1.00^\circ\text{F}$ | 绝对偏差超过 1.00°F 判红；带符号记录方向 |
 | **维度 3：CRPS 技巧分**<br>(CRPSS vs Climatology) | 相较于气候学基线的连续分级概率技巧分：$1 - \frac{\text{CRPS}_{\text{model}}}{\text{CRPS}_{\text{clim}}}$ | $\text{CRPSS} \ge 0.150$ | $0.050 \le \text{CRPSS} < 0.150$ | $\text{CRPSS} < 0.050$ | 技巧分低于 5%（相比气候底座几乎无增益）判红 |
 | **维度 4：90% 区间覆盖率**<br>(90% Prediction Interval Coverage) | 经验概率覆盖率：$\hat{P}(y \in [\hat{q}_{0.05}, \hat{q}_{0.95}])$ | $85.0\% \le \text{Cov} \le 95.0\%$ | $80.0\% \le \text{Cov} < 85.0\%$ 或<br>$95.0\% < \text{Cov} \le 97.0\%$ | $\text{Cov} < 80.0\%$ 或<br>$\text{Cov} > 97.0\%$ | 覆盖率严重偏离标称 90% 置信区间判红（过窄穿仓或过宽钝化） |
+| **维度 5：形状距离 Δ**<br>(Shape Distance Δ) | 反事实矩匹配分解净校准贡献：$\Delta \equiv \text{ECE}_{\text{族}} - \text{ECE}_{\text{矩匹配高斯}}$（主口径 `inw` 9 档 8 谱带，副口径 `w20` 全 11 档 20 桶） | *待数值裁决* | *待数值裁决* | *待数值裁决* | **方法已定稿（反事实矩匹配分解），数值待数值裁决批定标（只做技术注记，暂不填绿/黄/红阈值）**。实证数值见 [`evidence/p8_algo_shape_distance_calibration_20261113.md`](../evidence/p8_algo_shape_distance_calibration_20261113.md)。 |
 
 ---
 

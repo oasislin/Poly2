@@ -98,7 +98,7 @@
       "station": "KORD",
       "lead_hours": 12,
       "variable": "tmax",
-      "s_oos": 0.888254,
+      "s_oos": 0.982773,
       "fstd_lo": 0.809,
       "fstd_hi": 1.2346,
       "fstd_in": true,
@@ -111,13 +111,24 @@
       "neff": 328.1607,
       "cvm_stat": 0.167026,
       "cvm_p": 0.341732,
-      "ece_range": 0.010836
+      "ece_range": 0.010836,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 0.888254,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.982773,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_18h": {
       "station": "KORD",
       "lead_hours": 18,
       "variable": "tmax",
-      "s_oos": 1.047818,
+      "s_oos": 1.034846,
       "fstd_lo": 0.7918,
       "fstd_hi": 1.256,
       "fstd_in": true,
@@ -130,13 +141,24 @@
       "neff": 240.9154,
       "cvm_stat": 0.047947,
       "cvm_p": 0.888915,
-      "ece_range": 0.002892
+      "ece_range": 0.002892,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.047818,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.034846,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_24h": {
       "station": "KORD",
       "lead_hours": 24,
       "variable": "tmax",
-      "s_oos": 1.193133,
+      "s_oos": 0.99289,
       "fstd_lo": 0.8131,
       "fstd_hi": 1.2297,
       "fstd_in": true,
@@ -149,13 +171,24 @@
       "neff": 357.4859,
       "cvm_stat": 0.465538,
       "cvm_p": 0.048721,
-      "ece_range": 0.011491
+      "ece_range": 0.011491,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.193133,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.99289,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_30h": {
       "station": "KORD",
       "lead_hours": 30,
       "variable": "tmax",
-      "s_oos": 1.014575,
+      "s_oos": 0.995574,
       "fstd_lo": 0.8116,
       "fstd_hi": 1.2315,
       "fstd_in": true,
@@ -168,13 +201,24 @@
       "neff": 346.8048,
       "cvm_stat": 0.236763,
       "cvm_p": 0.206286,
-      "ece_range": 0.006503
+      "ece_range": 0.006503,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.014575,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.995574,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_36h": {
       "station": "KORD",
       "lead_hours": 36,
       "variable": "tmax",
-      "s_oos": 0.833009,
+      "s_oos": 0.985174,
       "fstd_lo": 0.8023,
       "fstd_hi": 1.2429,
       "fstd_in": true,
@@ -187,13 +231,24 @@
       "neff": 289.2536,
       "cvm_stat": 0.155903,
       "cvm_p": 0.37221,
-      "ece_range": 0.00679
+      "ece_range": 0.00679,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 0.833009,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.985174,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_42h": {
       "station": "KORD",
       "lead_hours": 42,
       "variable": "tmax",
-      "s_oos": 1.00995,
+      "s_oos": 1.018212,
       "fstd_lo": 0.7933,
       "fstd_hi": 1.2542,
       "fstd_in": true,
@@ -206,13 +261,24 @@
       "neff": 247.3686,
       "cvm_stat": 0.091362,
       "cvm_p": 0.629168,
-      "ece_range": 0.008957
+      "ece_range": 0.008957,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.00995,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.018212,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_48h": {
       "station": "KORD",
       "lead_hours": 48,
       "variable": "tmax",
-      "s_oos": 1.10542,
+      "s_oos": 1.000885,
       "fstd_lo": 0.8105,
       "fstd_hi": 1.2329,
       "fstd_in": true,
@@ -225,13 +291,24 @@
       "neff": 339.8839,
       "cvm_stat": 0.407237,
       "cvm_p": 0.06909,
-      "ece_range": 0.013789
+      "ece_range": 0.013789,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.10542,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.000885,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_54h": {
       "station": "KORD",
       "lead_hours": 54,
       "variable": "tmax",
-      "s_oos": 1.000051,
+      "s_oos": 0.991081,
       "fstd_lo": 0.8095,
       "fstd_hi": 1.2341,
       "fstd_in": true,
@@ -244,13 +321,24 @@
       "neff": 332.8608,
       "cvm_stat": 0.301317,
       "cvm_p": 0.134002,
-      "ece_range": 0.006929
+      "ece_range": 0.006929,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.000051,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.991081,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_60h": {
       "station": "KORD",
       "lead_hours": 60,
       "variable": "tmax",
-      "s_oos": 0.817635,
+      "s_oos": 0.979838,
       "fstd_lo": 0.7976,
       "fstd_hi": 1.2489,
       "fstd_in": true,
@@ -263,13 +351,24 @@
       "neff": 266.2323,
       "cvm_stat": 0.1406,
       "cvm_p": 0.419692,
-      "ece_range": 0.004252
+      "ece_range": 0.004252,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 0.817635,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.979838,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_66h": {
       "station": "KORD",
       "lead_hours": 66,
       "variable": "tmax",
-      "s_oos": 0.906868,
+      "s_oos": 1.010196,
       "fstd_lo": 0.7872,
       "fstd_hi": 1.2619,
       "fstd_in": true,
@@ -282,13 +381,24 @@
       "neff": 224.5622,
       "cvm_stat": 0.099775,
       "cvm_p": 0.586228,
-      "ece_range": 0.002697
+      "ece_range": 0.002697,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 0.906868,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.010196,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KORD_72h": {
       "station": "KORD",
       "lead_hours": 72,
       "variable": "tmax",
-      "s_oos": 1.078046,
+      "s_oos": 0.990119,
       "fstd_lo": 0.8102,
       "fstd_hi": 1.2334,
       "fstd_in": true,
@@ -301,13 +411,24 @@
       "neff": 338.0406,
       "cvm_stat": 0.416582,
       "cvm_p": 0.06529,
-      "ece_range": 0.017252
+      "ece_range": 0.017252,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.078046,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.990119,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_12h": {
       "station": "KMIA",
       "lead_hours": 12,
       "variable": "tmax",
-      "s_oos": 1.059687,
+      "s_oos": 1.005284,
       "fstd_lo": 0.7857,
       "fstd_hi": 1.2638,
       "fstd_in": true,
@@ -320,13 +441,24 @@
       "neff": 218.679,
       "cvm_stat": 0.223383,
       "cvm_p": 0.226439,
-      "ece_range": 0.005641
+      "ece_range": 0.005641,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.059687,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.005284,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_18h": {
       "station": "KMIA",
       "lead_hours": 18,
       "variable": "tmax",
-      "s_oos": 1.159179,
+      "s_oos": 1.031691,
       "fstd_lo": 0.7953,
       "fstd_hi": 1.2517,
       "fstd_in": true,
@@ -339,13 +471,24 @@
       "neff": 255.1478,
       "cvm_stat": 0.069942,
       "cvm_p": 0.75223,
-      "ece_range": 0.003017
+      "ece_range": 0.003017,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.159179,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.031691,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_24h": {
       "station": "KMIA",
       "lead_hours": 24,
       "variable": "tmax",
-      "s_oos": 1.23625,
+      "s_oos": 0.981617,
       "fstd_lo": 0.8019,
       "fstd_hi": 1.2434,
       "fstd_in": true,
@@ -358,13 +501,24 @@
       "neff": 287.1201,
       "cvm_stat": 0.198689,
       "cvm_p": 0.270088,
-      "ece_range": 0.011399
+      "ece_range": 0.011399,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.23625,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.981617,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_30h": {
       "station": "KMIA",
       "lead_hours": 30,
       "variable": "tmax",
-      "s_oos": 1.363831,
+      "s_oos": 1.004713,
       "fstd_lo": 0.7958,
       "fstd_hi": 1.2511,
       "fstd_in": false,
@@ -377,13 +531,24 @@
       "neff": 257.7771,
       "cvm_stat": 0.172391,
       "cvm_p": 0.328113,
-      "ece_range": 0.007699
+      "ece_range": 0.007699,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.363831,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.004713,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_36h": {
       "station": "KMIA",
       "lead_hours": 36,
       "variable": "tmax",
-      "s_oos": 1.185,
+      "s_oos": 1.005287,
       "fstd_lo": 0.7757,
       "fstd_hi": 1.2765,
       "fstd_in": true,
@@ -396,13 +561,24 @@
       "neff": 189.4124,
       "cvm_stat": 0.074122,
       "cvm_p": 0.726828,
-      "ece_range": 0.007575
+      "ece_range": 0.007575,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.185,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.005287,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_42h": {
       "station": "KMIA",
       "lead_hours": 42,
       "variable": "tmax",
-      "s_oos": 1.255104,
+      "s_oos": 1.067892,
       "fstd_lo": 0.7866,
       "fstd_hi": 1.2626,
       "fstd_in": true,
@@ -415,13 +591,24 @@
       "neff": 222.2112,
       "cvm_stat": 0.108271,
       "cvm_p": 0.546061,
-      "ece_range": 0.00535
+      "ece_range": 0.00535,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.255104,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.067892,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_48h": {
       "station": "KMIA",
       "lead_hours": 48,
       "variable": "tmax",
-      "s_oos": 1.293564,
+      "s_oos": 0.991486,
       "fstd_lo": 0.7948,
       "fstd_hi": 1.2524,
       "fstd_in": false,
@@ -434,13 +621,24 @@
       "neff": 253.7532,
       "cvm_stat": 0.192463,
       "cvm_p": 0.282631,
-      "ece_range": 0.008385
+      "ece_range": 0.008385,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.293564,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.991486,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_54h": {
       "station": "KMIA",
       "lead_hours": 54,
       "variable": "tmax",
-      "s_oos": 1.284506,
+      "s_oos": 1.00602,
       "fstd_lo": 0.7917,
       "fstd_hi": 1.2563,
       "fstd_in": false,
@@ -453,13 +651,24 @@
       "neff": 241.1415,
       "cvm_stat": 0.15635,
       "cvm_p": 0.370921,
-      "ece_range": 0.004252
+      "ece_range": 0.004252,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.284506,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.00602,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_60h": {
       "station": "KMIA",
       "lead_hours": 60,
       "variable": "tmax",
-      "s_oos": 1.23148,
+      "s_oos": 1.006686,
       "fstd_lo": 0.7782,
       "fstd_hi": 1.2734,
       "fstd_in": true,
@@ -472,13 +681,24 @@
       "neff": 196.4171,
       "cvm_stat": 0.125451,
       "cvm_p": 0.474052,
-      "ece_range": 0.01326
+      "ece_range": 0.01326,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.23148,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.006686,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_66h": {
       "station": "KMIA",
       "lead_hours": 66,
       "variable": "tmax",
-      "s_oos": 1.183626,
+      "s_oos": 1.048234,
       "fstd_lo": 0.7941,
       "fstd_hi": 1.2532,
       "fstd_in": true,
@@ -491,13 +711,24 @@
       "neff": 251.0223,
       "cvm_stat": 0.092576,
       "cvm_p": 0.622773,
-      "ece_range": 0.005136
+      "ece_range": 0.005136,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.183626,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 1.048234,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     },
     "KMIA_72h": {
       "station": "KMIA",
       "lead_hours": 72,
       "variable": "tmax",
-      "s_oos": 1.208182,
+      "s_oos": 0.999493,
       "fstd_lo": 0.7981,
       "fstd_hi": 1.2483,
       "fstd_in": true,
@@ -510,7 +741,25 @@
       "neff": 269.0282,
       "cvm_stat": 0.186624,
       "cvm_p": 0.295034,
-      "ece_range": 0.008286
+      "ece_range": 0.008286,
+      "s_oos_version": "v2_2000_2018_oof_cv",
+      "s_oos_historical": {
+        "v1_2019_in_sample": {
+          "s_oos": 1.208182,
+          "note": "样本内估计，仅诊断参考，禁止入检验 C"
+        },
+        "v2_2000_2018_oof_cv": {
+          "s_oos": 0.999493,
+          "note": "2000–2018 二十折 Block-CV 折外残差重推，法定消费值"
+        }
+      }
     }
+  },
+  "s_oos_version": "v2_2000_2018_oof_cv",
+  "s_oos_metadata": {
+    "version": "v2",
+    "derivation_pool": "2000-2018 20-fold Block-CV OOF residuals",
+    "airgap_2019": "Zero 2019 data participating in s_oos estimation",
+    "v1_status": "Retained in s_oos_historical, marked diagnosis-only, prohibited from Test C"
   }
 }

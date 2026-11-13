@@ -226,3 +226,16 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
    - `B5`（技术内容无异议，因 `B1–B4, B6` 阻塞 `v2.2` 发行而暂随 `B7` 挂起待整批落盘）；`A4` / `B7` 随正文阻塞暂缓；`C`（`SPEC v2.0` 勘误指针）待 `v2.9 / v2.2` 正式落盘后再写入，避免产生悬空引用。
 
 </details>
+
+### G-10 `s_oos` 二阶矩重推升版与第五维（形状距离 Δ）定标收口（2026-11-13） ｜ **已完成落盘与测试验证**
+- **任务一（`s_oos` 契约重推与 v2 升版）**：
+  1. **二阶矩先验泄漏消除**：正式废弃 2019 盲测样本内估计的旧 $s_{\text{oos}}$（如 `KORD_36h = 0.833009`、`KMIA_30h = 1.363831`），确立检验 C 的独立判官合法性；
+  2. **2000–2018 二十折 Block-CV OOF 重推**：以 19 年留出残差为法定基准，计算覆盖 KORD / KMIA 22 个法定网格单元；全 22 格新 $s_{\text{oos}}$ 均值由 `1.107053` 收敛至 `1.006456`（极差 `[0.979838, 1.067892]`），膨胀乘数 $c = \sqrt{\max(1.0, s_{\text{oos}})}$ 整体紧贴 `1.0000 ~ 1.0334`；
+  3. **契约版本化入库**：更新 `data/contracts/physical_param_contract.json`；旧 2019 样本内值 100% 保留于各 cell 的 `s_oos_historical.v1_2019_in_sample` 并显式标注 `"样本内估计，仅诊断参考，禁止入检验 C"`；
+  4. **工件落盘与单测全绿**：说明文档落盘于 [`evidence/p8_contract_s_oos_recalibration_report_20261113.md`](../../evidence/p8_contract_s_oos_recalibration_report_20261113.md)；同步更新 `test_sigma_adj.py` 与 `test_order_probe_evaluator.py` 断言，契约与定价相关单测全量 141 项测试全绿通过。
+- **任务二（第五维形状距离 Δ 定标与数值留白）**：
+  1. **方法定稿与翻转判罚正式废弃**：正式废弃“翻转判罚”方案（因 2019 77 组实证显示正/反翻转对称 9:9 且 52/77 组高斯基线本身 > 0.0100 陷入单边失效高本底盲区；确认 2019 单年每组仅 87~92 天不可作定标样本，样本池正式迁移至 2000–2018 二十折 Block-CV 留出池）；
+  2. **反事实矩匹配分解实施**：$\Delta \equiv \text{ECE}_{\text{族}} - \text{ECE}_{\text{矩匹配高斯}}$，对照组严格采用 $\mathcal{N}(\mu_0 + \sigma_{\text{adj}}\mathbb{E}[Z], \sigma_{\text{adj}}^2 \text{Var}(Z))$，共用同一锚 $\mu_0$ 与现实命中向量 $\text{hit}$，彻底隔离一阶/二阶矩效应；
+  3. **双线并报与 Bootstrap 置信区间**：完成主口径 `inw`（中间 9 档可交易窗，8 谱带）与副口径 `w20`（全 11 档，20 等宽桶）双线并报，采用按日期聚类的 Bootstrap（$B = 1000$）计算 95% 置信区间；
+  4. **数值留白与索引入库**：客观实证数值表落盘于 [`evidence/p8_algo_shape_distance_calibration_20261113.md`](../../evidence/p8_algo_shape_distance_calibration_20261113.md) 与 [`evidence/p8_algo_shape_distance_calibration_20261113.csv`](../../evidence/p8_algo_shape_distance_calibration_20261113.csv)；严格执行不私自划定红/黄/绿阈值、不设判定颜色的纪律，数值待后续与 W2 仓位规则、差异化 EV 门槛同批呈交业主统一定标；
+  5. **量化记分卡状态同步**：[`docs/MODEL_SCORECARD.md`](../MODEL_SCORECARD.md) 增补第五维技术注记为“方法已定稿（反事实矩匹配分解），数值待数值裁决批定标”。
