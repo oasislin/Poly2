@@ -11,11 +11,14 @@ Implements (v5.9.1 §4.3):
        - Ensures prediction uncertainty monotonically shrinks as lead time approaches 0.
 """
 
+import logging
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 
 from src.modeling.gaussian_emos import GaussianEMOS
+
+logger = logging.getLogger(__name__)
 
 
 class LeadTimeInterpolator:
@@ -59,11 +62,21 @@ class LeadTimeInterpolator:
         if not sorted_anchors:
             raise ValueError("No anchor models provided for interpolation")
 
-        # Boundary clamping / extrapolation
-        if lead <= sorted_anchors[0]:
-            return anchor_models[sorted_anchors[0]]
-        if lead >= sorted_anchors[-1]:
-            return anchor_models[sorted_anchors[-1]]
+        # Boundary clamping / extrapolation (D1-Max: flat clamping forbidden for Max Temp)
+        if t_type == "max":
+            if lead < sorted_anchors[0] or lead > sorted_anchors[-1]:
+                logger.error(
+                    "Lead time %s outside anchor bounds [%s, %s] for Max Temp; boundary clamping forbidden.",
+                    lead, sorted_anchors[0], sorted_anchors[-1],
+                )
+                raise ValueError(
+                    f"Lead time {lead}h outside anchor bounds [{sorted_anchors[0]}, {sorted_anchors[-1]}] for Max Temp (boundary clamping forbidden)"
+                )
+        else:
+            if lead <= sorted_anchors[0]:
+                return anchor_models[sorted_anchors[0]]
+            if lead >= sorted_anchors[-1]:
+                return anchor_models[sorted_anchors[-1]]
 
         # Find enclosing anchor pair [L0, L1]
         l0, l1 = sorted_anchors[0], sorted_anchors[-1]
