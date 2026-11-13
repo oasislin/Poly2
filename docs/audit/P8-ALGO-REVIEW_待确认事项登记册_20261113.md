@@ -196,3 +196,23 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
 ### G-8 文档对账差异登记（2026-11-13） ｜ 已登记在案
 1. **`Phase 2 执行文件 v2.1` 任务矩阵缺失 `Task 08` 条目**：[`docs/项目方案和执行文档/Phase 2 执行文件 v2.1：盘口定价、套利与执行引擎.md`](../项目方案和执行文档/Phase%202%20执行文件%20v2.1：盘口定价、套利与执行引擎.md) 任务矩阵仅列 `Task 01–07`，`Task 08`（第一类投注定价与契约治理，`#133–#158`）系后续文档（`docs/ROADMAP.md`、`docs/audit/P8-GitHub工单对账_20261110.md` 等）追加所致，执行文件待后续 v2.2 升版并入对账。
 2. **`docs/ROADMAP.md` L18 所记代码落盘状态与实际不符**：原行记录“核心代码 `src/execution/`、`src/bankroll/`、`src/risk/` 2026-09-22 已落盘并通过单测”，与 [`docs/audit/P8-GitHub工单对账_20261110.md`](P8-GitHub工单对账_20261110.md) 实测不符（`src/bankroll`、`src/execution`、`src/simulation` 三目录当前未建成）。已于 `2026-11-13` `ROADMAP.md` 角色收窄手术中将该行改指向 `STATUS.md`，原失真内容留痕于本条。
+
+### G-9 `v2.9 / v2.2` 升版评审技术异议与暂缓登记（2026-11-13） ｜ 只登记不执行，待业主裁决
+1. **`bridge-ECE` 监控条款强异议（`B6` / `A3` 关联，只登记不执行）**：
+   - **已核实客观事实**：全仓三条现役离线 ECE 链路均确系“未过日内高斯桥 $G_t$ 且未乘 $c = \sqrt{\max(1, s_{\text{oos}})}$”的静态先验分布：
+     1. 20 折 Block-CV / P5 门禁：[`scripts/standalone_reliability_check.py#L730-L885`](../../scripts/standalone_reliability_check.py#L730-L885)、[`src/verification/p5_gate.py#L202-L246`](../../src/verification/p5_gate.py#L202-L246)、[`scripts/audit_p4_reliability_v13.py#L140-L312`](../../scripts/audit_p4_reliability_v13.py#L140-L312)；
+     2. 2019 P4 结算 7 档 V1 / Active 10 OOS：[`scripts/evaluate_p4_2019_settlement.py#L297-L337`](../../scripts/evaluate_p4_2019_settlement.py#L297-L337)、[`scripts/evaluate_active10_oos.py#L244-L249`](../../scripts/evaluate_active10_oos.py#L244-L249)；
+     3. V2 尺子 2°F 11 档直接 ECE：[`scripts/audit_v2/reliability_v2.py#L130-L264`](../../scripts/audit_v2/reliability_v2.py#L130-L264)。
+   - **强烈技术异议（针对「由 `B5` 结算偏差代偿、不新建 `bridge-ECE`、等纸面盘暴露再立项」）**：
+     1. **矩阶数不可代偿**：`B5` 结算偏差为一阶矩指标，对二阶矩错配（如 $s_{\text{oos}} > 1$ 或 $\eta_s(t)$ 标定失真）一阶不敏感。以 2019 盲测 [`evidence/p4_2019_settlement_statistics.csv`](../../evidence/p4_2019_settlement_statistics.csv) `KMIA_30h` 为例：`PIT Mean = 0.5124` 几乎无偏，但 `s_oos = 1.3638` 致 `ece_7bin = 0.01534`（超 `0.0100` 触发挂旗）且 `Cov90 = 85.99%`。二元期权分档定价 $p_k$ 直接消费二阶矩与边界原子，均值无偏无法代偿概率校准度（ECE）；
+     2. **W2 纸面盘样本检定力不足**：单日每站每标仅 1 个结算日真值，按 `族 × 早晚段` 分桶后短期样本方差极大，难以检验系统性误定价，等纸面盘暴露后才立项属事后补救而非前置验证；
+     3. **检验 C 本可低成本并产离线 `bridge-ECE`**：本册 `C-1` 检验 C（2019 全年 `D+0` 回放）本即按分桶统计 $p_{\text{cond}}$ 可靠性，可直接附带输出只读诊断级 `bridge-ECE`（不设新增阻塞门禁即可），替代“仅靠 `B5` 一阶偏差代偿”。
+2. **本轮其余升版条款阻塞挂起汇总（均未改写 `v2.8 / v2.1 / ROADMAP / SPEC`）**：
+   - `A1`：混同「先验尺度变换 $Y = \mu_0 + \sigma_{\text{adj}} Z$（$Z \sim F_{\text{family}}$）」与「有观测剩余增量单高斯桥 $G_t = \mathcal{N}(\mu_R, \sigma_{\text{rem}}^2)$」，且错将全矩阵 `EVT_Hybrid` 极值（`0.30~0.51°F`）归因于「`KORD 春长时效 |峰值| ≈ 0.5°F`」（[`evidence/p8_algo_2019_settlement_shape_distance_20261113.md#L87`](../../evidence/p8_algo_2019_settlement_shape_distance_20261113.md#L87) 实测 `KORD_72h Spring` 为 `-0.0841°F`）。
+   - `A2`：依赖 `A1`“同节”；「前提契约 P1–P4」全仓无定义且与 [`P8-ALGO-AUDIT_20261112.md`](P8-ALGO-AUDIT_现状代码与目标全链路算法对照复核_20261112.md) 离线流程阶段 `P1–P4` 重名冲突；检验 C 分组粒度需对齐本册第 65 行 `站×季×早/晚段`。
+   - `A3`：`v2.8` 中 ECE 规则位于 **`§4`**（`L116, L118`）而非 **`§5`**（异常治理与风控宪法），且含 `B6` 关联条款。
+   - `B1`：`dq99` 峰值实测为 `+5.8458°F`（`KORD_48h` 冬），非 `+5.82°F`（`KORD_24h` 冬为 `+5.8178°F`）；`data/models/manifest.json` 实况为 `880 None / 127 {} / 193 非空`（非全部 `None`）；`b30` / $\mu_0$ 动态组装接口未在两静态文件中闭环。
+   - `B2`：现役 [`DynamicCorrector`](../../src/prediction/dynamic_corrector.py) 不计算 $\sigma_{\text{dyn}}(t)$ 且 [`sigma_adj.py`](../../src/pricing/sigma_adj.py)（`F-2 LOCKED`）未接线；「$\sigma_{\text{adj}}(t) = c \cdot \sigma_{\text{dyn}}(t)$（$c$ 后乘）」违背 `SPEC#L186, L206` 方差修正前移（$\sigma_0 = c \cdot \sigma_{\text{eff}}$ 先行），且在物理仪表底 `0.9°F` 处与外乘 $c$ 严格不可交换（$c \cdot \max(\sigma_{\text{eff}}\sqrt{\eta_s}, 0.9^\circ\text{F}) \ne \max(c\sigma_{\text{eff}}\sqrt{\eta_s}, 0.9^\circ\text{F})$），同时与本册 `B-2` 分母 $\sigma_0$ 冲突。
+   - `B3`：现役 `src/` 中不存在 `EVCalculator`（`ev_engine.py` 已于 `R-16` 归档），[`penetration_probe.py`](../../src/pricing/penetration_probe.py) 仅接收标量 `p_hat`，上游 `StaticPredictor` / `DiscreteBinEngine` / `BinConverter` 仅消费纯高斯 `GaussianEMOS`，未满足完整非对称分位/CDF 要求。
+   - `B4`：`ROADMAP v1.1.0` 原文为 `MODEL_SCORECARD.md` 四维，而 `B4` 拟改为「`ECE 维 + 形状距离维`」却无形状距离红/黄/绿阈值定义；且 `v2.2` 暂缓发行，`ROADMAP` 迁移标记维持原状。
+   - `B5`（技术内容无异议，因 `B1–B4, B6` 阻塞 `v2.2` 发行而暂随 `B7` 挂起待整批落盘）；`A4` / `B7` 随正文阻塞暂缓；`C`（`SPEC v2.0` 勘误指针）待 `v2.9 / v2.2` 正式落盘后再写入，避免产生悬空引用。
