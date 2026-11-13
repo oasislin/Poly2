@@ -197,7 +197,15 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
 1. **`Phase 2 执行文件 v2.1` 任务矩阵缺失 `Task 08` 条目**：[`docs/项目方案和执行文档/Phase 2 执行文件 v2.1：盘口定价、套利与执行引擎.md`](../项目方案和执行文档/Phase%202%20执行文件%20v2.1：盘口定价、套利与执行引擎.md) 任务矩阵仅列 `Task 01–07`，`Task 08`（第一类投注定价与契约治理，`#133–#158`）系后续文档（`docs/ROADMAP.md`、`docs/audit/P8-GitHub工单对账_20261110.md` 等）追加所致，执行文件待后续 v2.2 升版并入对账。
 2. **`docs/ROADMAP.md` L18 所记代码落盘状态与实际不符**：原行记录“核心代码 `src/execution/`、`src/bankroll/`、`src/risk/` 2026-09-22 已落盘并通过单测”，与 [`docs/audit/P8-GitHub工单对账_20261110.md`](P8-GitHub工单对账_20261110.md) 实测不符（`src/bankroll`、`src/execution`、`src/simulation` 三目录当前未建成）。已于 `2026-11-13` `ROADMAP.md` 角色收窄手术中将该行改指向 `STATUS.md`，原失真内容留痕于本条。
 
-### G-9 `v2.9 / v2.2` 升版评审技术异议与暂缓登记（2026-11-13） ｜ 只登记不执行，待业主裁决
+### G-9 `v2.9 / v2.2` 升版评审技术异议与暂缓登记（2026-11-13） ｜ **已裁决闭环（合流升版 `v2.9 / v2.2`）**
+- **业主终裁与合流闭环（2026-11-13）**：G-9 全部技术异议经业主裁决采纳，[`项目方案 (v2.9)`](../项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 [`Phase 2 执行文件 v2.2`](../项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 已完成合流升版（原 `v2.8 / v2.1` 归档至 `docs/archive/项目方案和执行文档/`），`docs/ROADMAP.md` 迁移标记同步更新为“已迁入”。核心定案：
+  1. `A1 / A2 / A3 / A4`：`v2.9 §3.4` 确立预测-结算分离架构（方案 α）“锚-形状仿射变换 $Y = \mu_0 + \sigma_{\text{adj}} Z$”表述并废弃“单高斯桥”混称（修正中心偏移为 `KORD` 春长时效 `-0.084°F` / `KMIA` 最大 `+0.0285°F`）；前提契约更名 **`α-P` 系列**（避 `P1–P4` 阶段重名）；检验 C 粒度对齐 `站×季×早晚段`；ECE 三层管辖落 `v2.9 §4 模块三` 并声明全仓现役 ECE 均计量桥前原生分布。
+  2. `B1–B7`：`v2.2` 收录 `dq99 +5.8458°F` / `dq01 -3.3565°F`、`manifest.json` 实况（`880 None / 127 {} / 193 非空 dict`）、$\mu_0 = a + b\cdot\mu_{\text{ens}} + b_{30}$ 组装口径；按 `SPEC v2.0#L186, L206` 严格落地 $\sigma_0 = c\cdot\sigma_{\text{eff}}$ 方差修正前移并禁 $c$ 外乘；如实登记完整非对称分位/CDF 支持「现役未满足」；按 [`docs/MODEL_SCORECARD.md#L11-L16`](../MODEL_SCORECARD.md#L11-L16) 正式收编四维评级与纸面盘 `1.0x / 0.5x / 0.0x` 缩放规则（第五维注记方法评审中）；追加 `α` 上线后按 `站×季×早晚段` 监控偏差及检验 C `bridge-ECE` 三数（桥前原生 / 桥后 / 高斯对照）同源并产只读差值条款（严禁与 `0.0100` 比对/设门禁）。
+- **`SPEC v2.0` 勘误指针（C 项，正式落盘）**：[`P8-ALGO-DEF-SPEC v2.0`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md) **保持不升版**；其中「结算桥表述（单高斯仅指有观测剩余增量分支 $G_t$，整体先验-结算为锚-形状仿射变换 $Y = \mu_0 + \sigma_{\text{adj}} Z$）与门 1/2/3（含 `KORD_72h Spring` `-0.0841°F` / `KMIA_48h Winter` `+0.0285°F` 中心偏移、$\sigma_0 = c\cdot\sigma_{\text{eff}}$ 前移及 `0.9°F` 物理底内包）」均以 [`项目方案 (v2.9)`](../项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 [`Phase 2 执行文件 v2.2`](../项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 为法定准源。
+
+<details>
+<summary>历史记录：G-9 升版评审原异议明细（已于 2026-11-13 经业主裁决全部采纳关闭）</summary>
+
 1. **`bridge-ECE` 监控条款强异议（`B6` / `A3` 关联，只登记不执行）**：
    - **已核实客观事实**：全仓三条现役离线 ECE 链路均确系“未过日内高斯桥 $G_t$ 且未乘 $c = \sqrt{\max(1, s_{\text{oos}})}$”的静态先验分布：
      1. 20 折 Block-CV / P5 门禁：[`scripts/standalone_reliability_check.py#L730-L885`](../../scripts/standalone_reliability_check.py#L730-L885)、[`src/verification/p5_gate.py#L202-L246`](../../src/verification/p5_gate.py#L202-L246)、[`scripts/audit_p4_reliability_v13.py#L140-L312`](../../scripts/audit_p4_reliability_v13.py#L140-L312)；
@@ -216,3 +224,5 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
    - `B3`：现役 `src/` 中不存在 `EVCalculator`（`ev_engine.py` 已于 `R-16` 归档），[`penetration_probe.py`](../../src/pricing/penetration_probe.py) 仅接收标量 `p_hat`，上游 `StaticPredictor` / `DiscreteBinEngine` / `BinConverter` 仅消费纯高斯 `GaussianEMOS`，未满足完整非对称分位/CDF 要求。
    - `B4`：`ROADMAP v1.1.0` 原文为 `MODEL_SCORECARD.md` 四维，而 `B4` 拟改为「`ECE 维 + 形状距离维`」却无形状距离红/黄/绿阈值定义；且 `v2.2` 暂缓发行，`ROADMAP` 迁移标记维持原状。
    - `B5`（技术内容无异议，因 `B1–B4, B6` 阻塞 `v2.2` 发行而暂随 `B7` 挂起待整批落盘）；`A4` / `B7` 随正文阻塞暂缓；`C`（`SPEC v2.0` 勘误指针）待 `v2.9 / v2.2` 正式落盘后再写入，避免产生悬空引用。
+
+</details>
