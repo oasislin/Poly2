@@ -206,6 +206,9 @@ class MainPipeline:
         )
 
         predictions_generated = 0
+        exceptions_count = 0
+        expected_predictions = len(stations) * 2
+
         for st in stations:
             for t_type in ["max", "min"]:
                 lead_time = 30.0 if t_type == "max" else 24.0
@@ -220,13 +223,26 @@ class MainPipeline:
                     )
                     predictions_generated += 1
                 except Exception as e:
-                    logger.debug(f"Predict single skipped/failed for {st} {t_type}: {e}")
+                    exceptions_count += 1
+                    logger.error(
+                        "Predict single failed for %s %s at %s:%s: %s",
+                        st,
+                        t_type,
+                        e.__traceback__.tb_frame.f_code.co_filename if e.__traceback__ else __file__,
+                        e.__traceback__.tb_lineno if e.__traceback__ else "unknown",
+                        e,
+                        exc_info=True,
+                    )
+
+        is_success = (predictions_generated == expected_predictions and exceptions_count == 0)
+        status = "SUCCESS" if is_success else "FAILED"
 
         return {
-            "status": "SUCCESS",
-            "message": "Predictions generated and stored to DB",
+            "status": status,
+            "message": f"Predictions completed: {predictions_generated}/{expected_predictions} generated, {exceptions_count} errors",
             "stations": stations,
             "predictions_count": predictions_generated,
+            "exceptions_count": exceptions_count,
         }
 
     def _execute_validate(
