@@ -23,7 +23,11 @@ from src.modeling.gaussian_emos import GaussianEMOS
 from src.prediction.bin_converter import BinConverter, MarketBin
 from src.prediction.constraint_enforcer import ConstraintEnforcer
 from src.prediction.discrete_bin_engine import DiscreteBin
-from src.prediction.dynamic_corrector import DynamicCorrector
+from src.prediction.dynamic_corrector import (
+    DynamicCorrector,
+    Proposal1CoolingDriftMuRHook,
+    SpecV2BaselineMuRHook,
+)
 from src.prediction.prediction_pipeline import PredictionPipeline, PredictionRecord
 from src.prediction.static_predictor import StaticPredictor, StaticPredictionResult
 
@@ -260,10 +264,19 @@ class TestPredictionPipelineExecution:
         assert win_bin.contains(30.2, "C")
 
 
-    def test_predict_single_forwards_three_real_time_inputs_and_station_state(self, pipeline):
-        """PredictionPipeline passes separated extreme_m, instant_x_t, and t_local to DynamicCorrector."""
+    def test_predict_single_forwards_three_real_time_inputs_and_station_state(self, pipeline, tmp_path):
+        """PredictionPipeline disables Proposal-1 by default and forwards 3-input state when opted in."""
         from datetime import datetime, timezone
         from src.prediction.monotonic_confluence import MonotonicConfluenceEngine, ObservationPacket
+
+        assert isinstance(pipeline.dynamic_corrector.mu_r_hook, SpecV2BaselineMuRHook)
+
+        exp_pipeline = PredictionPipeline(
+            model_registry=MockRegistry(),
+            climatology_calculator=MockClimatology(),
+            mu_r_hook=Proposal1CoolingDriftMuRHook.from_calibration_artifact(),
+            db_path=tmp_path / "exp_predictions.db",
+        )
 
         engine = MonotonicConfluenceEngine()
         t_obs = datetime(2019, 7, 15, 20, 0, tzinfo=timezone.utc)
@@ -288,7 +301,22 @@ class TestPredictionPipelineExecution:
             )
         )
 
-        record = pipeline.predict_single(
+        record_default = pipeline.predict_single(
+            station_id="KMIA",
+            target_date="2019-07-15",
+            target_type="max",
+            lead_time_hours=30,
+            ensemble_mean=88.0,
+            ensemble_variance=2.0,
+            station_state=state,
+            t_local="15:30",
+            save_to_db=False,
+        )
+        assert record_default.dynamic_distribution.mu_r_result is not None
+        assert record_default.dynamic_distribution.mu_r_result.scheme == "spec_v2_baseline"
+        assert record_default.dynamic_distribution.mu_r_result.mu_r >= 0.0
+
+        record = exp_pipeline.predict_single(
             station_id="KMIA",
             target_date="2019-07-15",
             target_type="max",

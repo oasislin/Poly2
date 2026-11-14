@@ -1,0 +1,63 @@
+{
+  "work_order_id": "2019-SEALED-001",
+  "truth_universe": "OfficialMETAR(DST)_settle_half_up",
+  "hook_artifact": "p8_mu_r_lst_identifiable_calibration_20261114.json",
+  "run_utc": "2026-11-14T15:51:53Z",
+  "sealed_policy": "aggregate_only_no_day_or_slice_rows",
+  "tracks": {
+    "track1_obs5m_truth_metar_dst": {
+      "crps_native": 2.545171,
+      "crps_bridge": 1.432047,
+      "crps_delta_pct": -43.735,
+      "strata_improved_of_16": 16,
+      "ece_native_inw": 0.002865,
+      "ece_native_w20": 0.002589,
+      "ece_bridge_inw": 0.032407,
+      "ece_bridge_w20": 0.032326,
+      "g3a_aft_out95": 50,
+      "g3a_aft_cells": 312,
+      "g3a_aft_B1_wResid": -0.002414,
+      "g3a_aft_B2_wResid": -0.001345,
+      "g3a_aft_B3_wResid": -0.003361,
+      "g3b_early_B12_out95": 56,
+      "g3b_early_B12_cells": 228,
+      "gates": {
+        "G1a_crps_improved": true,
+        "G1b_strata_ge_12": true,
+        "G3a_aft_atomic": false,
+        "G3b_early_B12": false,
+        "G3c_ece_bridge_inw": false
+      },
+      "n_day_leads": 7997,
+      "n_bridge_evals": 231913,
+      "n_atom_obs": 21083
+    },
+    "track2_obsmetar_truth_metar_dst": {
+      "crps_native": 2.545171,
+      "crps_bridge": 1.193529,
+      "crps_delta_pct": -53.106,
+      "strata_improved_of_16": 16,
+      "ece_native_inw": 0.002865,
+      "ece_native_w20": 0.002589,
+      "ece_bridge_inw": 0.008301,
+      "ece_bridge_w20": 0.008521,
+      "g3a_aft_out95": 60,
+      "g3a_aft_cells": 312,
+      "g3a_aft_B1_wResid": 0.002116,
+      "g3a_aft_B2_wResid": 0.027521,
+      "g3a_aft_B3_wResid": 0.015541,
+      "g3b_early_B12_out95": 59,
+      "g3b_early_B12_cells": 224,
+      "gates": {
+        "G1a_crps_improved": true,
+        "G1b_strata_ge_12": true,
+        "G3a_aft_atomic": false,
+        "G3b_early_B12": false,
+        "G3c_ece_bridge_inw": true
+      },
+      "n_day_leads": 7997,
+      "n_bridge_evals": 231913,
+      "n_atom_obs": 21083
+    }
+  }
+}

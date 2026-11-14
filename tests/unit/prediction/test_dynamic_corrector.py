@@ -261,7 +261,9 @@ class TestThreeInputInterfaceAndSwappableMuRHook:
         emos = GaussianEMOS(a=88.0, b=0.0, c=2.0, d=0.0)
         emos.mu = 88.0
         emos.sigma = 2.0
-        corrector = DynamicCorrector()
+        corrector = DynamicCorrector(
+            mu_r_hook=Proposal1CoolingDriftMuRHook.from_calibration_artifact()
+        )
         dist = corrector.correct_with_station_state(
             base_distribution=emos,
             station_state=state,
@@ -399,3 +401,34 @@ class TestThreeInputInterfaceAndSwappableMuRHook:
         res = corrector.evaluate_mu_r(15.0, 80.0, 78.0, 80.0)
         assert res.mu_r == -2.0
         assert res.scheme == "constant_neg"
+
+    def test_proposal1_default_off_uses_spec_v2_baseline(self):
+        """Production default DynamicCorrector disables Proposal-1 cooling drift hook unless opted in."""
+        default_corrector = DynamicCorrector()
+        assert isinstance(default_corrector.mu_r_hook, SpecV2BaselineMuRHook)
+        res_default = default_corrector.evaluate_mu_r(
+            t_local=15.5,
+            extreme_m=89.0,
+            instant_x_t=84.0,
+            mu_0=88.0,
+            target_type="max",
+            station_id="KMIA",
+            season="Summer",
+        )
+        assert res_default.scheme == "spec_v2_baseline"
+        assert res_default.cooling_term == pytest.approx(0.0)
+        assert res_default.mu_r >= 0.0
+
+        opted_in_corrector = DynamicCorrector(enable_proposal1_experimental_hook=True)
+        assert isinstance(opted_in_corrector.mu_r_hook, Proposal1CoolingDriftMuRHook)
+        res_opt_in = opted_in_corrector.evaluate_mu_r(
+            t_local=15.5,
+            extreme_m=89.0,
+            instant_x_t=84.0,
+            mu_0=88.0,
+            target_type="max",
+            station_id="KMIA",
+            season="Summer",
+        )
+        assert res_opt_in.cooling_term > 0.0
+        assert res_opt_in.mu_r < 0.0

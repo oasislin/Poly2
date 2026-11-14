@@ -287,7 +287,9 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   1. **真值源分岔审计已完结、待设计组拍板选线**：已按只读纪律查明 `2019-10-02` `-12.6°F` 及全盘 `20–24%` 跨零档根因，在设计组择定真值源对齐分支前不执行任何真值切换；
   2. **`G1 / G2 / G3` 数值定义与 `A / B / C` 档映射待设计组下发正文**：指令文本中仅写明 `G2a: max_slice |E[Y_bridge] - E[Y_native]| <= 2.0°F`，未附带 `G1` / `G2` / `G3` 完整阈值及 `A / B / C` 档布尔映射表；依“严禁自造门槛”纪律，待设计组补发完整预注册门禁后执行 `ρ` 正则化修复及时间盒内最后一次 2019 重跑。
 
-> **闭合更新（2026-11-14）**：设计组已在《审查记录 v5》与附录一中拍板选定分支 A 主判并下发 `G1 / G2 / G3` 与 `A / B / C` 档完整预注册文本，G-14 阻塞门禁**已闭合**；终跑裁决见下方 `G-15` 及终裁记录。**宪法缺口补录倒计时仍适用**：须于终裁签发后 30 日内（`2026-12-14` 前）将《检验 C 终裁预注册判决标准 v1》以勘误/升版写入 `项目方案` 与 `SPEC v2.0`。
+> **闭合更新（2026-11-14）**：设计组已在《审查记录 v5》与附录一中拍板选定分支 A 主判并下发 `G1 / G2 / G3` 与 `A / B / C` 档完整预注册文本，G-14 阻塞门禁**已闭合**；终跑裁决见下方 `G-15` 及终裁记录。
+>
+> **立法启动更新（2026-11-14，Task 3 落地）**：已将①《检验 C 终裁预注册判决标准 v1》与 `TIER_C` 执行结果、②**数值门禁噪声预算制度**（附 `G3c 0.020` 未附书面预算之程序瑕疵自审与事后信噪比验证）、③**断言用语标准**（逻辑可证为断言，实证证据为“机制对症+效果待验”假说+验证协议，并更正“市场盘口”前瞻性误述）、④**`2019 封跑制度`**、⑤ **`β / γ` 评估协议条款占位**，以**不升版勘误**同步写入 [`项目方案 (v2.9)`](../项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 [`SPEC v2.0 §6.2`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md)，`G-14` 30 日宪法补录倒计时条款已履行闭合。
 
 ### G-15 检验 C 终跑判决落地（`C 档（终止可签）`）、`D1=inw` 勘误、尾部退化观察与结算适配器工项登记（2026-11-14） ｜ **检验 C 时间盒终裁 `C 档（终止可签）` / `G-15` 在线链挂单待排期**
 - **分支 A 终跑执行链闭合（`2026-11-14`）**：
@@ -305,3 +307,56 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   - **D1 勘误落地**：[`MODEL_SCORECARD.md#L13`](../MODEL_SCORECARD.md#L13) 已更正 `20-bin` 表头文字为法定执行口径 **`inw`（8 谱带 × 可交易 9-bin）**，并注记继 Round-2 `0/312`、初版 `G` 门缺失后之**第三例文字-执行背离**；`KMIA_12h` 维持 **🟡 YELLOW**（`v2` Block-CV `inw = 0.015981`、`2019` 盲测 `inw = 0.006522`）；
   - **尾部退化观察（新立，进数值裁决批）**：`KMIA_12h` 在 `w20`（全 bin × 等宽 20 桶）下呈现越过 `0.0200` 红线读数（原存储 `c1 = 0.020498 ≈ 0.0205`、`v2 c = 0.020656`，主因不可交易深尾格离散/尾部质量漂移），正式记入数值裁决批第五维 `Δ` 与尾部管理议程跟踪。
 - **《设计组审查记录 v5》归档**：[`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) 已原样录入 `v5`（§八）及《检验 C 终裁预注册判决标准 v1》（附录一）。
+
+---
+
+### G-16 方案 `α` 冻结、`C 档` 生产降级与可复用资产清单 & `β / γ` 立项登记（2026-11-14） ｜ **`α` 当前形态冻结 / `β / γ` 设计层立项待批复**
+- **终裁司法总档案与审查记录归档**：
+  - 全过程唯一总档案：[`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](P8-INSPECTION-C-FULL-DOSSIER_20261114.md)（推送基线提交 `8cb821c7eb41c33cab194b8de0d790a49536c423`）；
+  - 设计组 `C 档（终止可签）` 签字行与《设计组审查记录 v6》（`§九`、`§十`、`§十一`）已原样录入 [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md)。
+- **生产配置 `default-off` 切换（已实施并单测回归全绿）**：
+  - [`src/prediction/dynamic_corrector.py`](../../src/prediction/dynamic_corrector.py) 中 `DynamicCorrector.__init__` 默认 `mu_r_hook` 已切回 `SpecV2BaselineMuRHook()`（`Proposal1CoolingDriftMuRHook` 保留作实验资产，仅显式传参或 `enable_proposal1_experimental_hook=True` 时启用）；
+  - 单测 [`tests/unit/prediction/test_dynamic_corrector.py`](../../tests/unit/prediction/test_dynamic_corrector.py) 与 [`tests/unit/prediction/test_prediction_pipeline.py`](../../tests/unit/prediction/test_prediction_pipeline.py) 已同步新增默认关闭断言及显式 opt-in 测试，全套 `prediction + pricing` 单测通过，`F-2 LOCKED`（`src/pricing/`）零修改。
+- **`α` 冻结与可复用资产清单（由 `β / γ` 直接继承，严禁重复造轮子）**：
+  1. **`η_s(t)` LST 标定表与 608 天规范语料**：[`evidence/p8_eta_s_calibration_lst.csv`](../../evidence/p8_eta_s_calibration_lst.csv) / [`evidence/p8_inspection_a_eta_s_calibration_20261113.csv`](../../evidence/p8_inspection_a_eta_s_calibration_20261113.csv) 与 [`evidence/p8_608d_5min_lst.parquet`](../../evidence/p8_608d_5min_lst.parquet) —— 直接供 `β / γ` 计算 $\sigma_{\text{rem}}(t) = \max(\sigma_0\sqrt{\eta_s(t)}, 0.9^\circ\text{F})$ 及历史开发样本；
+  2. **三实况输入签名**：`(extreme_m, instant_x_t, t_local)` 与 [`MonotonicConfluenceEngine`](../../src/prediction/monotonic_confluence.py) / [`StationState`](../../src/prediction/monotonic_confluence.py) 分离流契约 —— `β / γ` 原样复用，下游接口零修改；
+  3. **`MuRHook` / `DynamicCorrector` 可插拔框架与隔离保护机制** —— 直接平移扩展至通用条件剩余分布 `G_t` 插件接口；
+  4. **检验 C `CRPS`（含 JSU 精确查表与高斯闭式）、`ECE(inw/w20)`、696 原子残差、232 切片塔性质检查与封口式评估器框架**（[`scripts/run_p8_inspection_c_2019_final_lst.py`](../../scripts/run_p8_inspection_c_2019_final_lst.py)、[`scripts/diagnose_p8_inspection_c_2019.py`](../../scripts/diagnose_p8_inspection_c_2019.py)、[`scripts/run_p8_metar_counterfactual_sealed_2019.py`](../../scripts/run_p8_metar_counterfactual_sealed_2019.py)）—— 参数化复用于 `2020–2024` 多年度评估引擎。
+- **`β / γ` 备选架构立项材料（纯设计层，零代码实现）**：
+  - 已产出 [`docs/audit/P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md`](P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md)，涵盖失败模式归因（含无盘口数据澄清）、三候选架构（`β-1 Hurdle 两阶段`、`β-2 非参数经验核 G_t`、`γ 半参数混合桥/联合损失`）之“机制对症 + 效果待验”双层立论、`2020–2024` 多年度获取与盲测协议、`2019` 消费零增量预算、带噪声预算占位之 `G` 门选型草案与复用成本估算，提交设计组审批。
+
+---
+
+### 常设｜`2019 消费台账`（`2019 封跑制度` · 2026-11-14 即日生效）
+
+> **治理铁律**：`2019` 严禁参与任何标定或探索性开发；**在 `β / γ` 评估协议正式定稿并经设计组批复前，除下表既定遗留补证工单 `2019-SEALED-001` 外，其余 `2019` 消费预算锁为 `0`**；任何新消费必须以封口式评估器脚本提交并由**设计组人工触发执行**，agent 不得自跑或读取 `2019` 明细。
+
+| 序号 / 工单号 | 执行轮次 / 性质 | 脚本路径 | 提交基线（SHA） | 目的与产出边界 | 状态 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`2019-HIST-00`（补录）** | 检验 C 首跑回放（历史探索终结前） | [`scripts/run_p8_inspection_c_2019_replay.py`](../../scripts/run_p8_inspection_c_2019_replay.py) | `4fe4698` | 初版过桥 2019 盲测全盘 ECE 与原子出界回放（`v3` 触发诊断） | `COMPLETED (HISTORICAL)` |
+| **`2019-HIST-01`（第 1 号 · 补录）** | 检验 C 诊断轮（预注册规则 1/2/3） | [`scripts/diagnose_p8_inspection_c_2019.py`](../../scripts/diagnose_p8_inspection_c_2019.py) | `d41c526` | CRPS 全池对照、早窗 `ρ` 幻觉定位与真值混源分拆 | `COMPLETED (HISTORICAL)` |
+| **`2019-HIST-02`（第 2 号 · 补录）** | 检验 C 分支 A 最终重跑（预注册 G 门终裁） | [`scripts/run_p8_inspection_c_2019_final_lst.py`](../../scripts/run_p8_inspection_c_2019_final_lst.py) | `8cb821c` | 主判分支 A `G1/G2/G3` 代码布尔终裁落定 `TIER_C` | `COMPLETED (FINAL_ALPHA)` |
+| **`2019-SEALED-001`（第 3 号 · 首个封跑工单）** | **`METAR 真值反事实封口式评估器`**（执行人=设计组，执行日期=`2026-11-14`） | [`scripts/run_p8_metar_counterfactual_sealed_2019.py`](../../scripts/run_p8_metar_counterfactual_sealed_2019.py) | `ee6f809`（摘要 JSON SHA256 前缀）/ 本批推送 | **双轨结果一行化**——**`T1`（`5min`×`METAR` 真值）**：`G3a 50/312`、`G3b 56/228`、`ECE 0.0324`，三败（`CRPS 1.4320`）；**`T2`（`METAR` 流×`METAR` 真值）**：`G3a 60/312`、`G3b 59/224`，二败、`ECE 0.0083` 过（`CRPS 1.1935`）。**结论**：`C 档`判决在真值反事实下稳健（`G3` 全配置失败），预判部分成立（判决不变）、部分被推翻（`T2` 池化 `ECE` 通过，通道错位分量确认） | **`COMPLETED (2026-11-14 · 设计组手跑回执已登记)`** |
+
+#### `2019-SEALED-001` 交付契约与执行回执块（`2026-11-14` 设计组执行）
+
+- **汇总产物**：[`evidence/p8_metar_counterfactual_sealed_2019_summary.json`](../../evidence/p8_metar_counterfactual_sealed_2019_summary.json)（SHA256 `ee6f809450803855efc56f300acbe3a7f1a842b59371382cfcf84f53133df789`；仅含聚合指标，零逐日/逐切片明细；`G-15` 情报同期备录：`T2` 同源流消除跨源通道错位，本轮不启动 `G-15` 适配器设计）。
+- **设计组手动执行命令**：
+  ```bash
+  python scripts/run_p8_metar_counterfactual_sealed_2019.py --execute-sealed-2019
+  ```
+- **实测聚合回执摘要（源自 `p8_metar_counterfactual_sealed_2019_summary.json`, `run_utc=2026-11-14T15:51:53Z`）**：
+  ```text
+  work_order=2019-SEALED-001 | truth=OfficialMETAR(DST)_settle_half_up | hook=p8_mu_r_lst_identifiable_calibration_20261114.json
+  thresholds: G1b>=12/16 | G3a_out95<=25,|wResid|<=0.05 | G3b_out95<=20 | G3c_ece_inw<=0.02
+  [track1_obs5m_truth_metar_dst] n_day_leads=7997 | n_bridge_evals=231913 | n_atom_obs=21083
+    CRPS_native=2.545171 | CRPS_bridge=1.432047 (-43.735%) | strata_improved=16/16 | G1a=True G1b=True
+    ECE_native(inw/w20)=0.002865/0.002589 | ECE_bridge(inw/w20)=0.032407/0.032326 | G3c=False
+    G3a: aft_out95=50/312 | wResid(B1/B2/B3)=-0.002414/-0.001345/-0.003361 | G3a=False
+    G3b: early_B12_out95=56/228 | G3b=False
+  [track2_obsmetar_truth_metar_dst] n_day_leads=7997 | n_bridge_evals=231913 | n_atom_obs=21083
+    CRPS_native=2.545171 | CRPS_bridge=1.193529 (-53.106%) | strata_improved=16/16 | G1a=True G1b=True
+    ECE_native(inw/w20)=0.002865/0.002589 | ECE_bridge(inw/w20)=0.008301/0.008521 | G3c=True
+    G3a: aft_out95=60/312 | wResid(B1/B2/B3)=+0.002116/+0.027521/+0.015541 | G3a=False
+    G3b: early_B12_out95=59/224 | G3b=False
+  ```

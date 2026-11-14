@@ -204,7 +204,7 @@ flowchart TD
 3. **方差桥 $\sigma_{\text{rem}}(t)$ 与均值锚 $\mu_R(t, m, X_t)$（强制成对定义与同化，依据 `v1.5 §2.3–2.4` 及 `2026-11-14` 方案一勘误）**：
    - **全方差分解剩余标准差 $\sigma_{\text{rem}}(t)$**：由全方差定理 $\text{Var}(T) = \mathbb{E}[\text{Var}(T \mid M_t)] + \text{Var}(\mathbb{E}[T \mid M_t])$ 推导归一化剩余方差比例 $\eta_s(t) = 1 - \frac{\text{Var}(M_t)}{\sigma_0^2}$（原占位形式 $\eta(t) = \big(\frac{t_{\text{close}} - t}{t_{\text{close}} - t_{\text{open}}}\big)^2$ —— **[2026-11-13 勘误登记，不升版]**：**检验 A 已标定**，按 `(station, season)` 标定表落盘 [`evidence/p8_inspection_a_eta_s_calibration_20261113.csv`](../../evidence/p8_inspection_a_eta_s_calibration_20261113.csv) / [`.json`](../../evidence/p8_inspection_a_eta_s_calibration_20261113.json) 及残差报告 [`evidence/p8_inspection_a_eta_calibration_report_20261113.md`](../../evidence/p8_inspection_a_eta_calibration_report_20261113.md)；线上 `stage3_calibration_tag` 与 22 格位接线待检验 C 与实施批次启用）；关窗前受物理仪表噪声下限保护，**严禁在 `15:00` 硬跳归零（`ADR-0011 §D2`）**：
      $$\sigma_{\text{rem}}(t) = \max\!\left(\sigma_0 \cdot \sqrt{\eta_s(t)},\; 0.9^\circ\text{F}\right) \equiv \sigma_0 \sqrt{\max\!\left(\eta_s(t),\; \left(\frac{\sigma_{\text{inst}}}{\sigma_0}\right)^2\right)}, \qquad \sigma_{\text{inst}} = 0.9^\circ\text{F}$$
-   - **有符号冷却与过峰漂移均值锚 $\mu_R(t, m, X_t)$（[2026-11-14 勘误登记，不升版] · 方案一释放 $\rho_{s,\text{se}}(t)$ 修订版）**：
+   - **有符号冷却与过峰漂移均值锚 $\mu_R(t, m, X_t)$（[2026-11-14 勘误登记，不升版] · 方案一释放 $\rho_{s,\text{se}}(t)$ 修订版；[终裁冻结注记]：检验 C 终跑落定 `TIER_C`，生产 [`DynamicCorrector`](../../src/prediction/dynamic_corrector.py) 已将该实验 hook 设为 `default-off`，详见 [`§6.2`](#62-2026-11-14-g-14-立法勘误不升版-检验-c-终裁标准噪声预算制度断言规范2019-封跑制度与-β--γ-评估协议条款占位) 与 [`P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](P8-INSPECTION-C-FULL-DOSSIER_20261114.md)）**：
      $$\mu_R(t, m, X_t) = \rho_{s,\text{se}}(t) \cdot \max\!\big(0,\; \mu_0 - m\big) - \kappa_{s,\text{se}}(t) \cdot \max\!\big(0,\; M_t - X_t\big) - \delta_{s,\text{se}}(t) \cdot \mathbf{1}_{t > t_{\text{peak}}}$$
      其中 $m = \text{settle\_half\_up}(M_t)$ 为截至 $t$ 的日内实现最高温、$X_t$ 为帧级瞬时气温（接口与实况严禁与极值 $M_t$ 混叠为单标量），$\rho_{s,\text{se}}(t) \in \mathbb{R}$（**释放原固定正向斜坡 $\rho(t) = (t_{\text{close}} - t)/(t_{\text{close}} - t_{\text{open}})$ 为站×季符号不限样条**）与 $\kappa_{s,\text{se}}(t),\, \delta_{s,\text{se}}(t) \ge 0$ 均为分段光滑连续可微曲线（保阶段 9.7 解析 $\partial p / \partial t$ 闭式，数值差分自检最大误差 `3.29e-10`，且 $\delta(t_{\text{peak}}) = 0$）。**业主批准日期：`2026-11-14`**（详见 [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md)；首轮固定 $\rho(t)$ 产物见 [`evidence/p8_mu_r_cooling_drift_report_20261114.md`](../../evidence/p8_mu_r_cooling_drift_report_20261114.md)，本轮释放 $\rho_{s,\text{se}}(t)$ 608 天标定产物与判据 ①/②′/③ 全过验收报告见 [`evidence/p8_mu_r_rho_released_report_20261114.md`](../../evidence/p8_mu_r_rho_released_report_20261114.md)）。
      - **$\rho(t)$ 释放依据与统计学判据勘误（`2026-11-14` 第二轮闭环）**：首轮固定正向斜坡 $\rho(t) > 0$ 在阴云凉爽午后（`B1_below_anchor`，$\mu_0 - m > 0$）强行施加正向升温漂移，与午后锁顶实测规律反向冲突，导致无约束 2 参每切片理论极限仍存在 **`14/312`** 不可消解出界地板；将其释放为符号不限站×季样条 $\rho_{s,\text{se}}(t)$ 后，3 参无约束每切片极限地板降至 **`0/312`**（`5/104` 切片取 $\rho_{\text{free}} < 0$），联合样条实测午后出界由 `28/312` 降至 **`6/312`**（`KORD 6/156`, `KMIA 0/156`，其中 `B1` 出界由 `10/104` 清零至 `0/104`），`B1/B2/B3` 加权残差分别为 `-0.007051 / -0.006238 / -0.004230`（`overall_pass = True`）。同时同步登记业主对原判据 ② 的统计学勘误：312 格逐格 Wilson 95% CI 在真分布精确时预期假阳性为 $312 \times 0.05 = 15.6$ 格，原 `0/312` 阈值存在统计学畸形（`P = 1.1e-7`），已修正为判据 ②′（`out95 ≤ 25/312` 二项 `p=0.05` 99% 单侧上界 + 各族 `|wResid| ≤ 0.05`）。
@@ -906,3 +906,27 @@ $$N_{\min}(\varepsilon) = \left\lceil \frac{1}{2\varepsilon^2} \right\rceil + 1$
 | `SPEC` 阶段 3 输入清单 `L188`（`v2.3 L172`） | 写「与气候底座 $\sigma_{\text{clim}}$（含仪表物理精度底 $\sigma_{\text{inst}} = 0.9^\circ\text{F}$）」 | [`重训裁决回执`](file:///Users/ericlin/SynologyDrive/Project/Poly%20Way2/docs/handoffs/P8-MODEL_%E9%87%8D%E8%AE%AD%E8%A3%81%E5%86%B3%E5%9B%9E%E6%89%A7_20261110.md) 一.1（$\sigma_{\text{clim}}$ 仅供 Level 2 降级使用，不作为 Level 1 底座） | **已对齐**（已改标「$\sigma_{\text{clim}}$ 仅 Level 2 降级使用」） |
 
 > 注：本表当前 **`"待改"` 行数 = `0`**（共 8 项核对条目均已对齐）。
+
+---
+
+### 6.2 `[2026-11-14 G-14 立法勘误，不升版]` 检验 C 终裁标准、噪声预算制度、断言规范、`2019` 封跑制度与 `β / γ` 评估协议条款占位
+
+本节系依据 `G-14` 30 日宪法缺口补录期限，以**不升版勘误**方式将经设计组签字确认之检验 C 终裁标准及四项常设治理制度正式并入本规格书（唯一总证据档案见 [`P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](P8-INSPECTION-C-FULL-DOSSIER_20261114.md)）：
+
+1. **《检验 C 终裁预注册判决标准 v1》与 `TIER_C` 执行落地**：
+   - **主判宇宙**：真值 `GHCN(LST)`；观测流 `5 分钟 MADISHF+IEM (LST 日界)`；评估窗 `2019` 保留日。
+   - **法定布尔三门与档位映射**（全文原样归档于 [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) `附`）：
+     - `G1` 价值门：`CRPS_bridge < CRPS_native`（全池） $\land$ 16 分层改善层数 $\ge 12/16$；
+     - `G2` 构造门：`G2a` 232 切片（608 天与 2019 双查）$\max|\mathbb{E}[Y_{\text{bridge}}] - \mu_0| \le 2.0^\circ\text{F}$；`G2b` 逐层 `CRPS` 劣化 $\le 20\%$；
+     - `G3` 校准门（`2°F` 11 档市场尺，`inw` 加权）：`G3a` 午后 `out95 <= 25/312` $\land$ `B1/B2/B3 |wResid| <= 0.05`；`G3b` 早窗 `B12 out95 <= 20/235`；`G3c` `ECE_bridge(inw) <= 0.020`（明示非先验 `0.0100` 交易线）；
+     - 档位：`A = G1∧G2∧G3`；`B = G1∧G2∧¬G3∧集中性条件`；`C = ¬G1∨¬G2∨(¬G3∧¬集中性)`。
+   - **终裁实证结论（`2026-11-14` 设计组签字落地）**：`G1=True`（`CRPS` `2.505005 -> 1.294325°F`, `-48.33%`, `16/16` 层）$\land$ `G2=True`（`max=1.355764°F`）$\land$ `G3=False`（`G3a 36/312`、`G3b 38/228`、`G3c 0.030586` 十六层均匀失败 `0.0262–0.0369`）$\land$ `concentration_cond=False` $\implies$ **`TIER_C` / `C 档（终止可签）`**。生产代码中 `Proposal1CoolingDriftMuRHook` 已切为 **`default-off`**（实验保留，默认回退基线），阶段 3 方案 $\alpha$ 当前构造冻结停止推进，正式启动方案 `β / γ` 备选架构立项（[`P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md`](P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md)）。
+2. **数值门禁噪声预算制度（常设）**：
+   - 凡涉及阶段 2/3/4 校准及验收的数值门槛，立项入档时**必须同步提交四维误差/噪声预算表**（单批抽样误差、观测流离散化伪影、真值源对齐偏移、信号-噪声比校验）；预算未能显著覆盖阈值量级者禁止纳入规格正文。
+   - *本次 `G3c = 0.020` 程序自审记录*：预注册下发时未附书面预算表，终裁质询后审查方补交摊开预算（同宇宙先验基线 `ECE_native=0.003641` 定量证明年抽样噪声 `<= 0.005`、`OfficialMETAR(LST)` 换流贡献 `+0.000651`、GHCN/METAR 真值错位方向不利、单高斯桥结构失准 `~0.025+` 为绝对主项、SNR `4~6x`，翻转阈值需放宽至 `0.031+` 且无依据），结论成立，程序缺失已留档整改。
+3. **断言用语标准（常设）**：
+   - 逻辑/数学闭式可证者方为**断言**（如 $\mu_R \ge 0 \implies \Phi(-\mu_R/\sigma_{\text{rem}}) \le 0.5$）；**所有未测试架构、未来样本外改进幅度、以及下游交易假设一律按“机制对症（结构性归因）+ 效果待验（盲测判决）”立为待验假说并捆绑预注册验证协议**（同步澄清：本规格书阶段 5–8 为完整设计数学模型，截至 `2026-11-14` 当前研究/评估管线尚未接入任何实时或历史 Polymarket CLOB 盘口订单簿数据）。
+4. **`2019 封跑制度`（常设）**：
+   - 即日起所有消费 `2019` 盲测年数据的程序必须实现为**封口式评估器**（固定预注册指标集、禁止探索式切片/条件查询、禁止打印或落盘逐日/逐切片原始记录），以 `"交付契约 + 固定输出块"` 提交并仅由**设计组人工触发执行**（agent 禁止运行或读取 `2019` 数据）；每次执行记入 [`P8-ALGO-REVIEW_待确认事项登记册_20261113.md`](P8-ALGO-REVIEW_待确认事项登记册_20261113.md)《2019 消费台账》。
+5. **`β / γ` 评估协议条款占位**：
+   - 在 `β / γ` 多年度评估协议（拟用 `2020–2024`：本地 `IEM 5min` 已完备、待补齐 `GEFS 2020–2024` 与日界真值对齐表）及对应噪声预算经设计组正式审批前，**`2019` 严禁再作任何候选架构开发或对比评估消费**；既定遗留补证工单仅限 `2019-SEALED-001`（[`scripts/run_p8_metar_counterfactual_sealed_2019.py`](../../scripts/run_p8_metar_counterfactual_sealed_2019.py) `METAR 真值反事实封口式评估器`）。

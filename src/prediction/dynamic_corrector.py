@@ -454,16 +454,19 @@ class DynamicCorrector:
         instant_x_t: Optional[float] = None,
         t_local: Optional[Union[float, int, str, time, datetime]] = None,
         mu_r_hook: Optional[MuRHook] = None,
+        enable_proposal1_experimental_hook: bool = False,
     ):
         self.extreme_m = extreme_m
         self.instant_x_t = instant_x_t
         self.t_local = t_local
         self.observation_time = t_local if isinstance(t_local, datetime) else None
-        self.mu_r_hook: MuRHook = (
-            mu_r_hook
-            if mu_r_hook is not None
-            else Proposal1CoolingDriftMuRHook.from_calibration_artifact()
-        )
+        if mu_r_hook is not None:
+            self.mu_r_hook: MuRHook = mu_r_hook
+        elif enable_proposal1_experimental_hook:
+            # 实验保留：检验 C 终裁 C 档落地后，生产默认关闭，仅显式 opt-in 时加载 Proposal-1 工件
+            self.mu_r_hook = Proposal1CoolingDriftMuRHook.from_calibration_artifact()
+        else:
+            self.mu_r_hook = SpecV2BaselineMuRHook()
 
     def set_mu_r_hook(self, mu_r_hook: MuRHook) -> None:
         """Hot-swap the intraday bridge drift mu_R(t, m, X_t) strategy hook."""
