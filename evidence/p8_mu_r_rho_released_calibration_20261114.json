@@ -1,0 +1,1845 @@
+{
+  "schema_version": "p8_mu_r_rho_released_calibration_v1",
+  "generated_at_utc": "2026-11-14T13:15:34.006219+00:00",
+  "data_boundary": "2016-04-30 .. 2018-12-30 (608 valid days per station, zero 2019)",
+  "station_metadata": {
+    "KORD": {
+      "input_hashes": {
+        "2016.parquet": "2b44fa9e6b553bee0c6305dd6f3ccc7e773c869467e5dc84366d69360d56854b",
+        "2017.parquet": "802a110b72ab32dd534046469e02fcea836d409fa31f5ca0c81df7a388a0a28d",
+        "2018.parquet": "b6905220d4d447642a8dd9f82483901a96d27ea19b037a515b89b9d3be04b6ac"
+      },
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 609,
+      "excluded_partial_boundary_days": [
+        "2017-12-31"
+      ],
+      "retained_valid_days": 608,
+      "date_min": "2016-04-30",
+      "date_max": "2018-12-30"
+    },
+    "KMIA": {
+      "input_hashes": {
+        "2016.parquet": "d2d3726f3e030742719e1ed21e8d2d3cf891cd23d643d603fda7c02459392fbe",
+        "2017.parquet": "e388f6babc13f3c884a9733e39f1530d145f5c0fc7a7ab2af29b427d3acc9ee4",
+        "2018.parquet": "a905bd199111c8b9e272cc503f74c1b727ae62608f3c73adc843a2472ff400c4"
+      },
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 609,
+      "excluded_partial_boundary_days": [
+        "2017-12-31"
+      ],
+      "retained_valid_days": 608,
+      "date_min": "2016-04-30",
+      "date_max": "2018-12-30"
+    }
+  },
+  "parameterization": {
+    "form": "piecewise_linear_c0_analytic_derivative_released_rho",
+    "t_peak": 13.5,
+    "rho_knots": [
+      6.0,
+      9.0,
+      12.0,
+      13.5,
+      15.0,
+      17.0,
+      20.0
+    ],
+    "rho_sign": "unconstrained",
+    "kappa_knots": [
+      6.0,
+      9.0,
+      12.0,
+      13.5,
+      15.0,
+      17.0,
+      20.0
+    ],
+    "delta_knots": [
+      13.5,
+      14.0,
+      15.0,
+      16.5,
+      18.0,
+      20.0
+    ],
+    "reg_second_diff": 0.0015,
+    "stage97_deriv_max_fd_error": 0.0
+  },
+  "curves": {
+    "KORD": {
+      "Autumn": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.039965,
+          1.082669,
+          0.789114,
+          0.28724,
+          0.066427,
+          0.004601,
+          -0.050064
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.33751,
+          0.544402,
+          0.788454,
+          0.766285,
+          0.678856,
+          0.723019,
+          0.414168
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.0,
+          0.118357,
+          0.245328,
+          0.087134,
+          0.0
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Spring": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.057213,
+          1.026148,
+          0.774533,
+          0.262558,
+          0.035151,
+          -0.156677,
+          -0.396182
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.456199,
+          0.605538,
+          0.774988,
+          0.837874,
+          0.873774,
+          0.916261,
+          0.995763
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.0,
+          0.0,
+          0.214079,
+          0.601092,
+          1.083878
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Summer": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.355451,
+          1.36168,
+          1.111913,
+          0.501559,
+          0.181545,
+          -0.006869,
+          -0.1828
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.38679,
+          0.587053,
+          0.56926,
+          0.423858,
+          0.342529,
+          0.443917,
+          0.717831
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.092656,
+          0.290263,
+          0.615833,
+          1.013571,
+          1.476511
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Winter": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.298916,
+          1.143463,
+          0.633769,
+          0.133073,
+          -0.095742,
+          -0.0621,
+          -0.060171
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.460473,
+          0.799392,
+          1.291409,
+          1.208116,
+          1.030883,
+          0.620031,
+          0.322632
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.033842,
+          0.135117,
+          0.019336,
+          0.0,
+          0.0
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      }
+    },
+    "KMIA": {
+      "Autumn": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          0.691709,
+          0.890101,
+          0.582202,
+          0.179428,
+          0.368578,
+          0.681185,
+          1.104565
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.030295,
+          0.221792,
+          0.330525,
+          0.374857,
+          0.247089,
+          0.429842,
+          0.696421
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.675395,
+          1.539135,
+          2.61485,
+          3.733515,
+          4.835287
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Spring": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.264118,
+          1.005379,
+          0.661417,
+          0.364559,
+          0.460581,
+          0.343235,
+          0.140471
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.09604,
+          0.179335,
+          0.389331,
+          0.255303,
+          0.278388,
+          0.753773,
+          1.257009
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.436618,
+          0.899745,
+          1.3616,
+          1.889425,
+          2.42493
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Summer": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          2.372949,
+          1.502502,
+          0.630452,
+          0.224822,
+          0.416531,
+          0.394838,
+          0.283629
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.0,
+          0.0,
+          0.083377,
+          0.161895,
+          0.270537,
+          0.552425,
+          0.849585
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.538125,
+          1.123215,
+          1.755673,
+          2.498339,
+          3.246846
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Winter": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          0.634851,
+          0.972404,
+          0.729575,
+          0.165342,
+          0.0254,
+          -0.18225,
+          -0.390729
+        ],
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.061726,
+          0.375244,
+          0.35629,
+          0.435882,
+          0.583986,
+          0.761969,
+          0.940454
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.515715,
+          0.911347,
+          1.326235,
+          1.748473,
+          2.170694
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      }
+    }
+  },
+  "reachability_kmia_1500_2000": {
+    "n_obs": 6688,
+    "mu_r_quantiles_10_25_50_75_90": [
+      -9.4941,
+      -7.38,
+      -4.7399,
+      -2.6232,
+      -1.5574
+    ],
+    "frac_mu_r_le_minus_1_2": 0.943032,
+    "frac_phi_at_09_ge_095": 0.913278,
+    "frac_phi_actual_ge_095": 0.913278,
+    "min_mu_r": -25.0511,
+    "max_mu_r": 2.4202,
+    "reachable": true
+  },
+  "insp_a_baseline_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17807,
+      "wMAE": 0.051684,
+      "wResid": 0.002827,
+      "out95": 69
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 14924,
+      "wMAE": 0.032393,
+      "wResid": 1e-05,
+      "out95": 43
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2883,
+      "wMAE": 0.151547,
+      "wResid": 0.017411,
+      "out95": 26
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1649,
+      "wMAE": 0.2521,
+      "wResid": 0.192482,
+      "out95": 54
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3188,
+      "wMAE": 0.568774,
+      "wResid": 0.568774,
+      "out95": 104
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5263,
+      "wMAE": 0.488981,
+      "wResid": 0.487823,
+      "out95": 102
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7357,
+      "wMAE": 0.431911,
+      "wResid": 0.430291,
+      "out95": 98
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 304,
+    "aft_kord_out95": 148,
+    "aft_kmia_out95": 156
+  },
+  "round1_fixed_rho_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17807,
+      "wMAE": 0.048242,
+      "wResid": -0.03426,
+      "out95": 52
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 14924,
+      "wMAE": 0.031654,
+      "wResid": -0.023736,
+      "out95": 26
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2883,
+      "wMAE": 0.134108,
+      "wResid": -0.088738,
+      "out95": 26
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1649,
+      "wMAE": 0.161683,
+      "wResid": 0.002143,
+      "out95": 21
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3188,
+      "wMAE": 0.061347,
+      "wResid": 0.050827,
+      "out95": 10
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5263,
+      "wMAE": 0.017757,
+      "wResid": -0.008584,
+      "out95": 3
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7357,
+      "wMAE": 0.027269,
+      "wResid": -0.018969,
+      "out95": 15
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 28,
+    "aft_kord_out95": 26,
+    "aft_kmia_out95": 2
+  },
+  "calibrated_released_rho_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17807,
+      "wMAE": 0.029577,
+      "wResid": -0.019668,
+      "out95": 25
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 14924,
+      "wMAE": 0.012103,
+      "wResid": -0.006161,
+      "out95": 1
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2883,
+      "wMAE": 0.12003,
+      "wResid": -0.089582,
+      "out95": 24
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1649,
+      "wMAE": 0.160139,
+      "wResid": -0.005357,
+      "out95": 21
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3188,
+      "wMAE": 0.02123,
+      "wResid": -0.007051,
+      "out95": 0
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5263,
+      "wMAE": 0.018971,
+      "wResid": -0.006238,
+      "out95": 3
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7357,
+      "wMAE": 0.019202,
+      "wResid": -0.00423,
+      "out95": 3
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 6,
+    "aft_kord_out95": 6,
+    "aft_kmia_out95": 0
+  },
+  "early_b3_cooling_subset": {
+    "n_obs": 1097,
+    "emp_no_new_raw": 0.824066,
+    "pred_insp_a_base": 0.498589,
+    "resid_insp_a_base": 0.325476,
+    "pred_round1": 0.784705,
+    "resid_round1": 0.03936,
+    "pred_after": 0.795606,
+    "resid_after": 0.02846
+  },
+  "unconstrained_reachability_bounds": {
+    "round1_2param_fixed_rho_out95": 14,
+    "round2_3param_released_rho_out95": 0,
+    "round2_3param_negative_rho_slices": "5/104",
+    "round2_3param_conflicts": [],
+    "round2_3param_slice_params": [
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 14.0,
+        "rho_free": 0.630569,
+        "kappa_free": 0.408844,
+        "delta_free": 1.25164
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 14.5,
+        "rho_free": 0.427052,
+        "kappa_free": 0.404701,
+        "delta_free": 1.246093
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 15.0,
+        "rho_free": 0.253242,
+        "kappa_free": 0.46398,
+        "delta_free": 1.416451
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 15.5,
+        "rho_free": 0.283042,
+        "kappa_free": 0.459701,
+        "delta_free": 1.418699
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 16.0,
+        "rho_free": 0.219376,
+        "kappa_free": 0.457666,
+        "delta_free": 1.42766
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 16.5,
+        "rho_free": 0.381958,
+        "kappa_free": 0.406866,
+        "delta_free": 1.403154
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 17.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 17.5,
+        "rho_free": 0.004112,
+        "kappa_free": 0.499483,
+        "delta_free": 1.498885
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 18.0,
+        "rho_free": 0.098746,
+        "kappa_free": 0.484298,
+        "delta_free": 1.475011
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 18.5,
+        "rho_free": 0.22626,
+        "kappa_free": 0.462477,
+        "delta_free": 1.45334
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 19.0,
+        "rho_free": 0.216497,
+        "kappa_free": 0.472481,
+        "delta_free": 1.457313
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 19.5,
+        "rho_free": 0.203455,
+        "kappa_free": 0.47861,
+        "delta_free": 1.460347
+      },
+      {
+        "station": "KMIA",
+        "season": "Autumn",
+        "t_hour": 20.0,
+        "rho_free": 0.208718,
+        "kappa_free": 0.477706,
+        "delta_free": 1.459867
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 14.0,
+        "rho_free": 0.872508,
+        "kappa_free": 0.312553,
+        "delta_free": 1.132336
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 14.5,
+        "rho_free": 0.73726,
+        "kappa_free": 0.35597,
+        "delta_free": 1.130665
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 15.0,
+        "rho_free": 0.684288,
+        "kappa_free": 0.514648,
+        "delta_free": 1.253306
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 15.5,
+        "rho_free": 0.682419,
+        "kappa_free": 0.464405,
+        "delta_free": 1.272448
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 16.0,
+        "rho_free": 0.384378,
+        "kappa_free": 0.458324,
+        "delta_free": 1.353306
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 16.5,
+        "rho_free": 0.431821,
+        "kappa_free": 0.459284,
+        "delta_free": 1.384358
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 17.0,
+        "rho_free": 0.386469,
+        "kappa_free": 0.482767,
+        "delta_free": 1.468928
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 17.5,
+        "rho_free": 0.081182,
+        "kappa_free": 0.495492,
+        "delta_free": 1.481436
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 18.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 18.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 19.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 19.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Spring",
+        "t_hour": 20.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 14.0,
+        "rho_free": 0.880212,
+        "kappa_free": 0.314913,
+        "delta_free": 1.03526
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 14.5,
+        "rho_free": 0.900825,
+        "kappa_free": 0.411062,
+        "delta_free": 1.119341
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 15.0,
+        "rho_free": 0.52162,
+        "kappa_free": 0.438739,
+        "delta_free": 1.330331
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 15.5,
+        "rho_free": 0.541899,
+        "kappa_free": 0.387064,
+        "delta_free": 1.234518
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 16.0,
+        "rho_free": 0.195814,
+        "kappa_free": 0.481036,
+        "delta_free": 1.414109
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 16.5,
+        "rho_free": 0.468649,
+        "kappa_free": 0.399372,
+        "delta_free": 1.359093
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 17.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 17.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 18.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 18.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 19.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 19.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Summer",
+        "t_hour": 20.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 14.0,
+        "rho_free": 0.558432,
+        "kappa_free": 0.318793,
+        "delta_free": 1.257562
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 14.5,
+        "rho_free": 0.395592,
+        "kappa_free": 0.37695,
+        "delta_free": 1.220227
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 15.0,
+        "rho_free": -0.095631,
+        "kappa_free": 0.353599,
+        "delta_free": 0.804237
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 15.5,
+        "rho_free": 0.010812,
+        "kappa_free": 0.495869,
+        "delta_free": 1.49167
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 16.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 16.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 17.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 17.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 18.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 18.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 19.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 19.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KMIA",
+        "season": "Winter",
+        "t_hour": 20.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 14.0,
+        "rho_free": 0.019249,
+        "kappa_free": 0.0,
+        "delta_free": 0.387883
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 14.5,
+        "rho_free": 0.163725,
+        "kappa_free": 0.124333,
+        "delta_free": 0.584376
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 15.0,
+        "rho_free": 0.12163,
+        "kappa_free": 0.139597,
+        "delta_free": 0.599355
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 15.5,
+        "rho_free": 0.157363,
+        "kappa_free": 0.273396,
+        "delta_free": 0.574633
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 16.0,
+        "rho_free": 0.255415,
+        "kappa_free": 0.299374,
+        "delta_free": 0.857578
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 16.5,
+        "rho_free": 0.186864,
+        "kappa_free": 0.242632,
+        "delta_free": 0.790175
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 17.0,
+        "rho_free": 0.306304,
+        "kappa_free": 0.306619,
+        "delta_free": 1.128235
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 17.5,
+        "rho_free": 0.252394,
+        "kappa_free": 0.25971,
+        "delta_free": 1.113812
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 18.0,
+        "rho_free": 0.258986,
+        "kappa_free": 0.185946,
+        "delta_free": 1.06389
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 18.5,
+        "rho_free": 0.128938,
+        "kappa_free": 0.069738,
+        "delta_free": 1.030821
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 19.0,
+        "rho_free": -0.093684,
+        "kappa_free": 0.172107,
+        "delta_free": 0.847334
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 19.5,
+        "rho_free": -0.045206,
+        "kappa_free": 0.198263,
+        "delta_free": 0.502719
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 20.0,
+        "rho_free": 0.142296,
+        "kappa_free": 0.293918,
+        "delta_free": 0.449072
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.0,
+        "rho_free": 0.096957,
+        "kappa_free": 0.0,
+        "delta_free": 0.05588
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.5,
+        "rho_free": 0.120712,
+        "kappa_free": 0.020207,
+        "delta_free": 0.411798
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.0,
+        "rho_free": 0.080314,
+        "kappa_free": 0.024365,
+        "delta_free": 0.670639
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.5,
+        "rho_free": 0.142286,
+        "kappa_free": 0.175373,
+        "delta_free": 0.865804
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 16.0,
+        "rho_free": 0.11633,
+        "kappa_free": 0.242654,
+        "delta_free": 1.000976
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 16.5,
+        "rho_free": 0.105607,
+        "kappa_free": 0.308623,
+        "delta_free": 0.881536
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 17.0,
+        "rho_free": 0.143668,
+        "kappa_free": 0.263019,
+        "delta_free": 1.064793
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 17.5,
+        "rho_free": 0.021311,
+        "kappa_free": 0.362215,
+        "delta_free": 1.086577
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 18.0,
+        "rho_free": 0.00248,
+        "kappa_free": 0.444654,
+        "delta_free": 1.393331
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 18.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 19.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 19.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 20.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 14.0,
+        "rho_free": 0.539083,
+        "kappa_free": 0.0,
+        "delta_free": 0.788451
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 14.5,
+        "rho_free": 0.30284,
+        "kappa_free": 0.102732,
+        "delta_free": 0.519245
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 15.0,
+        "rho_free": 0.169126,
+        "kappa_free": 0.0,
+        "delta_free": 0.585502
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 15.5,
+        "rho_free": 0.256762,
+        "kappa_free": 0.140611,
+        "delta_free": 0.680416
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 16.0,
+        "rho_free": 0.277665,
+        "kappa_free": 0.266411,
+        "delta_free": 0.875087
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 16.5,
+        "rho_free": 0.272229,
+        "kappa_free": 0.33277,
+        "delta_free": 0.970884
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 17.0,
+        "rho_free": 0.278763,
+        "kappa_free": 0.297069,
+        "delta_free": 1.123524
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 17.5,
+        "rho_free": 0.121604,
+        "kappa_free": 0.418212,
+        "delta_free": 1.321449
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 18.0,
+        "rho_free": 0.155149,
+        "kappa_free": 0.407331,
+        "delta_free": 1.370923
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 18.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 19.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 19.5,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Summer",
+        "t_hour": 20.0,
+        "rho_free": 0.0,
+        "kappa_free": 0.5,
+        "delta_free": 1.5
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 14.0,
+        "rho_free": 0.362182,
+        "kappa_free": 0.019057,
+        "delta_free": 1.014966
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 14.5,
+        "rho_free": 0.207156,
+        "kappa_free": 0.269782,
+        "delta_free": 1.158916
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 15.0,
+        "rho_free": 0.032487,
+        "kappa_free": 0.494346,
+        "delta_free": 1.492067
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 15.5,
+        "rho_free": 0.093329,
+        "kappa_free": 0.48194,
+        "delta_free": 1.477877
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 16.0,
+        "rho_free": 0.121273,
+        "kappa_free": 0.318088,
+        "delta_free": 1.312938
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 16.5,
+        "rho_free": 0.147522,
+        "kappa_free": 0.123034,
+        "delta_free": 1.187296
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 17.0,
+        "rho_free": 0.194328,
+        "kappa_free": 0.113783,
+        "delta_free": 1.245042
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 17.5,
+        "rho_free": 0.133098,
+        "kappa_free": 0.15881,
+        "delta_free": 0.791033
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 18.0,
+        "rho_free": 0.142352,
+        "kappa_free": 0.257825,
+        "delta_free": 0.43052
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 18.5,
+        "rho_free": -0.10747,
+        "kappa_free": 0.142257,
+        "delta_free": 0.496531
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 19.0,
+        "rho_free": 0.00469,
+        "kappa_free": 0.282669,
+        "delta_free": 0.0
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 19.5,
+        "rho_free": -0.080635,
+        "kappa_free": 0.226852,
+        "delta_free": 0.575829
+      },
+      {
+        "station": "KORD",
+        "season": "Winter",
+        "t_hour": 20.0,
+        "rho_free": 0.157468,
+        "kappa_free": 0.295755,
+        "delta_free": 0.38918
+      }
+    ]
+  },
+  "afternoon_out95_breakdown": [
+    {
+      "station": "KORD",
+      "season": "Winter",
+      "B1_below_anchor_round1_out": 0,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": -0.037957,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": 0.02064,
+      "B3_at_or_above_round1_out": 3,
+      "B3_at_or_above_after_out": 0,
+      "B3_at_or_above_after_wResid": -0.021955,
+      "total_round1_out": 3,
+      "total_after_out": 0
+    },
+    {
+      "station": "KORD",
+      "season": "Spring",
+      "B1_below_anchor_round1_out": 5,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": 0.00374,
+      "B2_near_anchor_round1_out": 3,
+      "B2_near_anchor_after_out": 3,
+      "B2_near_anchor_after_wResid": -0.074589,
+      "B3_at_or_above_round1_out": 5,
+      "B3_at_or_above_after_out": 2,
+      "B3_at_or_above_after_wResid": -0.026348,
+      "total_round1_out": 13,
+      "total_after_out": 5
+    },
+    {
+      "station": "KORD",
+      "season": "Summer",
+      "B1_below_anchor_round1_out": 0,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": -0.005988,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": 0.010017,
+      "B3_at_or_above_round1_out": 3,
+      "B3_at_or_above_after_out": 0,
+      "B3_at_or_above_after_wResid": -0.009909,
+      "total_round1_out": 3,
+      "total_after_out": 0
+    },
+    {
+      "station": "KORD",
+      "season": "Autumn",
+      "B1_below_anchor_round1_out": 4,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": 0.006261,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": -0.007204,
+      "B3_at_or_above_round1_out": 3,
+      "B3_at_or_above_after_out": 1,
+      "B3_at_or_above_after_wResid": -0.015322,
+      "total_round1_out": 7,
+      "total_after_out": 1
+    },
+    {
+      "station": "KMIA",
+      "season": "Winter",
+      "B1_below_anchor_round1_out": 0,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": -0.028471,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": -0.00326,
+      "B3_at_or_above_round1_out": 1,
+      "B3_at_or_above_after_out": 0,
+      "B3_at_or_above_after_wResid": 0.00784,
+      "total_round1_out": 1,
+      "total_after_out": 0
+    },
+    {
+      "station": "KMIA",
+      "season": "Spring",
+      "B1_below_anchor_round1_out": 0,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": 0.010118,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": -0.01593,
+      "B3_at_or_above_round1_out": 0,
+      "B3_at_or_above_after_out": 0,
+      "B3_at_or_above_after_wResid": 0.014873,
+      "total_round1_out": 0,
+      "total_after_out": 0
+    },
+    {
+      "station": "KMIA",
+      "season": "Summer",
+      "B1_below_anchor_round1_out": 1,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": -0.025427,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": -0.000961,
+      "B3_at_or_above_round1_out": 0,
+      "B3_at_or_above_after_out": 0,
+      "B3_at_or_above_after_wResid": 0.005221,
+      "total_round1_out": 1,
+      "total_after_out": 0
+    },
+    {
+      "station": "KMIA",
+      "season": "Autumn",
+      "B1_below_anchor_round1_out": 0,
+      "B1_below_anchor_after_out": 0,
+      "B1_below_anchor_after_wResid": -0.007429,
+      "B2_near_anchor_round1_out": 0,
+      "B2_near_anchor_after_out": 0,
+      "B2_near_anchor_after_wResid": -0.005607,
+      "B3_at_or_above_round1_out": 0,
+      "B3_at_or_above_after_out": 0,
+      "B3_at_or_above_after_wResid": 0.004607,
+      "total_round1_out": 0,
+      "total_after_out": 0
+    }
+  ],
+  "remaining_afternoon_out95_cells": [
+    {
+      "station": "KORD",
+      "season": "Spring",
+      "t_hour": 14.0,
+      "t_label": "14:00",
+      "pos_bucket": "B2_near_anchor",
+      "n_bucket": 34,
+      "emp_no_new_raw": 0.323529,
+      "pred_insp_a_base": 0.413193,
+      "resid_insp_a_base": -0.089664,
+      "pred_round1": 0.572111,
+      "resid_round1": -0.248582,
+      "pred_after": 0.590748,
+      "resid_after": -0.267219,
+      "wilson95_lo": 0.191316,
+      "wilson95_hi": 0.491571,
+      "outside_ci_insp_a_base": false,
+      "outside_ci_round1": true,
+      "outside_ci_after": true
+    },
+    {
+      "station": "KORD",
+      "season": "Spring",
+      "t_hour": 14.0,
+      "t_label": "14:00",
+      "pos_bucket": "B3_at_or_above",
+      "n_bucket": 28,
+      "emp_no_new_raw": 0.357143,
+      "pred_insp_a_base": 0.499304,
+      "resid_insp_a_base": -0.142161,
+      "pred_round1": 0.649978,
+      "resid_round1": -0.292836,
+      "pred_after": 0.633937,
+      "resid_after": -0.276794,
+      "wilson95_lo": 0.207058,
+      "wilson95_hi": 0.541697,
+      "outside_ci_insp_a_base": false,
+      "outside_ci_round1": true,
+      "outside_ci_after": true
+    },
+    {
+      "station": "KORD",
+      "season": "Spring",
+      "t_hour": 14.5,
+      "t_label": "14:30",
+      "pos_bucket": "B2_near_anchor",
+      "n_bucket": 31,
+      "emp_no_new_raw": 0.419355,
+      "pred_insp_a_base": 0.403165,
+      "resid_insp_a_base": 0.01619,
+      "pred_round1": 0.603132,
+      "resid_round1": -0.183777,
+      "pred_after": 0.613623,
+      "resid_after": -0.194268,
+      "wilson95_lo": 0.264155,
+      "wilson95_hi": 0.592337,
+      "outside_ci_insp_a_base": false,
+      "outside_ci_round1": true,
+      "outside_ci_after": true
+    },
+    {
+      "station": "KORD",
+      "season": "Spring",
+      "t_hour": 14.5,
+      "t_label": "14:30",
+      "pos_bucket": "B3_at_or_above",
+      "n_bucket": 36,
+      "emp_no_new_raw": 0.444444,
+      "pred_insp_a_base": 0.499447,
+      "resid_insp_a_base": -0.055003,
+      "pred_round1": 0.664559,
+      "resid_round1": -0.220114,
+      "pred_after": 0.625657,
+      "resid_after": -0.181212,
+      "wilson95_lo": 0.295413,
+      "wilson95_hi": 0.604189,
+      "outside_ci_insp_a_base": false,
+      "outside_ci_round1": true,
+      "outside_ci_after": true
+    },
+    {
+      "station": "KORD",
+      "season": "Spring",
+      "t_hour": 15.5,
+      "t_label": "15:30",
+      "pos_bucket": "B2_near_anchor",
+      "n_bucket": 30,
+      "emp_no_new_raw": 0.666667,
+      "pred_insp_a_base": 0.385835,
+      "resid_insp_a_base": 0.280832,
+      "pred_round1": 0.850187,
+      "resid_round1": -0.18352,
+      "pred_after": 0.821076,
+      "resid_after": -0.154409,
+      "wilson95_lo": 0.487801,
+      "wilson95_hi": 0.807695,
+      "outside_ci_insp_a_base": true,
+      "outside_ci_round1": true,
+      "outside_ci_after": true
+    },
+    {
+      "station": "KORD",
+      "season": "Autumn",
+      "t_hour": 14.0,
+      "t_label": "14:00",
+      "pos_bucket": "B3_at_or_above",
+      "n_bucket": 65,
+      "emp_no_new_raw": 0.538462,
+      "pred_insp_a_base": 0.498393,
+      "resid_insp_a_base": 0.040068,
+      "pred_round1": 0.704902,
+      "resid_round1": -0.166441,
+      "pred_after": 0.671621,
+      "resid_after": -0.133159,
+      "wilson95_lo": 0.418534,
+      "wilson95_hi": 0.654097,
+      "outside_ci_insp_a_base": false,
+      "outside_ci_round1": true,
+      "outside_ci_after": true
+    }
+  ],
+  "acceptance_gates": {
+    "criterion_1_early_b12_non_degradation": {
+      "round1_gate_b12_wmae": 0.048242,
+      "after_b12_wmae": 0.029577,
+      "round1_gate_b1_out95": 26,
+      "after_b1_out95": 1,
+      "round1_gate_b2_out95": 26,
+      "after_b2_out95": 24,
+      "insp_a_b12_wmae": 0.051684,
+      "insp_a_b1_out95": 43,
+      "insp_a_b2_out95": 26,
+      "after_b1_wmae": 0.012103,
+      "after_b2_wmae": 0.12003,
+      "pass_vs_round1_gate": true,
+      "pass_vs_insp_a_base": true,
+      "pass": true
+    },
+    "criterion_2_prime_afternoon_binomial_and_family_mean": {
+      "round1_out95": 28,
+      "after_out95": 6,
+      "threshold_out95_max": 25,
+      "pass_out95": true,
+      "after_B1_wResid": -0.007051,
+      "after_B2_wResid": -0.006238,
+      "after_B3_wResid": -0.00423,
+      "threshold_abs_wResid_max": 0.05,
+      "pass_B1_wResid": true,
+      "pass_B2_wResid": true,
+      "pass_B3_wResid": true,
+      "pass": true
+    },
+    "criterion_3_early_b3_cooling_convergence": {
+      "subset_resid_insp_a_base": 0.325476,
+      "subset_resid_round1": 0.03936,
+      "subset_resid_after": 0.02846,
+      "subset_threshold_25pct_insp_a": 0.081369,
+      "all_early_b3_wResid_insp_a_base": 0.192482,
+      "all_early_b3_wResid_round1": 0.002143,
+      "all_early_b3_wResid_after": -0.005357,
+      "all_threshold_25pct_insp_a": 0.04812,
+      "pass": true
+    },
+    "overall_pass": true
+  }
+}
