@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_COOLING_DRIFT_ARTIFACT = (
     Path(__file__).resolve().parents[2]
     / "evidence"
-    / "p8_mu_r_cooling_drift_calibration_20261114.json"
+    / "p8_mu_r_rho_released_calibration_20261114.json"
 )
 
 
@@ -164,9 +164,9 @@ class SpecV2BaselineMuRHook:
 
 
 class Proposal1CoolingDriftMuRHook:
-    """Proposal 1 signed bridge drift with station x season piecewise-smooth kappa & delta curves.
+    """Proposal 1 signed bridge drift with station x season piecewise-smooth (rho, kappa, delta) curves.
 
-    mu_R(t, m, X_t) = rho(t) * max(0, mu_0 - m)
+    mu_R(t, m, X_t) = rho_{s,se}(t) * max(0, mu_0 - m)
                       - kappa_{s,se}(t) * max(0, M_t - X_t)
                       - delta_{s,se}(t) * 1_{t > t_peak}
     """
@@ -226,13 +226,13 @@ class Proposal1CoolingDriftMuRHook:
                 "Proposal1CoolingDriftMuRHook currently covers T_max only; T_min signed mirror pending W3 calibration."
             )
         t_h = float(t_local)
-        rho, drho_dt = _rho_weight_and_deriv(t_h)
         deficit = max(0.0, float(mu_0) - float(extreme_m))
         cooling_drop = max(0.0, float(extreme_m) - float(instant_x_t))
-        heat = rho * deficit
 
         curve = self._resolve_curve(station_id, season)
         if curve is None:
+            rho, drho_dt = _rho_weight_and_deriv(t_h)
+            heat = rho * deficit
             return MuRResult(
                 mu_r=heat,
                 d_mu_r_dt=drho_dt * deficit,
@@ -244,6 +244,14 @@ class Proposal1CoolingDriftMuRHook:
                 post_peak_term=0.0,
                 scheme="proposal1_no_curve_fallback",
             )
+
+        if "rho_knots" in curve and "rho_values" in curve:
+            rho, drho_dt = _eval_piecewise_linear_and_deriv(
+                t_h, curve["rho_knots"], curve["rho_values"]
+            )
+        else:
+            rho, drho_dt = _rho_weight_and_deriv(t_h)
+        heat = rho * deficit
 
         kap, dkap_dt = _eval_piecewise_linear_and_deriv(
             t_h, curve["kappa_knots"], curve["kappa_values"]

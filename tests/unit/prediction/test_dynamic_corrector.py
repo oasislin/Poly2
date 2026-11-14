@@ -327,34 +327,54 @@ class TestThreeInputInterfaceAndSwappableMuRHook:
 
     def test_proposal1_analytical_stage97_derivative_matches_fd(self):
         hook = Proposal1CoolingDriftMuRHook.from_calibration_artifact()
+        # Confirm Round-2 rho_s,se(t) released artifact is wired with signed rho splines.
+        assert hook._curves
+        kord_spring = hook._resolve_curve("KORD", "Spring")
+        assert kord_spring is not None
+        assert "rho_knots" in kord_spring and "rho_values" in kord_spring
+        assert any(v < 0.0 for v in kord_spring["rho_values"])
+
         eps = 1e-5
-        for t in (11.2, 14.3, 17.1):
-            res = hook.compute(
-                t_local=t,
-                extreme_m=72.0,
-                instant_x_t=68.0,
-                mu_0=74.0,
-                station_id="KORD",
-                season="Spring",
-            )
-            rp = hook.compute(
-                t_local=t + eps,
-                extreme_m=72.0,
-                instant_x_t=68.0,
-                mu_0=74.0,
-                station_id="KORD",
-                season="Spring",
-            )
-            rm = hook.compute(
-                t_local=t - eps,
-                extreme_m=72.0,
-                instant_x_t=68.0,
-                mu_0=74.0,
-                station_id="KORD",
-                season="Spring",
-            )
-            fd = (rp.mu_r - rm.mu_r) / (2.0 * eps)
-            assert res.d_mu_r_dt == pytest.approx(fd, abs=1e-6)
+        for st, seas in (("KORD", "Spring"), ("KMIA", "Winter"), ("KMIA", "Autumn")):
+            for t in (6.5, 11.2, 14.3, 17.1, 19.2):
+                res = hook.compute(
+                    t_local=t,
+                    extreme_m=72.0,
+                    instant_x_t=68.0,
+                    mu_0=76.0,
+                    station_id=st,
+                    season=seas,
+                )
+                rp = hook.compute(
+                    t_local=t + eps,
+                    extreme_m=72.0,
+                    instant_x_t=68.0,
+                    mu_0=76.0,
+                    station_id=st,
+                    season=seas,
+                )
+                rm = hook.compute(
+                    t_local=t - eps,
+                    extreme_m=72.0,
+                    instant_x_t=68.0,
+                    mu_0=76.0,
+                    station_id=st,
+                    season=seas,
+                )
+                fd = (rp.mu_r - rm.mu_r) / (2.0 * eps)
+                assert res.d_mu_r_dt == pytest.approx(fd, abs=1e-6)
+
+        # Signed rho_s,se(t) yields negative heat_term on late afternoon KORD Spring cloudy days.
+        cloudy_kord = hook.compute(
+            t_local=18.0,
+            extreme_m=58.0,
+            instant_x_t=57.5,
+            mu_0=64.0,
+            station_id="KORD",
+            season="Spring",
+        )
+        assert cloudy_kord.rho < 0.0
+        assert cloudy_kord.heat_term < 0.0
 
     def test_proposal1_hook_guards_tmin_until_w3_calibration(self):
         hook = Proposal1CoolingDriftMuRHook.from_calibration_artifact()
