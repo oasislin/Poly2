@@ -1,0 +1,81 @@
+{
+  "schema_version": "p8_lst_corpus_and_eta_sensitivity_v1",
+  "generated_at_utc": "2026-11-14T14:49:44.795090+00:00",
+  "pre2019_608d_lst_metadata": {
+    "KORD": {
+      "timezone_day_boundary": "Etc/GMT+6",
+      "timezone_intraday_clock": "America/Chicago",
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 609,
+      "excluded_partial_boundary_days": [
+        "2017-12-31"
+      ],
+      "retained_valid_days": 608,
+      "date_min": "2016-04-30",
+      "date_max": "2018-12-30",
+      "input_hashes": {
+        "2016.parquet": "2b44fa9e6b553bee0c6305dd6f3ccc7e773c869467e5dc84366d69360d56854b",
+        "2017.parquet": "802a110b72ab32dd534046469e02fcea836d409fa31f5ca0c81df7a388a0a28d",
+        "2018.parquet": "b6905220d4d447642a8dd9f82483901a96d27ea19b037a515b89b9d3be04b6ac"
+      }
+    },
+    "KMIA": {
+      "timezone_day_boundary": "Etc/GMT+5",
+      "timezone_intraday_clock": "America/New_York",
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 609,
+      "excluded_partial_boundary_days": [
+        "2017-12-31"
+      ],
+      "retained_valid_days": 608,
+      "date_min": "2016-04-30",
+      "date_max": "2018-12-30",
+      "input_hashes": {
+        "2016.parquet": "d2d3726f3e030742719e1ed21e8d2d3cf891cd23d643d603fda7c02459392fbe",
+        "2017.parquet": "e388f6babc13f3c884a9733e39f1530d145f5c0fc7a7ab2af29b427d3acc9ee4",
+        "2018.parquet": "a905bd199111c8b9e272cc503f74c1b727ae62608f3c73adc843a2472ff400c4"
+      }
+    }
+  },
+  "y2019_lst_metadata": {
+    "KORD": {
+      "timezone_day_boundary": "Etc/GMT+6",
+      "timezone_intraday_clock": "America/Chicago",
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 363,
+      "excluded_partial_boundary_days": [],
+      "retained_valid_days": 363,
+      "date_min": "2019-01-01",
+      "date_max": "2019-12-30",
+      "input_sha256": "9ecabc9bb0c171a9f8782a749458610b3a8841617a37042c2ae81f7c9604e22d"
+    },
+    "KMIA": {
+      "timezone_day_boundary": "Etc/GMT+5",
+      "timezone_intraday_clock": "America/New_York",
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 364,
+      "excluded_partial_boundary_days": [],
+      "retained_valid_days": 364,
+      "date_min": "2019-01-01",
+      "date_max": "2019-12-30",
+      "input_sha256": "9d96b54c0dded3fa74d99bff286d92b4b363bef6d79f533148178ac2fcbdf8db"
+    }
+  },
+  "eta_sensitivity_232_rows": {
+    "lst_daybound_wallclock_max_abs_diff": 0.008378,
+    "lst_daybound_wallclock_mean_abs_diff": 0.000826,
+    "lst_daybound_material_gt_0p02": false,
+    "pure_lst_clock_max_abs_diff_diagnostic": 0.36515,
+    "pure_lst_clock_mean_abs_diff_diagnostic": 0.047693
+  },
+  "outputs": {
+    "pre2019_5min_lst": "evidence/p8_608d_5min_lst.parquet",
+    "pre2019_snapshots_lst": "evidence/p8_608d_snapshots_lst.parquet",
+    "y2019_5min_lst": "evidence/p8_2019_5min_lst.parquet",
+    "eta_lst_csv": "evidence/p8_eta_s_calibration_lst.csv"
+  }
+}

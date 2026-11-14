@@ -1,0 +1,743 @@
+{
+  "schema_version": "p8_mu_r_lst_identifiable_calibration_v1",
+  "generated_at_utc": "2026-11-14T14:51:50.462027+00:00",
+  "data_boundary": "2016-04-30 .. 2018-12-30 LST day-boundary (608 valid days/station, zero 2019)",
+  "years_verified": [
+    2016,
+    2017,
+    2018
+  ],
+  "parameterization": {
+    "form": "piecewise_linear_c0_analytic_derivative_identifiable_lst",
+    "t_peak": 13.5,
+    "rho_knots": [
+      6.0,
+      9.0,
+      12.0,
+      13.5,
+      15.0,
+      17.0,
+      20.0
+    ],
+    "kappa_knots": [
+      6.0,
+      10.0,
+      13.5,
+      16.5,
+      20.0
+    ],
+    "delta_knots": [
+      13.5,
+      15.0,
+      17.5,
+      20.0
+    ],
+    "w_crps": 0.25,
+    "w_early_rho_anchor": 0.08,
+    "w_slice_tower_l2": 0.025,
+    "w_slice_tower_hinge": 0.3,
+    "reg_2diff_rho": 0.004,
+    "reg_2diff_kd": 0.008,
+    "reg_l2_kd": 0.0005,
+    "stage97_deriv_max_fd_error": 0.0
+  },
+  "curves": {
+    "KORD": {
+      "Autumn": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.07172,
+          1.044569,
+          0.851273,
+          0.377993,
+          0.076712,
+          -0.015655,
+          -0.021397
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.300716,
+          0.639455,
+          0.782418,
+          0.715791,
+          0.471546
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.056639,
+          0.074028,
+          0.0
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Spring": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.043169,
+          1.000719,
+          0.833313,
+          0.392651,
+          0.085351,
+          -0.192589,
+          -0.516745
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.319315,
+          0.574456,
+          0.800956,
+          0.945392,
+          1.046963
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.0,
+          0.183901,
+          0.406211
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Summer": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.009777,
+          1.008089,
+          0.920713,
+          0.541049,
+          0.244403,
+          -0.02888,
+          -0.321694
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.101352,
+          0.296148,
+          0.384589,
+          0.467148,
+          0.61777
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.273178,
+          0.625638,
+          0.967033
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Winter": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.026536,
+          1.010486,
+          0.63752,
+          0.158201,
+          -0.093396,
+          -0.044797,
+          -0.039956
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.351666,
+          0.792464,
+          0.978182,
+          0.73255,
+          0.327535
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.029483,
+          0.0,
+          0.0
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      }
+    },
+    "KMIA": {
+      "Autumn": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.008844,
+          1.027567,
+          0.725561,
+          0.249531,
+          0.245396,
+          0.370161,
+          0.582594
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.040946,
+          0.233989,
+          0.408612,
+          0.552986,
+          0.700368
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.940761,
+          1.63093,
+          2.180632
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Spring": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          0.99564,
+          0.992963,
+          0.813851,
+          0.496716,
+          0.43594,
+          0.217146,
+          -0.047426
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.06598,
+          0.222486,
+          0.325464,
+          0.475593,
+          0.633378
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.675036,
+          1.244828,
+          1.719985
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Summer": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.006105,
+          1.028244,
+          0.78938,
+          0.344463,
+          0.320993,
+          0.205896,
+          0.044891
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.0,
+          0.012074,
+          0.19172,
+          0.451058,
+          0.68807
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.853924,
+          1.500237,
+          2.02517
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Winter": {
+        "t_peak": 13.5,
+        "rho_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "rho_values": [
+          1.040541,
+          1.052157,
+          0.802468,
+          0.229443,
+          -0.122263,
+          -0.494743,
+          -0.86799
+        ],
+        "kappa_knots": [
+          6.0,
+          10.0,
+          13.5,
+          16.5,
+          20.0
+        ],
+        "kappa_values": [
+          0.110063,
+          0.322561,
+          0.48917,
+          0.706452,
+          0.870726
+        ],
+        "delta_knots": [
+          13.5,
+          15.0,
+          17.5,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.538099,
+          0.911816,
+          1.210161
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      }
+    }
+  },
+  "reachability_kmia_1500_2000": {
+    "n_obs": 6688,
+    "mu_r_quantiles_10_25_50_75_90": [
+      -7.2233,
+      -5.6646,
+      -3.767,
+      -2.1689,
+      -1.2592
+    ],
+    "frac_phi_at_09_ge_095": 0.872757,
+    "frac_phi_actual_ge_095": 0.872757,
+    "min_mu_r": -19.299,
+    "max_mu_r": 2.4673,
+    "reachable": true
+  },
+  "lst_insp_a_baseline_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17834,
+      "wMAE": 0.050916,
+      "wResid": 0.000841,
+      "out95": 71
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 15029,
+      "wMAE": 0.031603,
+      "wResid": -0.000835,
+      "out95": 42
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2805,
+      "wMAE": 0.154391,
+      "wResid": 0.00982,
+      "out95": 29
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1622,
+      "wMAE": 0.250439,
+      "wResid": 0.187363,
+      "out95": 47
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3234,
+      "wMAE": 0.56913,
+      "wResid": 0.56913,
+      "out95": 104
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5230,
+      "wMAE": 0.488611,
+      "wResid": 0.487446,
+      "out95": 102
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7344,
+      "wMAE": 0.432063,
+      "wResid": 0.430168,
+      "out95": 98
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 304,
+    "aft_kord_out95": 148,
+    "aft_kmia_out95": 156
+  },
+  "lst_round1_fixed_rho_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17834,
+      "wMAE": 0.036608,
+      "wResid": -0.00284,
+      "out95": 47
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 15029,
+      "wMAE": 0.020714,
+      "wResid": 0.007141,
+      "out95": 21
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2805,
+      "wMAE": 0.121765,
+      "wResid": -0.056319,
+      "out95": 26
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1622,
+      "wMAE": 0.152567,
+      "wResid": -0.037084,
+      "out95": 19
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3234,
+      "wMAE": 0.168333,
+      "wResid": 0.1683,
+      "out95": 42
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5230,
+      "wMAE": 0.028352,
+      "wResid": -0.003753,
+      "out95": 11
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7344,
+      "wMAE": 0.044796,
+      "wResid": -0.041495,
+      "out95": 40
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 93,
+    "aft_kord_out95": 79,
+    "aft_kmia_out95": 14
+  },
+  "calibrated_lst_identifiable_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17834,
+      "wMAE": 0.029573,
+      "wResid": -0.012109,
+      "out95": 32
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 15029,
+      "wMAE": 0.014742,
+      "wResid": -0.001086,
+      "out95": 8
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2805,
+      "wMAE": 0.109038,
+      "wResid": -0.071169,
+      "out95": 24
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1622,
+      "wMAE": 0.161729,
+      "wResid": 0.003393,
+      "out95": 20
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3234,
+      "wMAE": 0.026287,
+      "wResid": 0.008232,
+      "out95": 1
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5230,
+      "wMAE": 0.021889,
+      "wResid": 0.008122,
+      "out95": 3
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7344,
+      "wMAE": 0.027431,
+      "wResid": 0.006482,
+      "out95": 8
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 12,
+    "aft_kord_out95": 7,
+    "aft_kmia_out95": 5
+  },
+  "g2a_608_summary": {
+    "total_slices": 232,
+    "max_abs_mean_ey_minus_mu0": 1.145626,
+    "threshold": 2.0,
+    "n_violations": 0,
+    "pass": true,
+    "top5_slices": [
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 13.5,
+        "t_label": "13:30",
+        "n_days": 124,
+        "mean_ey_bridge": 59.693834,
+        "mean_mu0": 60.83946,
+        "mean_ey_minus_mu0": -1.145626,
+        "abs_mean_ey_minus_mu0": 1.145626,
+        "pass_g2a_le_2_0": true,
+        "mean_crps_bridge_ghcn": 1.038364
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 13.0,
+        "t_label": "13:00",
+        "n_days": 124,
+        "mean_ey_bridge": 59.699542,
+        "mean_mu0": 60.83946,
+        "mean_ey_minus_mu0": -1.139918,
+        "abs_mean_ey_minus_mu0": 1.139918,
+        "pass_g2a_le_2_0": true,
+        "mean_crps_bridge_ghcn": 1.259434
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.0,
+        "t_label": "14:00",
+        "n_days": 124,
+        "mean_ey_bridge": 59.699946,
+        "mean_mu0": 60.83946,
+        "mean_ey_minus_mu0": -1.139514,
+        "abs_mean_ey_minus_mu0": 1.139514,
+        "pass_g2a_le_2_0": true,
+        "mean_crps_bridge_ghcn": 0.902356
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.5,
+        "t_label": "14:30",
+        "n_days": 124,
+        "mean_ey_bridge": 59.822978,
+        "mean_mu0": 60.83946,
+        "mean_ey_minus_mu0": -1.016482,
+        "abs_mean_ey_minus_mu0": 1.016482,
+        "pass_g2a_le_2_0": true,
+        "mean_crps_bridge_ghcn": 0.783723
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.0,
+        "t_label": "15:00",
+        "n_days": 124,
+        "mean_ey_bridge": 59.865124,
+        "mean_mu0": 60.83946,
+        "mean_ey_minus_mu0": -0.974336,
+        "abs_mean_ey_minus_mu0": 0.974336,
+        "pass_g2a_le_2_0": true,
+        "mean_crps_bridge_ghcn": 0.63802
+      }
+    ]
+  },
+  "early_b3_cooling_subset": {
+    "n_obs": 1068,
+    "emp_no_new_raw": 0.819288,
+    "pred_insp_a_base": 0.498551,
+    "resid_insp_a_base": 0.320737,
+    "pred_round1": 0.841463,
+    "resid_round1": -0.022174,
+    "pred_after": 0.777951,
+    "resid_after": 0.041337
+  },
+  "acceptance_gates": {
+    "criterion_1_early_b12_non_degradation": {
+      "lst_round1_b12_wmae": 0.036608,
+      "after_b12_wmae": 0.029573,
+      "lst_round1_b1_out95": 21,
+      "after_b1_out95": 8,
+      "lst_round1_b2_out95": 26,
+      "after_b2_out95": 24,
+      "lst_insp_a_b12_wmae": 0.050916,
+      "lst_insp_a_b1_out95": 42,
+      "lst_insp_a_b2_out95": 29,
+      "pass_vs_round1_lst": true,
+      "pass_vs_insp_a_lst": true,
+      "pass": true
+    },
+    "criterion_2_prime_afternoon_binomial_and_family_mean": {
+      "lst_round1_out95": 93,
+      "after_out95": 12,
+      "threshold_out95_max": 25,
+      "pass_out95": true,
+      "after_B1_wResid": 0.008232,
+      "after_B2_wResid": 0.008122,
+      "after_B3_wResid": 0.006482,
+      "threshold_abs_wResid_max": 0.05,
+      "pass_B1_wResid": true,
+      "pass_B2_wResid": true,
+      "pass_B3_wResid": true,
+      "pass": true
+    },
+    "criterion_3_early_b3_cooling_convergence": {
+      "subset_resid_insp_a_base": 0.320737,
+      "subset_resid_after": 0.041337,
+      "subset_threshold_25pct_insp_a": 0.080184,
+      "all_early_b3_wResid_insp_a_base": 0.187363,
+      "all_early_b3_wResid_after": 0.003393,
+      "pass": true
+    },
+    "g2a_608_tower_expectation_232_slices": {
+      "max_abs_mean_ey_minus_mu0": 1.145626,
+      "threshold": 2.0,
+      "n_violations": 0,
+      "pass": true
+    },
+    "overall_pass": true
+  }
+}

@@ -10,11 +10,13 @@
 
 | 评估维度 (Metric Dimension) | 指标定义与统计口径 | 🟢 绿级 (Green: 正常准入) | 🟡 黄级 (Yellow: 带旗收缩) | 🔴 红级 (Red: 禁开新仓) | 违规/失效判定逻辑 |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| **维度 1：校准 ECE**<br>(Calibration ECE) | 20 桶概率加权期望校准误差 (Weighted ECE over 20-bin Block-CV) | $\text{ECE} \le 0.0100$ | $0.0100 < \text{ECE} \le 0.0200$ | $\text{ECE} > 0.0200$ | 超出 0.0200 或缺少 20 折 Block-CV 证据直接判红 |
+| **维度 1：校准 ECE**<br>(Calibration ECE) | 8 层概率加权期望校准误差（法定执行口径 **`inw`**：20 折 Block-CV 可交易 9-bin 窗内 8 概率分桶加权 ECE；`w20` 等宽 20 桶全量 11/全bin 作伴随尾部分析参考）<sup><a href="#erratum-d1-inw">[勘误2026-11-14]</a></sup> | $\text{ECE} \le 0.0100$ | $0.0100 < \text{ECE} \le 0.0200$ | $\text{ECE} > 0.0200$ | 超出 0.0200（`inw` 口径）或缺少 20 折 Block-CV 证据直接判红 |
 | **维度 2：预测偏差 Bias**<br>(Mean Systematic Bias) | 样本均值预测偏差（℉，带符号）：$\mathbb{E}[\hat{y} - y]$ | $|\text{Bias}| \le 0.50^\circ\text{F}$ | $0.50^\circ\text{F} < |\text{Bias}| \le 1.00^\circ\text{F}$ | $|\text{Bias}| > 1.00^\circ\text{F}$ | 绝对偏差超过 1.00°F 判红；带符号记录方向 |
 | **维度 3：CRPS 技巧分**<br>(CRPSS vs Climatology) | 相较于气候学基线的连续分级概率技巧分：$1 - \frac{\text{CRPS}_{\text{model}}}{\text{CRPS}_{\text{clim}}}$ | $\text{CRPSS} \ge 0.150$ | $0.050 \le \text{CRPSS} < 0.150$ | $\text{CRPSS} < 0.050$ | 技巧分低于 5%（相比气候底座几乎无增益）判红 |
 | **维度 4：90% 区间覆盖率**<br>(90% Prediction Interval Coverage) | 经验概率覆盖率：$\hat{P}(y \in [\hat{q}_{0.05}, \hat{q}_{0.95}])$ | $85.0\% \le \text{Cov} \le 95.0\%$ | $80.0\% \le \text{Cov} < 85.0\%$ 或<br>$95.0\% < \text{Cov} \le 97.0\%$ | $\text{Cov} < 80.0\%$ 或<br>$\text{Cov} > 97.0\%$ | 覆盖率严重偏离标称 90% 置信区间判红（过窄穿仓或过宽钝化） |
 | **维度 5：形状距离 Δ**<br>(Shape Distance Δ) | 反事实矩匹配分解净校准贡献：$\Delta \equiv \text{ECE}_{\text{族}} - \text{ECE}_{\text{矩匹配高斯}}$（主口径 `inw` 9 档 8 谱带，副口径 `w20` 全 11 档 20 桶） | *待数值裁决* | *待数值裁决* | *待数值裁决* | **方法已定稿（反事实矩匹配分解），数值待数值裁决批定标（只做技术注记，暂不填绿/黄/红阈值）**。实证数值见 [`evidence/p8_algo_shape_distance_calibration_20261113.md`](../evidence/p8_algo_shape_distance_calibration_20261113.md)。 |
+
+<a id="erratum-d1-inw"></a>> **勘误（2026-11-14，依据设计组 `v5` D1 裁决，不升版）**：维度 1 历史表头“20 桶 (20-bin)”文字更正为现行法定执行口径 **`inw`（8 谱带 `[0,0.02), [0.02,0.05), ..., [0.65,1.0]` × 可交易 9-bin 窗内概率加权期望校准误差）**，`w20`（全 11/全bin × 等宽 20 桶）保留为伴随尾部分析副口径；`≤0.0100 / (0.0100, 0.0200] / >0.0200` 阈值维持不变。经实证核查：历史 Block-CV 与检验 B 全部产出均实际执行 `inw`（系继 Round-2 `0/312`、初版 `G` 门缺失之后的**第三例文字-执行背离**）。据此 `KMIA_12h` 维持 **🟡 YELLOW**，其 `w20` 全档读数 `0.0205` 越红线已单列登记至 [`P8-ALGO-REVIEW_待确认事项登记册`](audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md) 尾部退化观察并进数值裁决批。
 
 ---
 

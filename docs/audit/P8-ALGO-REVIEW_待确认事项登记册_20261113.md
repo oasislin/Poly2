@@ -286,3 +286,22 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
 - **当前阶段冻结门禁（阻塞单次修复与最终重跑）**：
   1. **真值源分岔审计已完结、待设计组拍板选线**：已按只读纪律查明 `2019-10-02` `-12.6°F` 及全盘 `20–24%` 跨零档根因，在设计组择定真值源对齐分支前不执行任何真值切换；
   2. **`G1 / G2 / G3` 数值定义与 `A / B / C` 档映射待设计组下发正文**：指令文本中仅写明 `G2a: max_slice |E[Y_bridge] - E[Y_native]| <= 2.0°F`，未附带 `G1` / `G2` / `G3` 完整阈值及 `A / B / C` 档布尔映射表；依“严禁自造门槛”纪律，待设计组补发完整预注册门禁后执行 `ρ` 正则化修复及时间盒内最后一次 2019 重跑。
+
+> **闭合更新（2026-11-14）**：设计组已在《审查记录 v5》与附录一中拍板选定分支 A 主判并下发 `G1 / G2 / G3` 与 `A / B / C` 档完整预注册文本，G-14 阻塞门禁**已闭合**；终跑裁决见下方 `G-15` 及终裁记录。**宪法缺口补录倒计时仍适用**：须于终裁签发后 30 日内（`2026-12-14` 前）将《检验 C 终裁预注册判决标准 v1》以勘误/升版写入 `项目方案` 与 `SPEC v2.0`。
+
+### G-15 检验 C 终跑判决落地（`C 档（终止可签）`）、`D1=inw` 勘误、尾部退化观察与结算适配器工项登记（2026-11-14） ｜ **检验 C 时间盒终裁 `C 档（终止可签）` / `G-15` 在线链挂单待排期**
+- **分支 A 终跑执行链闭合（`2026-11-14`）**：
+  - **Task 1 LST 语料重建**（[`scripts/rebuild_p8_lst_corpus_and_check_eta.py`](../../scripts/rebuild_p8_lst_corpus_and_check_eta.py)）：只读新建 `_lst` 语料（`608d`: `KORD/KMIA` 各 `608` 日 `35,264` 快照；`2019`: `KORD 363` / `KMIA 364` 日），`η_s(t)` 日界-壁钟敏感性 `max|Δη| = 0.008378`、`mean = 0.000826`（`< 0.02`，无实质变化，冻结 `η_s` 保持不动）。
+  - **Task 2 `ρ` 可识别性修复 + 正则**（[`scripts/calibrate_p8_mu_r_lst_identifiable.py`](../../scripts/calibrate_p8_mu_r_lst_identifiable.py)，`608` 天零 `2019`）：加入连续 Bridge CRPS + 早窗 `ρ(t<=9)≈1.0` 边界锚 + 逐切片塔性质均值锚、`κ`（`7→5` 节点）/`δ`（`6→4` 节点）二阶平滑与 L2 正则。608 天验收三判据 + `G2a_608` **全部通过（`overall_pass = True`）**：① 早段 `B1/B2 wMAE = 0.029573`（`B1 8/128`, `B2 24/109`）；②′ 午后 `12/312 ≤ 25/312`、`B1/B2/B3 |wResid| ≤ 0.0083`；③ 早段 `B3` 冷却 `+0.041337 ≤ 0.080184`；`G2a_608` `max|E[Y_bridge]-μ₀| = 1.145626°F ≤ 2.0°F`（`0/232` 违例；`KMIA Summer ρ(6.0): 2.3729 → 1.006105`）。已切换接入 [`Proposal1CoolingDriftMuRHook`](../../src/prediction/dynamic_corrector.py)（[`p8_mu_r_lst_identifiable_calibration_20261114.json`](../../evidence/p8_mu_r_lst_identifiable_calibration_20261114.json)），`prediction` + `pricing` `180` 项单测全绿，`F-2 LOCKED` 未动。
+  - **Task 3 检验 C 2019 最终重跑与预注册代码布尔判决**（[`scripts/run_p8_inspection_c_2019_final_lst.py`](../../scripts/run_p8_inspection_c_2019_final_lst.py)，[`p8_inspection_c_2019_final_lst_20261114.json`](../../evidence/p8_inspection_c_2019_final_lst_20261114.json)）：
+    - **`G1 = True`**（`G1a=True`: 全池 `CRPS_bridge = 1.294325°F < CRPS_native = 2.505005°F`, `-48.33%`；`G1b=True`: `16/16 ≥ 12/16` 层改善）；
+    - **`G2 = True`**（`G2a=True`: `608d max=1.145626°F`, `2019(18h) max=1.355764°F`, `2019(all_leads) max=1.084958°F`, 全部 `0/232` 超限；`G2b=True`: 最差层退化比 `-0.327224 ≤ +0.20`）；
+    - **`G3 = False`**（`G3a=False`: 午后 `out95 = 36/312 > 25/312`, 虽各族 `|wResid| ≤ 0.0151 ≤ 0.05`；`G3b=False`: 早段 `B12 out95 = 38/228 > 20`；`G3c=False`: 全池 `ECE_bridge(inw) = 0.030586 > 0.020`, `16` 层均值均落于 `0.0262–0.0369`）；
+    - **`concentration_cond = False`**（`G3c` 为全盘 `0.026–0.037` 系统水平，剔除 `≤ 2` 个 `station × season` 层不存在使剩余全池 `G3` 全回界内之组合） → **法定代码布尔判决 = `TIER_C` / `C 档（终止可签）`**。
+- **G-15 结算适配器工项（新立，挂在线链阶段，前置 = 检验 C 判决落地）**：
+  - **工项范围**：显式补偿上游 GHCN 先验（`LST` 日界，连续高值）与 Polymarket / NWS METAR 日常结算（`DST` 日界、Half-Up 取整、`+0.54/+0.83°F` 系统偏差：`2019` 平行非门禁实测 `KORD mean(METAR_settle - GHCN) = -0.5384°F` (`|diff|≥2°F: 4.1%`)，`KMIA mean(METAR_settle - GHCN) = -0.8304°F` (`|diff|≥2°F: 9.1%`)）；
+  - **状态**：**`PENDING / PRECONDITION_MET（检验 C 判决已落地，挂在线链改造阶段排期）`**。
+- **D1 法定执行口径勘误 & 尾部退化观察登记（进数值裁决批）**：
+  - **D1 勘误落地**：[`MODEL_SCORECARD.md#L13`](../MODEL_SCORECARD.md#L13) 已更正 `20-bin` 表头文字为法定执行口径 **`inw`（8 谱带 × 可交易 9-bin）**，并注记继 Round-2 `0/312`、初版 `G` 门缺失后之**第三例文字-执行背离**；`KMIA_12h` 维持 **🟡 YELLOW**（`v2` Block-CV `inw = 0.015981`、`2019` 盲测 `inw = 0.006522`）；
+  - **尾部退化观察（新立，进数值裁决批）**：`KMIA_12h` 在 `w20`（全 bin × 等宽 20 桶）下呈现越过 `0.0200` 红线读数（原存储 `c1 = 0.020498 ≈ 0.0205`、`v2 c = 0.020656`，主因不可交易深尾格离散/尾部质量漂移），正式记入数值裁决批第五维 `Δ` 与尾部管理议程跟踪。
+- **《设计组审查记录 v5》归档**：[`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) 已原样录入 `v5`（§八）及《检验 C 终裁预注册判决标准 v1》（附录一）。

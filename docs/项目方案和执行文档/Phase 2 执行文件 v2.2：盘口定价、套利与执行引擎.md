@@ -222,8 +222,8 @@ Polymarket 温度市场是完备互斥区间的二元期权集合。Phase 2 的�
    - 零非物理下单、无滑点穿仓、无未捕获异常、模拟资金夏普比率 $> 2.0$。
    - **[v2.2 追加｜B5] 方案 `α` 上线后监控口径**：`α` 架构上线后，纸面及实盘运行期间持续按 **`站 × 季 × 早晚段`** 分桶统计结算偏差（口径与检验 C 完全兼容）。
 7. **检验 C 离线 `bridge-ECE` 只读差值诊断与判决状态（[v2.2] B6；`[2026-11-14 状态与工件指针登记，不升版]`）**：
-   - **检验 C 当前状态**：**`判决启动（2026-11-14）`**（由前序「冻结：$\mu_R$ 修正中」解除；启动依据：Round-2 释放 $\rho_{s,\text{se}}(t)$ 608 天重标定三判据 `①/②′/③` 全过，`overall_pass = True`，午后出界 `6/312 ≤ 25/312`；且 [`Proposal1CoolingDriftMuRHook`](../../src/prediction/dynamic_corrector.py) 已切换接入现役 Round-2 工件）。
-   - **现役 $\mu_R$ 标定工件指针（单一事实来源）**：**`现役 μ_R 标定工件 = evidence/p8_mu_r_rho_released_calibration_20261114.json（Round-2，提交 611a06e）`**。
+   - **检验 C 当前状态**：**`终跑裁决落地 = TIER_C（C 档：终止可签，2026-11-14）`**（基于 LST 语料可识别性修复与正则重标定工件；2019 分支 A 主判实测 `G1=True` (`CRPS -48.33%`, `16/16` 层改善) & `G2=True` (`G2a 608d/2019 max 1.15/1.36°F ≤ 2.0°F`, `G2b -32.7%`)，但 `G3=False` (`aft out95=36/312`, `early B12 out95=38/228`, `pooled ECE_bridge(inw)=0.030586 > 0.020`) 且 `concentration_cond=False`，见 [`evidence/p8_inspection_c_2019_final_lst_20261114.json`](../../evidence/p8_inspection_c_2019_final_lst_20261114.json) 与 `G-15` 结算适配器工项登记）。
+   - **现役 $\mu_R$ 标定工件指针（单一事实来源）**：**`现役 μ_R 标定工件 = evidence/p8_mu_r_lst_identifiable_calibration_20261114.json（LST 608d 连续CRPS+塔锚正则版）`**。
    - **本轮检验 C 2019 回放三项重点观察项**：① `KORD` 春秋午后过渡窗（Round-2 残留 `6/312` 格所属族）；② `KMIA Winter early`（原生 `ECE_族 = 0.0125`，全表绝对校准最差格）；③ `KMIA_12h` 交易窗原 `ECE = 0.0183` 挂旗读数在 `v2`（2000–2018 折外 `s_oos`）契约下的重读值。
    - **三数同源并产**：检验 C（2019 独立盲测年全年回放）必须在**同一份 2019 盲测数据、同一条回放管道、同一次运行**中同时产出以下三项校准读数：
      1. **桥前原生 ECE（`ECE_native`）**；

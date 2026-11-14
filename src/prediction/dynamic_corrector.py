@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_COOLING_DRIFT_ARTIFACT = (
     Path(__file__).resolve().parents[2]
     / "evidence"
-    / "p8_mu_r_rho_released_calibration_20261114.json"
+    / "p8_mu_r_lst_identifiable_calibration_20261114.json"
 )
 
 
