@@ -251,7 +251,7 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   2. **`s_oos` 重推报告公式笔误勘误**：[`evidence/p8_contract_s_oos_recalibration_report_20261113.md#L40`](../../evidence/p8_contract_s_oos_recalibration_report_20261113.md#L40) 原文公式注记写作“其中 $\sigma_i = \max(0.90, \sigma_{\text{raw}, i} \cdot c_{\text{train}})$”，系文档笔误——实际计算脚本 [`scripts/compute_p8_oos_and_shape_calibration.py`](../../scripts/compute_p8_oos_and_shape_calibration.py) 直接读取 Block-CV 折外 parquet 中的 `sigma` 列，未额外施加 `0.90` 后置截断；**契约与报告中的全 22 格数值产物不受影响**（已核查留档，不改原数字）。
 
 ### G-12 业主审查记录落盘、方案一 `μ_R` 标定/接口重构、SPEC 勘误与重测阻塞升级登记（2026-11-14） ｜ **部分闭环 / 检验 C 判决跑批继续冻结**
-- **业主侧审查与裁决记录落盘（双向引用）**：已于 [`P8-OWNER-REVIEW_裁决与审查记录.md`](P8-OWNER-REVIEW_裁决与审查记录.md) 原样录入《业主审查记录 v1》（§一~§七），明确“本文件为业主侧审查记录，构成审计链组成部分，agent 仅代为落盘，内容责任在业主”；本登记册继续独占事项状态、阻塞与闭环追踪职责。
+- **业主侧审查与裁决记录落盘（双向引用）**：已于 [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) 原样录入《业主审查记录 v1》（§一~§七），明确“本文件为业主侧审查记录，构成审计链组成部分，agent 仅代为落盘，内容责任在业主”；本登记册继续独占事项状态、阻塞与闭环追踪职责。
 - **方案一 $\mu_R(t,m,X_t)$ 608 天标定（[`scripts/calibrate_p8_mu_r_cooling_drift.py`](../../scripts/calibrate_p8_mu_r_cooling_drift.py)，零 2019 参与）**：
   - 产出于 [`evidence/p8_mu_r_cooling_drift_calibration_20261114.json`](../../evidence/p8_mu_r_cooling_drift_calibration_20261114.json)、[`evidence/p8_mu_r_cooling_drift_curves_20261114.csv`](../../evidence/p8_mu_r_cooling_drift_curves_20261114.csv)、[`evidence/p8_mu_r_cooling_drift_residuals_20261114.csv`](../../evidence/p8_mu_r_cooling_drift_residuals_20261114.csv) 与 [`evidence/p8_mu_r_cooling_drift_report_20261114.md`](../../evidence/p8_mu_r_cooling_drift_report_20261114.md)。
   - **KMIA 午后（15:00–20:00）可达性**：`min_mu_r = -23.6809°F`，分位数 `[-8.8902, -6.2878, -4.2175, -2.3840, -1.5097]`°F，`Phi(-mu_R/0.9) >= 0.95` 占比 `0.9030`（`reachable = True`）。
@@ -259,7 +259,7 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
 - **三实况接口重构与 SPEC 勘误**：
   - 接口层完成 [`StationDayState`](../../src/prediction/monotonic_confluence.py) `current_temp_f` 帧级瞬时气温保留、[`DynamicCorrector`](../../src/prediction/dynamic_corrector.py) `(extreme_m, instant_x_t, t_local)` 三实况重构及可插拔 `MuRHook`（默认挂载 `Proposal1CoolingDriftMuRHook`，修复 `correct_with_station_state` 极值/瞬时混叠）、以及 [`PredictionPipeline`](../../src/prediction/prediction_pipeline.py) 调用链同步（`F-2 LOCKED` 相关文件未触碰）。
   - [`SPEC v2.0#L201–L209`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md#L201-L209) 完成不升版勘误，落盘方案一公式、定理级缺陷与挑战回合四族否定结论、业主批准日 `2026-11-14` 及 $T_{\min}$ 镜像对偶警示。
-- **随批治理与重测阻塞登记（依据 [`P8-OWNER-REVIEW §六`](P8-OWNER-REVIEW_裁决与审查记录.md)）**：
+- **随批治理与重测阻塞登记（依据 [`P8-DESIGN-TEAM-REVIEW §六`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md)）**：
   1. **3 项集成测试失败列为已知重测阻塞项（`BLOCKER_FOR_RETEST`）**：`tests/unit/contract/test_contract_security_integration.py` 中 `test_tc_sec_01_version_tamper_blocks_transaction`、`test_tc_sec_02_missing_model_blocks_transaction`、`test_tc_sec_06_anti_pollution_runtime_hash_zero_drift` 因契约锚 `manifest_sha256`（`fc2212a5...`）与磁盘 1200 模型实算 canonical SHA256（`25226190...`）不一致而 FAIL。**属 ADR-0019 Fail-Closed 预期保护设计；法定处置 = 待检验 C 全量通过后，经 `scripts/trigger_model_retest.py` 走完整重测协议重签发，严禁豁免、严禁修改测试断言、严禁手动篡改哈希。**
   2. **`G-11` `param_table_converter.py` 警示升级为重测签发前硬性前置（`HARD_PRECONDITION_BEFORE_RETEST`）**：已核 `scripts/trigger_model_retest.py#L77-78, L230-233` 默认向 `convert_csv_to_contract()` 传入 2019 盲测文件 `evidence/audit_v2/p4blind_v2r01_metrics.csv`，而 `src/contract/param_table_converter.py#L241` 直接按 `m_row["s_oos"]` 导出。**必须先将 converter / retest 的 `s_oos` 输入源切换至 2000–2018 20 折 Block-CV OOF 产物（`v2_2000_2018_oof_cv`），再触碰 converter 或执行 `trigger_model_retest.py` 重签发。**
   3. **数值裁决批补料（W2 仓位缩放与差异化 EV 门槛现役输入）**：已只读捞取全量现役来源与当前值，随本批工单回传呈裁。
@@ -271,8 +271,18 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   - **机械三判据（`overall_pass = True`）**：① 早段 `B1/B2` 不劣化 **通过**（`pooled wMAE 0.029577` vs Round-1 `0.048242` / Insp-A `0.051684`，`B1 out95 1/128`，`B2 out95 24/109`）；②′ 午后二项界+分族均值 **通过**（`out95 = 6/312 ≤ 25/312`，`KORD 6/156` / `KMIA 0/156`；`B1/B2/B3 wResid = -0.007051 / -0.006238 / -0.004230`，均 `|·| ≤ 0.05`）；③ 早段冷却 `B3` **通过**（冷却子集 `+0.028460 ≤ 0.081369`，全量 B3 `-0.005357`）。
   - **Unconstrained 可达性界对照**：Round-1 固定 `ρ(t)` 2 参极限地板 `14/312` → 本轮释放 `ρ_s,se(t)` 3 参极限地板 **`0/312`**（`5/104` 切片 `ρ_free < 0`）。
 - **业主审查 v2 录入、Round-2 接入与设计文档同步闭合（`2026-11-14`）**：
-  - [`P8-OWNER-REVIEW_裁决与审查记录.md`](P8-OWNER-REVIEW_裁决与审查记录.md) 已原样录入《业主审查记录 v2》（一~五）；
+  - [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) 已原样录入《业主审查记录 v2》（一~五）；
   - [`Phase 2 执行文件 v2.2#L196-199`](../项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md#L196-L199) 已以勘误方式回改对齐 [`MODEL_SCORECARD.md#L13-L16`](../MODEL_SCORECARD.md#L13-L16) 四维法定阈值（`|Bias| ≤ 0.50°F` / `CRPSS ≥ 0.150` / `Cov90 [85.0%, 95.0%]`），不升版；
   - [`Proposal1CoolingDriftMuRHook`](../../src/prediction/dynamic_corrector.py) 已切换加载 [`p8_mu_r_rho_released_calibration_20261114.json`](../../evidence/p8_mu_r_rho_released_calibration_20261114.json) 并按 `ρ_{s,se}(t)` 样条评估与求导，`prediction` + `pricing` 单测全绿，`F-2 LOCKED` 未动；
   - [`第三段条件分布_20261110.md`](P8-ALGO-DEF_第三段条件分布_20261110.md) `§2.4` 完成不升版勘误同步；`Phase 2 v2.2` 与 [`ROADMAP.md`](../ROADMAP.md) 登记检验 C **`判决启动（2026-11-14）`** 及现役工件指针；经盘点全仓无 `DynamicCorrector / StationDayState / MuRHook` 专项模块设计文档。
   - **检验 C 2019 D+0 判决启动（重点观察项）**：① `KORD` 春秋午后过渡窗（Round-2 残留 6 格族）；② `KMIA Winter early`（`ECE_族 0.0125`，全表绝对校准最差格）；③ `KMIA_12h` 交易窗 `0.0183` 在 `v2` 契约 `s_oos` 下的重读值。模型重测签发仍待检验 C 完结与 `converter s_oos` 源切换硬前置。
+
+### G-14 检验 C 诊断轮入库、术语切换（业主→设计组）、宪法缺口登记与设计组审查 v4 录入（2026-11-14） ｜ **真值分岔与最终重跑前置门禁待设计组批复**
+- **术语切换与历史留存核验**：自 2026-11-14 起“业主”改称“设计组”（历史已提交文本不回改）。[`P8-OWNER-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) 已通过 `git mv` 更名为 [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md)，文件头增补术语映射注记，并已同步更新 [`SPEC v2.0#L209`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md#L209)、[`Phase 2 v2.2#L200`](../项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md#L200) 及本登记册 `G-12`/`G-13` 全部反向链接；《设计组审查记录 v4》（§七）已原样录入落盘。
+- **宪法缺口正式登记（检验 C 法定判决判据缺失）**：
+  - **缺口定位**：[`项目方案 v2.9#L125-127`](../项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md#L125-L127) 仅定性定义检验 C 为“2019 全年回放，按 `站 × 季 × 早晚段` 粒度，发现超出阈值且不可在线推导补偿的系统性偏差时切换 `β / γ`”，而 [`SPEC v2.0`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md) 与 `v2.9` 正文中**均未设定检验 C 的可机械执行定量阈值（ΔCRPS、ΔECE、原子出界上限或 A/B/C 档映射）**，构成宪法层面判据缺口；
+  - **临时管辖依据**：在终裁前暂行依据设计组在 [`P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md) `v3`（规则一/二/三 + 硬时间盒）与 `v4` 轮次预先注册之指令门禁执行（禁止事后造门槛）；
+  - **法定期限**：**须于终裁签发后 30 日内**将经设计组批准之检验 C 定量判决判据与逃生触发阈值以勘误形式补写写入 `项目方案` 与 `SPEC v2.0`（或升版纳入），逾期视为治理未闭环。
+- **当前阶段冻结门禁（阻塞单次修复与最终重跑）**：
+  1. **真值源分岔审计已完结、待设计组拍板选线**：已按只读纪律查明 `2019-10-02` `-12.6°F` 及全盘 `20–24%` 跨零档根因，在设计组择定真值源对齐分支前不执行任何真值切换；
+  2. **`G1 / G2 / G3` 数值定义与 `A / B / C` 档映射待设计组下发正文**：指令文本中仅写明 `G2a: max_slice |E[Y_bridge] - E[Y_native]| <= 2.0°F`，未附带 `G1` / `G2` / `G3` 完整阈值及 `A / B / C` 档布尔映射表；依“严禁自造门槛”纪律，待设计组补发完整预注册门禁后执行 `ρ` 正则化修复及时间盒内最后一次 2019 重跑。
