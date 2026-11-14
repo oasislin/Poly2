@@ -1,0 +1,699 @@
+{
+  "schema_version": "p8_mu_r_cooling_drift_calibration_v1",
+  "generated_at_utc": "2026-11-14T12:35:59.889869+00:00",
+  "data_boundary": "2016-04-30 .. 2018-12-30 (608 valid days per station, zero 2019)",
+  "station_metadata": {
+    "KORD": {
+      "input_hashes": {
+        "2016.parquet": "2b44fa9e6b553bee0c6305dd6f3ccc7e773c869467e5dc84366d69360d56854b",
+        "2017.parquet": "802a110b72ab32dd534046469e02fcea836d409fa31f5ca0c81df7a388a0a28d",
+        "2018.parquet": "b6905220d4d447642a8dd9f82483901a96d27ea19b037a515b89b9d3be04b6ac"
+      },
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 609,
+      "excluded_partial_boundary_days": [
+        "2017-12-31"
+      ],
+      "retained_valid_days": 608,
+      "date_min": "2016-04-30",
+      "date_max": "2018-12-30"
+    },
+    "KMIA": {
+      "input_hashes": {
+        "2016.parquet": "d2d3726f3e030742719e1ed21e8d2d3cf891cd23d643d603fda7c02459392fbe",
+        "2017.parquet": "e388f6babc13f3c884a9733e39f1530d145f5c0fc7a7ab2af29b427d3acc9ee4",
+        "2018.parquet": "a905bd199111c8b9e272cc503f74c1b727ae62608f3c73adc843a2472ff400c4"
+      },
+      "qc_out_of_range_dropped": 0,
+      "qc_short_step_jump_dropped": 0,
+      "madishf_candidate_days": 609,
+      "excluded_partial_boundary_days": [
+        "2017-12-31"
+      ],
+      "retained_valid_days": 608,
+      "date_min": "2016-04-30",
+      "date_max": "2018-12-30"
+    }
+  },
+  "parameterization": {
+    "form": "piecewise_linear_c0_analytic_derivative",
+    "t_peak": 13.5,
+    "kappa_knots": [
+      6.0,
+      9.0,
+      12.0,
+      13.5,
+      15.0,
+      17.0,
+      20.0
+    ],
+    "delta_knots": [
+      13.5,
+      14.0,
+      15.0,
+      16.5,
+      18.0,
+      20.0
+    ],
+    "reg_second_diff": 0.0015,
+    "stage97_deriv_max_fd_error": 0.0
+  },
+  "curves": {
+    "KORD": {
+      "Autumn": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.316269,
+          0.416436,
+          0.691979,
+          0.863156,
+          0.814019,
+          0.768848,
+          0.422839
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.111746,
+          0.401318,
+          0.573451,
+          0.338104,
+          0.0
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Spring": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.395325,
+          0.410771,
+          0.643512,
+          1.018815,
+          1.143477,
+          1.000852,
+          0.874793
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.0,
+          0.267173,
+          0.759725,
+          1.12826,
+          1.574941
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Summer": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.235158,
+          0.308612,
+          0.307664,
+          0.376027,
+          0.375439,
+          0.452209,
+          0.677549
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.18422,
+          0.483638,
+          0.882945,
+          1.31762,
+          1.818728
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Winter": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.345652,
+          0.610854,
+          1.25116,
+          1.403421,
+          1.265852,
+          0.799699,
+          0.373949
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.541716,
+          0.791512,
+          0.408256,
+          0.0,
+          0.0
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      }
+    },
+    "KMIA": {
+      "Autumn": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.243188,
+          0.203119,
+          0.329208,
+          0.472328,
+          0.312254,
+          0.505019,
+          0.743732
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.780428,
+          1.400642,
+          1.561732,
+          1.227148,
+          0.670322
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Spring": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.01261,
+          0.058472,
+          0.331346,
+          0.285185,
+          0.263261,
+          0.722533,
+          1.20829
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.432192,
+          0.79495,
+          1.136858,
+          1.529679,
+          1.931722
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Summer": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.0,
+          0.0,
+          0.052777,
+          0.219764,
+          0.254022,
+          0.45191,
+          0.659025
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.57609,
+          1.109546,
+          1.643803,
+          2.253679,
+          2.865297
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      },
+      "Winter": {
+        "t_peak": 13.5,
+        "kappa_knots": [
+          6.0,
+          9.0,
+          12.0,
+          13.5,
+          15.0,
+          17.0,
+          20.0
+        ],
+        "kappa_values": [
+          0.298737,
+          0.263231,
+          0.280727,
+          0.517611,
+          0.641671,
+          0.801163,
+          0.962627
+        ],
+        "delta_knots": [
+          13.5,
+          14.0,
+          15.0,
+          16.5,
+          18.0,
+          20.0
+        ],
+        "delta_values": [
+          0.0,
+          0.756673,
+          1.38869,
+          2.076878,
+          2.775308,
+          3.475783
+        ],
+        "stage97_deriv_max_fd_error": 0.0
+      }
+    }
+  },
+  "reachability_kmia_1500_2000": {
+    "n_obs": 6688,
+    "mu_r_quantiles_10_25_50_75_90": [
+      -8.8902,
+      -6.2878,
+      -4.2175,
+      -2.384,
+      -1.5097
+    ],
+    "frac_mu_r_le_minus_1_2": 0.941986,
+    "frac_phi_at_09_ge_095": 0.902961,
+    "frac_phi_actual_ge_095": 0.902961,
+    "min_mu_r": -23.6809,
+    "max_mu_r": 1.7794,
+    "reachable": true
+  },
+  "baseline_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17807,
+      "wMAE": 0.051684,
+      "wResid": 0.002827,
+      "out95": 69
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 14924,
+      "wMAE": 0.032393,
+      "wResid": 1e-05,
+      "out95": 43
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2883,
+      "wMAE": 0.151547,
+      "wResid": 0.017411,
+      "out95": 26
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1649,
+      "wMAE": 0.2521,
+      "wResid": 0.192482,
+      "out95": 54
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3188,
+      "wMAE": 0.568774,
+      "wResid": 0.568774,
+      "out95": 104
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5263,
+      "wMAE": 0.488981,
+      "wResid": 0.487823,
+      "out95": 102
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7357,
+      "wMAE": 0.431911,
+      "wResid": 0.430291,
+      "out95": 98
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 304,
+    "aft_kord_out95": 148,
+    "aft_kmia_out95": 156
+  },
+  "calibrated_stats": {
+    "early_B12_pooled": {
+      "cells": 237,
+      "n_obs": 17807,
+      "wMAE": 0.048242,
+      "wResid": -0.03426,
+      "out95": 52
+    },
+    "early_B1": {
+      "cells": 128,
+      "n_obs": 14924,
+      "wMAE": 0.031654,
+      "wResid": -0.023736,
+      "out95": 26
+    },
+    "early_B2": {
+      "cells": 109,
+      "n_obs": 2883,
+      "wMAE": 0.134108,
+      "wResid": -0.088738,
+      "out95": 26
+    },
+    "early_B3": {
+      "cells": 93,
+      "n_obs": 1649,
+      "wMAE": 0.161683,
+      "wResid": 0.002143,
+      "out95": 21
+    },
+    "aft_B1": {
+      "cells": 104,
+      "n_obs": 3188,
+      "wMAE": 0.061347,
+      "wResid": 0.050827,
+      "out95": 10
+    },
+    "aft_B2": {
+      "cells": 104,
+      "n_obs": 5263,
+      "wMAE": 0.017757,
+      "wResid": -0.008584,
+      "out95": 3
+    },
+    "aft_B3": {
+      "cells": 104,
+      "n_obs": 7357,
+      "wMAE": 0.027269,
+      "wResid": -0.018969,
+      "out95": 15
+    },
+    "aft_total_cells": 312,
+    "aft_total_out95": 28,
+    "aft_kord_out95": 26,
+    "aft_kmia_out95": 2
+  },
+  "early_b3_cooling_subset": {
+    "n_obs": 1097,
+    "emp_no_new_raw": 0.824066,
+    "pred_before": 0.498589,
+    "resid_before": 0.325476,
+    "pred_after": 0.784705,
+    "resid_after": 0.03936
+  },
+  "unconstrained_criterion2_lower_bound": {
+    "total_afternoon_cells": 312,
+    "unconstrained_min_out95": 14,
+    "conflict_details": [
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 14.0,
+        "pos_bucket": "B1_below_anchor",
+        "n": 61,
+        "emp_no_new": 0.606557,
+        "best_pred": 0.464016,
+        "wilson95_lo": 0.481173,
+        "wilson95_hi": 0.719316
+      },
+      {
+        "station": "KORD",
+        "season": "Autumn",
+        "t_hour": 14.0,
+        "pos_bucket": "B3_at_or_above",
+        "n": 65,
+        "emp_no_new": 0.538462,
+        "best_pred": 0.693244,
+        "wilson95_lo": 0.418534,
+        "wilson95_hi": 0.654097
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.0,
+        "pos_bucket": "B1_below_anchor",
+        "n": 62,
+        "emp_no_new": 0.5,
+        "best_pred": 0.318999,
+        "wilson95_lo": 0.379227,
+        "wilson95_hi": 0.620773
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.0,
+        "pos_bucket": "B2_near_anchor",
+        "n": 34,
+        "emp_no_new": 0.323529,
+        "best_pred": 0.52447,
+        "wilson95_lo": 0.191316,
+        "wilson95_hi": 0.491571
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.0,
+        "pos_bucket": "B3_at_or_above",
+        "n": 28,
+        "emp_no_new": 0.357143,
+        "best_pred": 0.619418,
+        "wilson95_lo": 0.207058,
+        "wilson95_hi": 0.541697
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.5,
+        "pos_bucket": "B1_below_anchor",
+        "n": 57,
+        "emp_no_new": 0.596491,
+        "best_pred": 0.449998,
+        "wilson95_lo": 0.466973,
+        "wilson95_hi": 0.713825
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.5,
+        "pos_bucket": "B2_near_anchor",
+        "n": 31,
+        "emp_no_new": 0.419355,
+        "best_pred": 0.594495,
+        "wilson95_lo": 0.264155,
+        "wilson95_hi": 0.592337
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 14.5,
+        "pos_bucket": "B3_at_or_above",
+        "n": 36,
+        "emp_no_new": 0.444444,
+        "best_pred": 0.650191,
+        "wilson95_lo": 0.295413,
+        "wilson95_hi": 0.604189
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.0,
+        "pos_bucket": "B1_below_anchor",
+        "n": 52,
+        "emp_no_new": 0.711538,
+        "best_pred": 0.562162,
+        "wilson95_lo": 0.577272,
+        "wilson95_hi": 0.8167
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.0,
+        "pos_bucket": "B3_at_or_above",
+        "n": 44,
+        "emp_no_new": 0.590909,
+        "best_pred": 0.754215,
+        "wilson95_lo": 0.444098,
+        "wilson95_hi": 0.723121
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.5,
+        "pos_bucket": "B1_below_anchor",
+        "n": 47,
+        "emp_no_new": 0.808511,
+        "best_pred": 0.664326,
+        "wilson95_lo": 0.67456,
+        "wilson95_hi": 0.895841
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 15.5,
+        "pos_bucket": "B2_near_anchor",
+        "n": 30,
+        "emp_no_new": 0.666667,
+        "best_pred": 0.865137,
+        "wilson95_lo": 0.487801,
+        "wilson95_hi": 0.807695
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 16.0,
+        "pos_bucket": "B1_below_anchor",
+        "n": 46,
+        "emp_no_new": 0.934783,
+        "best_pred": 0.823966,
+        "wilson95_lo": 0.824973,
+        "wilson95_hi": 0.977572
+      },
+      {
+        "station": "KORD",
+        "season": "Spring",
+        "t_hour": 16.0,
+        "pos_bucket": "B3_at_or_above",
+        "n": 51,
+        "emp_no_new": 0.882353,
+        "best_pred": 0.946034,
+        "wilson95_lo": 0.766192,
+        "wilson95_hi": 0.944949
+      }
+    ]
+  },
+  "acceptance_gates": {
+    "criterion_1_early_b12_non_degradation": {
+      "before_b12_wmae": 0.051684,
+      "after_b12_wmae": 0.048242,
+      "before_b1_wmae": 0.032393,
+      "after_b1_wmae": 0.031654,
+      "before_b2_wmae": 0.151547,
+      "after_b2_wmae": 0.134108,
+      "before_b1_out95": 43,
+      "after_b1_out95": 26,
+      "before_b2_out95": 26,
+      "after_b2_out95": 26,
+      "pass": true
+    },
+    "criterion_2_afternoon_all_wilson_ci": {
+      "before_out95": 304,
+      "after_out95": 28,
+      "total_cells": 312,
+      "threshold": 0,
+      "kord_after_out95": 26,
+      "kmia_after_out95": 2,
+      "unconstrained_min_out95": 14,
+      "pass": false
+    },
+    "criterion_3_early_b3_cooling_convergence": {
+      "before_b3_all_wres": 0.192482,
+      "after_b3_all_wres": 0.002143,
+      "before_b3_cooling_resid": 0.325476,
+      "after_b3_cooling_resid": 0.03936,
+      "pass": true
+    },
+    "overall_pass": false
+  }
+}

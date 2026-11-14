@@ -98,3 +98,34 @@ class TestMonotonicConfluenceEngine:
         assert state is not None
         assert state.tmax_so_far == 82.0
         assert state.tmin_so_far == 82.0
+
+
+def test_station_day_state_retains_frame_instant_temp_during_cooling():
+    """Packet drops below running tmax_so_far must preserve frame-level current_temp_f separately."""
+    engine = MonotonicConfluenceEngine()
+    t1 = datetime(2026, 7, 15, 19, 0, tzinfo=timezone.utc)
+    t2 = datetime(2026, 7, 15, 20, 0, tzinfo=timezone.utc)
+    engine.ingest(
+        ObservationPacket(
+            station_id="KMIA",
+            timestamp_utc=t1,
+            temp_c=None,
+            temp_f=91.2,
+            source_type="iem_metar",
+            is_speci=False,
+        )
+    )
+    state = engine.ingest(
+        ObservationPacket(
+            station_id="KMIA",
+            timestamp_utc=t2,
+            temp_c=None,
+            temp_f=84.6,
+            source_type="iem_metar",
+            is_speci=False,
+        )
+    )
+
+    assert state.tmax_so_far == pytest.approx(91.2)
+    assert state.current_temp_f == pytest.approx(84.6)
+    assert engine.get_station_state("KMIA").current_temp_f == pytest.approx(84.6)

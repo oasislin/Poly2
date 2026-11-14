@@ -26,7 +26,15 @@ import pytest
 from scipy import stats
 
 from src.modeling.gaussian_emos import GaussianEMOS
-from src.prediction.dynamic_corrector import DynamicCorrector, TruncatedDistribution
+from src.prediction.dynamic_corrector import (
+    DynamicCorrector,
+    MuRHook,
+    MuRResult,
+    Proposal1CoolingDriftMuRHook,
+    SpecV2BaselineMuRHook,
+    TruncatedDistribution,
+)
+from src.prediction.monotonic_confluence import MonotonicConfluenceEngine, ObservationPacket
 from src.prediction.static_predictor import StaticPredictionResult
 
 
@@ -41,7 +49,7 @@ class TestDynamicCorrectorMaxTemp:
 
     def test_max_temp_threshold_above_current_observation(self, base_emos):
         """When threshold L > T_now, P(X >= L | X >= T_now) = (1 - F(L)) / (1 - F(T_now))."""
-        corrector = DynamicCorrector(current_temperature=24.0)
+        corrector = DynamicCorrector(extreme_m=24.0)
         
         # Prior F(24.0) and F(26.0)
         # mu=25.0, sigma=2.0
@@ -58,7 +66,7 @@ class TestDynamicCorrectorMaxTemp:
 
     def test_max_temp_threshold_below_current_observation(self, base_emos):
         """When threshold L <= T_now, today's max is guaranteed >= L (Probability = 1.0, CDF = 0.0)."""
-        corrector = DynamicCorrector(current_temperature=24.0)
+        corrector = DynamicCorrector(extreme_m=24.0)
         
         # For L = 22.0 (< 24.0) and L = 24.0
         prob_gte_22 = corrector.correct_max_temp_probability(base_emos, threshold=22.0)
@@ -80,7 +88,7 @@ class TestDynamicCorrectorMinTemp:
         # Observation T_now = 26.0 (min temp cannot exceed 26.0)
         # Threshold L = 24.0
         # Expected P(X <= 24 | X <= 26) = F(24) / F(26)
-        corrector = DynamicCorrector(current_temperature=26.0)
+        corrector = DynamicCorrector(extreme_m=26.0)
         
         prob_lte = corrector.correct_min_temp_probability(base_emos, threshold=24.0)
         expected_prob = stats.norm.cdf(24.0, 25.0, 2.0) / stats.norm.cdf(26.0, 25.0, 2.0)
@@ -91,7 +99,7 @@ class TestDynamicCorrectorMinTemp:
 
     def test_min_temp_threshold_above_current_observation(self, base_emos):
         """When threshold L >= T_now, today's min is guaranteed <= L (Probability = 1.0, CDF = 1.0)."""
-        corrector = DynamicCorrector(current_temperature=26.0)
+        corrector = DynamicCorrector(extreme_m=26.0)
         
         prob_lte_26 = corrector.correct_min_temp_probability(base_emos, threshold=26.0)
         prob_lte_28 = corrector.correct_min_temp_probability(base_emos, threshold=28.0)
@@ -108,7 +116,7 @@ class TestTruncatedDistributionInvariants:
 
     def test_max_temp_cdf_strict_monotonicity_and_bounds(self, base_emos):
         """Truncated CDF must be strictly monotonic non-decreasing and bounded in [0, 1]."""
-        corrector = DynamicCorrector(current_temperature=23.5)
+        corrector = DynamicCorrector(extreme_m=23.5)
         dist = corrector.correct(base_emos, target_type="max")
 
         thresholds = np.linspace(15.0, 35.0, 201)
@@ -123,7 +131,7 @@ class TestTruncatedDistributionInvariants:
 
     def test_min_temp_cdf_strict_monotonicity_and_bounds(self, base_emos):
         """Min temp truncated CDF must be strictly monotonic non-decreasing and bounded in [0, 1]."""
-        corrector = DynamicCorrector(current_temperature=27.0)
+        corrector = DynamicCorrector(extreme_m=27.0)
         dist = corrector.correct(base_emos, target_type="min")
 
         thresholds = np.linspace(15.0, 35.0, 201)
@@ -136,7 +144,7 @@ class TestTruncatedDistributionInvariants:
 
     def test_interval_probability_mass_positivity(self, base_emos):
         """Probability of any valid range [a, b] must be >= 0."""
-        corrector = DynamicCorrector(current_temperature=24.0)
+        corrector = DynamicCorrector(extreme_m=24.0)
         dist = corrector.correct(base_emos, target_type="max")
 
         p_range = dist.probability_between(25.0, 28.0)
@@ -146,7 +154,7 @@ class TestTruncatedDistributionInvariants:
 
     def test_quantile_inversion_exactness(self, base_emos):
         """CDF(quantile(p)) == p for probabilities across the distribution."""
-        corrector = DynamicCorrector(current_temperature=24.0)
+        corrector = DynamicCorrector(extreme_m=24.0)
         dist = corrector.correct(base_emos, target_type="max")
 
         for p in [0.1, 0.25, 0.5, 0.75, 0.9]:
@@ -161,7 +169,7 @@ class TestBoundaryAndDegradationSafety:
     def test_missing_observation_returns_prior(self, base_emos):
         """When T_now is None or NaN, returns exact prior Gaussian CDF."""
         for missing_val in [None, np.nan]:
-            corrector = DynamicCorrector(current_temperature=missing_val)
+            corrector = DynamicCorrector(extreme_m=missing_val)
             dist = corrector.correct(base_emos, target_type="max")
             
             assert dist.is_truncated is False
@@ -173,7 +181,7 @@ class TestBoundaryAndDegradationSafety:
 
     def test_extreme_high_max_observation_numerical_safety(self, base_emos):
         """T_now far above mean (e.g. +6 sigma = 37.0°C) must not produce NaN or ZeroDivisionError."""
-        corrector = DynamicCorrector(current_temperature=37.0)
+        corrector = DynamicCorrector(extreme_m=37.0)
         dist = corrector.correct(base_emos, target_type="max")
 
         # Thresholds below 37.0 should have CDF = 0.0
@@ -186,7 +194,7 @@ class TestBoundaryAndDegradationSafety:
 
     def test_extreme_low_min_observation_numerical_safety(self, base_emos):
         """T_now far below mean (e.g. -6 sigma = 13.0°C) must not produce NaN or ZeroDivisionError."""
-        corrector = DynamicCorrector(current_temperature=13.0)
+        corrector = DynamicCorrector(extreme_m=13.0)
         dist = corrector.correct(base_emos, target_type="min")
 
         # Thresholds above 13.0 should have CDF = 1.0
@@ -204,16 +212,170 @@ class TestBoundaryAndDegradationSafety:
 
         # 08:00 observation: 20.0°C
         t0 = datetime(2026, 8, 20, 8, 0, tzinfo=timezone.utc)
-        corrector.update_observation(20.0, observation_time=t0)
+        corrector.update_observation(20.0, instant_x_t=20.0, t_local=t0)
         dist1 = corrector.correct(base_emos, target_type="max")
         assert dist1.is_truncated is True
         assert dist1.current_temperature == 20.0
 
         # 12:00 observation: 24.5°C
         t1 = datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc)
-        corrector.update_observation(24.5, observation_time=t1)
+        corrector.update_observation(24.5, instant_x_t=24.5, t_local=t1)
         dist2 = corrector.correct(base_emos, target_type="max")
         assert dist2.current_temperature == 24.5
         assert dist2.observation_time == t1
         # P(X >= 25) at 12:00 should be significantly higher than at 08:00
         assert dist2.probability_greater_than_or_equal(25.0) > dist1.probability_greater_than_or_equal(25.0)
+
+
+class TestThreeInputInterfaceAndSwappableMuRHook:
+    """Tests for (extreme_m, instant_x_t, t_local), StationDayState separation, and swappable mu_R hooks."""
+
+    def test_station_state_preserves_separated_extreme_and_instant_temp(self):
+        engine = MonotonicConfluenceEngine()
+        t1 = datetime(2018, 7, 15, 19, 0, tzinfo=timezone.utc)
+        t2 = datetime(2018, 7, 15, 20, 0, tzinfo=timezone.utc)
+        engine.ingest(
+            ObservationPacket(
+                station_id="KMIA",
+                timestamp_utc=t1,
+                temp_c=None,
+                temp_f=89.5,
+                source_type="iem_metar",
+                is_speci=False,
+            )
+        )
+        state = engine.ingest(
+            ObservationPacket(
+                station_id="KMIA",
+                timestamp_utc=t2,
+                temp_c=None,
+                temp_f=83.2,
+                source_type="iem_metar",
+                is_speci=False,
+            )
+        )
+
+        assert state.tmax_so_far == pytest.approx(89.5)
+        assert state.current_temp_f == pytest.approx(83.2)
+
+        emos = GaussianEMOS(a=88.0, b=0.0, c=2.0, d=0.0)
+        emos.mu = 88.0
+        emos.sigma = 2.0
+        corrector = DynamicCorrector()
+        dist = corrector.correct_with_station_state(
+            base_distribution=emos,
+            station_state=state,
+            target_type="max",
+            t_local=15.0,
+            station_id="KMIA",
+            season="Summer",
+        )
+        assert dist.extreme_m == pytest.approx(89.5)
+        assert dist.instant_x_t == pytest.approx(83.2)
+        assert dist.t_local_hour == pytest.approx(15.0)
+        assert dist.mu_r_result is not None
+        assert dist.mu_r_result.cooling_term > 0.0
+        assert dist.mu_r_result.mu_r < 0.0
+
+    def test_swappable_hook_and_kmia_afternoon_reachability(self):
+        baseline_hook = SpecV2BaselineMuRHook()
+        proposal1_hook = Proposal1CoolingDriftMuRHook.from_calibration_artifact()
+        corrector = DynamicCorrector(mu_r_hook=baseline_hook)
+
+        # Baseline caps Phi(-mu_R / sigma_rem) <= 0.5 whenever mu_0 >= m
+        res_base = corrector.evaluate_mu_r(
+            t_local=16.0,
+            extreme_m=87.0,
+            instant_x_t=82.0,
+            mu_0=88.0,
+            station_id="KMIA",
+            season="Summer",
+        )
+        p_base = corrector.compute_bridge_no_new_extremum_prob(
+            t_local=16.0,
+            extreme_m=87.0,
+            instant_x_t=82.0,
+            mu_0=88.0,
+            sigma_rem=0.9,
+            station_id="KMIA",
+            season="Summer",
+        )
+        assert res_base.mu_r >= 0.0
+        assert p_base <= 0.5
+
+        # Swap hook to calibrated Proposal 1 -> negative drift yields Phi(-mu_R / 0.9) >= 0.95
+        corrector.set_mu_r_hook(proposal1_hook)
+        res_p1 = corrector.evaluate_mu_r(
+            t_local=16.0,
+            extreme_m=87.0,
+            instant_x_t=82.0,
+            mu_0=88.0,
+            station_id="KMIA",
+            season="Summer",
+        )
+        p_p1 = corrector.compute_bridge_no_new_extremum_prob(
+            t_local=16.0,
+            extreme_m=87.0,
+            instant_x_t=82.0,
+            mu_0=88.0,
+            sigma_rem=0.9,
+            station_id="KMIA",
+            season="Summer",
+        )
+        assert res_p1.mu_r <= -1.48
+        assert p_p1 >= 0.95
+
+    def test_proposal1_analytical_stage97_derivative_matches_fd(self):
+        hook = Proposal1CoolingDriftMuRHook.from_calibration_artifact()
+        eps = 1e-5
+        for t in (11.2, 14.3, 17.1):
+            res = hook.compute(
+                t_local=t,
+                extreme_m=72.0,
+                instant_x_t=68.0,
+                mu_0=74.0,
+                station_id="KORD",
+                season="Spring",
+            )
+            rp = hook.compute(
+                t_local=t + eps,
+                extreme_m=72.0,
+                instant_x_t=68.0,
+                mu_0=74.0,
+                station_id="KORD",
+                season="Spring",
+            )
+            rm = hook.compute(
+                t_local=t - eps,
+                extreme_m=72.0,
+                instant_x_t=68.0,
+                mu_0=74.0,
+                station_id="KORD",
+                season="Spring",
+            )
+            fd = (rp.mu_r - rm.mu_r) / (2.0 * eps)
+            assert res.d_mu_r_dt == pytest.approx(fd, abs=1e-6)
+
+    def test_proposal1_hook_guards_tmin_until_w3_calibration(self):
+        hook = Proposal1CoolingDriftMuRHook.from_calibration_artifact()
+        with pytest.raises(NotImplementedError):
+            hook.compute(
+                t_local=7.0,
+                extreme_m=60.0,
+                instant_x_t=62.0,
+                mu_0=59.0,
+                target_type="min",
+                station_id="KMIA",
+                season="Winter",
+            )
+
+    def test_custom_hook_protocol_injection(self):
+        class ConstantNegHook:
+            def compute(self, t_local, extreme_m, instant_x_t, mu_0, target_type="max", station_id=None, season=None):
+                return MuRResult(mu_r=-2.0, d_mu_r_dt=0.0, scheme="constant_neg")
+
+        hook: MuRHook = ConstantNegHook()
+        corrector = DynamicCorrector(mu_r_hook=hook)
+        res = corrector.evaluate_mu_r(15.0, 80.0, 78.0, 80.0)
+        assert res.mu_r == -2.0
+        assert res.scheme == "constant_neg"

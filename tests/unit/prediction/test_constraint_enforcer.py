@@ -4,9 +4,9 @@ Unit tests for ConstraintEnforcer and ConstrainedDistribution (Ticket 3.3-01 / I
 
 Verifies:
 1. Physical warming/cooling rate limits retrieval by station (ZSPD, KDEN) and season.
-2. Reachable temperature range calculation:
-   T_max_possible = T_now + r_warm * delta_t
-   T_min_possible = T_now - r_cool * delta_t
+2. Reachable temperature range calculation (respecting extremum irreversibility):
+   - Daily "max": [T_now, T_now + r_warm * delta_t]
+   - Daily "min": [T_now - r_cool * delta_t, T_now]
 3. Physical constraint override on Max Temp CDF:
    - For L > T_max_possible: P(X >= L) = 0.0 => F_phys(L) = 1.0
    - For L <= T_max_possible: preserves input distribution.
@@ -60,24 +60,51 @@ class TestRateLimitsAndRangeCalculation:
         assert r_warm_den == 5.0
         assert r_cool_den == 9.0
 
+    def test_active10_default_rate_limits_in_fahrenheit(self, enforcer):
+        """Active 10 stations receive default rate limits converted by 1.8x to °F/h, leaving ZSPD/KDEN untouched."""
+        # ZSPD Summer is (3.5, 3.5) °C/h -> Active 10 default converts to (6.3, 6.3) °F/h
+        r_warm_mia, r_cool_mia = enforcer.get_rate_limits(station_id="KMIA", season="Summer")
+        assert np.isclose(r_warm_mia, 3.5 * 1.8)
+        assert np.isclose(r_cool_mia, 3.5 * 1.8)
+
+        # ZSPD Winter is (3.0, 5.0) °C/h -> Active 10 default converts to (5.4, 9.0) °F/h
+        r_warm_ord, r_cool_ord = enforcer.get_rate_limits(station_id="KORD", season="Winter")
+        assert np.isclose(r_warm_ord, 3.0 * 1.8)
+        assert np.isclose(r_cool_ord, 5.0 * 1.8)
+
+        # Explicit custom_rate_limits for an Active 10 station are NOT scaled a second time
+        custom = ConstraintEnforcer(custom_rate_limits={"KMIA": {"Summer": (7.5, 8.0)}})
+        assert custom.get_rate_limits("KMIA", "Summer") == (7.5, 8.0)
+
     def test_reachable_range_with_explicit_delta_hours(self, enforcer):
-        """Test [T_min_possible, T_max_possible] with delta_hours = 2.0."""
+        """Test asymmetric [T_min_possible, T_max_possible] for max and min targets with delta_hours = 2.0."""
         # ZSPD Summer: r_warm=3.5, r_cool=3.5. Current T_now = 30.0, delta_t = 2.0h
-        # T_max_possible = 30.0 + 3.5 * 2.0 = 37.0°C
-        # T_min_possible = 30.0 - 3.5 * 2.0 = 23.0°C
-        t_min, t_max = enforcer.calculate_reachable_range(
+        # For daily max (irreversible >= T_now): [30.0, 30.0 + 3.5 * 2.0] = [30.0, 37.0]
+        t_min_max, t_max_max = enforcer.calculate_reachable_range(
             station_id="ZSPD",
             season="Summer",
             current_temp=30.0,
+            target_type="max",
             delta_hours=2.0,
         )
-        assert np.isclose(t_min, 23.0, atol=1e-5)
-        assert np.isclose(t_max, 37.0, atol=1e-5)
+        assert np.isclose(t_min_max, 30.0, atol=1e-5)
+        assert np.isclose(t_max_max, 37.0, atol=1e-5)
+
+        # For daily min (irreversible <= T_now): [30.0 - 3.5 * 2.0, 30.0] = [23.0, 30.0]
+        t_min_min, t_max_min = enforcer.calculate_reachable_range(
+            station_id="ZSPD",
+            season="Summer",
+            current_temp=30.0,
+            target_type="min",
+            delta_hours=2.0,
+        )
+        assert np.isclose(t_min_min, 23.0, atol=1e-5)
+        assert np.isclose(t_max_min, 30.0, atol=1e-5)
 
     def test_reachable_range_from_observation_time(self, enforcer):
         """Observation at 12:00 local time with max temp peak at 15:00 local time (delta_t = 3h)."""
         # T_now = 28.0, 3 hours to 15:00 peak, r_warm = 3.5°C/h
-        # T_max_possible = 28.0 + 3.5 * 3 = 38.5°C
+        # Daily max reachable: [28.0, 38.5]°C
         t_min, t_max = enforcer.calculate_reachable_range(
             station_id="ZSPD",
             season="Summer",
@@ -85,6 +112,7 @@ class TestRateLimitsAndRangeCalculation:
             target_type="max",
             observation_time=time(12, 0),
         )
+        assert np.isclose(t_min, 28.0, atol=1e-5)
         assert np.isclose(t_max, 38.5, atol=1e-5)
 
     def test_past_peak_zero_delta_hours(self, enforcer):
@@ -97,6 +125,7 @@ class TestRateLimitsAndRangeCalculation:
             target_type="max",
             observation_time=time(16, 30),
         )
+        assert np.isclose(t_min, 32.0, atol=1e-5)
         assert np.isclose(t_max, 32.0, atol=1e-5)
 
 
@@ -227,7 +256,7 @@ class TestFullThreeLayerStackIntegration:
         """Dynamic truncation + Physical upper limit combination."""
         # Base: mu = 28.0, sigma = 3.0
         # Dynamic: T_now = 27.0 => max cannot be < 27.0 (CDF(L <= 27) = 0)
-        corrector = DynamicCorrector(current_temperature=27.0)
+        corrector = DynamicCorrector(extreme_m=27.0, instant_x_t=27.0)
         truncated_dist = corrector.correct(base_emos, target_type="max")
 
         # Physical: delta_t = 1.0h, r_warm = 3.5 => T_max_possible = 30.5°C

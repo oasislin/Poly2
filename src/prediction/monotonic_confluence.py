@@ -26,6 +26,7 @@ class StationDayState:
     last_update_utc: datetime
     last_source: str
     observation_count: int
+    current_temp_f: Optional[float] = None
 
 
 class MonotonicConfluenceEngine:
@@ -69,6 +70,7 @@ class MonotonicConfluenceEngine:
             last_update_utc=st["last_update_utc"],
             last_source=st["last_source"],
             observation_count=st["observation_count"],
+            current_temp_f=st.get("current_temp_f"),
         )
 
     def ingest(self, packet: ObservationPacket) -> StationDayState:
@@ -105,6 +107,7 @@ class MonotonicConfluenceEngine:
                 "local_date": local_date,
                 "tmax_so_far": packet.temp_f,
                 "tmin_so_far": packet.temp_f,
+                "current_temp_f": packet.temp_f,
                 "last_update_utc": pkt_time_utc,
                 "last_source": packet.source_type,
                 "observation_count": 1,
@@ -118,6 +121,7 @@ class MonotonicConfluenceEngine:
 
             current["tmax_so_far"] = new_tmax
             current["tmin_so_far"] = new_tmin
+            current["current_temp_f"] = packet.temp_f
             current["last_update_utc"] = pkt_time_utc
             current["last_source"] = packet.source_type
             current["observation_count"] += 1

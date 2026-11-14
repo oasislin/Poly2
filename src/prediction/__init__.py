@@ -2,7 +2,14 @@
 
 from src.prediction.bin_converter import BinConverter, MarketBin
 from src.prediction.constraint_enforcer import ConstrainedDistribution, ConstraintEnforcer
-from src.prediction.dynamic_corrector import DynamicCorrector, TruncatedDistribution
+from src.prediction.dynamic_corrector import (
+    DynamicCorrector,
+    MuRHook,
+    MuRResult,
+    Proposal1CoolingDriftMuRHook,
+    SpecV2BaselineMuRHook,
+    TruncatedDistribution,
+)
 from src.prediction.prediction_pipeline import PredictionPipeline, PredictionRecord
 from src.prediction.static_predictor import StaticPredictor, StaticPredictionResult
 
@@ -11,6 +18,10 @@ __all__ = [
     "StaticPredictionResult",
     "DynamicCorrector",
     "TruncatedDistribution",
+    "MuRHook",
+    "MuRResult",
+    "SpecV2BaselineMuRHook",
+    "Proposal1CoolingDriftMuRHook",
     "ConstraintEnforcer",
     "ConstrainedDistribution",
     "BinConverter",

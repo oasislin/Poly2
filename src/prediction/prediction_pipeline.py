@@ -8,7 +8,8 @@ Implements (Phase 1C / v5.9.2):
        -> Stage 1: StaticPredictor (Base Gaussian EMOS & Parameter Routing)
        -> Stage 2: DynamicCorrector (Real-time Observation Truncation)
        -> Stage 3: ConstraintEnforcer (Historical Rate Limit Reachability Bounds)
-       -> Stage 4: BinConverter (Polymarket Discrete Bins & Normalization)
+       -> Stage 4: Statutory 2°F adsorbed grid for ACTIVE_10_STATIONS (DiscreteBinEngine),
+                   legacy BinConverter bins otherwise (custom_bins overrides both)
     2. SQLite Database Persistence:
        - Upserts complete prediction records (distribution parameters, dynamic observations, discrete bin probabilities JSON)
        - Provides historical queries and replay capabilities.
@@ -24,13 +25,20 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from src.data_processing.constants import ACTIVE_10_STATIONS
 from src.data_processing.database import DEFAULT_DB_PATH
 from src.modeling.climatology import ClimatologyCalculator
 from src.modeling.gaussian_emos import GaussianEMOS
 from src.modeling.registry import ModelRegistry
-from src.prediction.bin_converter import BinConverter, MarketBin
+from src.prediction.bin_converter import BinConverter, MarketBin, celsius_to_fahrenheit
 from src.prediction.constraint_enforcer import ConstrainedDistribution, ConstraintEnforcer
-from src.prediction.dynamic_corrector import DynamicCorrector, TruncatedDistribution
+from src.prediction.discrete_bin_engine import DiscreteBin, DiscreteBinEngine
+from src.prediction.dynamic_corrector import (
+    DynamicCorrector,
+    MuRHook,
+    TruncatedDistribution,
+)
+from src.prediction.monotonic_confluence import StationDayState
 from src.prediction.static_predictor import StaticPredictionResult, StaticPredictor
 
 logger = logging.getLogger(__name__)
@@ -76,7 +84,7 @@ class PredictionRecord:
     static_distribution: StaticPredictionResult
     dynamic_distribution: TruncatedDistribution
     constrained_distribution: ConstrainedDistribution
-    market_bins: List[MarketBin]
+    market_bins: List[Union[MarketBin, DiscreteBin]]
     is_interpolated: bool = False
     is_short_lead_decay: bool = False
     is_truncated: bool = False
@@ -87,8 +95,26 @@ class PredictionRecord:
         """Map bin labels to their normalized probabilities."""
         return {b.label: float(b.probability) for b in self.market_bins}
 
-    def get_winning_bin(self, observed_temp: float, unit: str = "C") -> Tuple[int, MarketBin]:
+    def get_winning_bin(
+        self, observed_temp: float, unit: str = "C"
+    ) -> Tuple[int, Union[MarketBin, DiscreteBin]]:
         """Determine which market bin settles as YES (1) for ground truth observed_temp."""
+        if self.market_bins and isinstance(self.market_bins[0], DiscreteBin):
+            obs_f = float(observed_temp) if unit.upper().startswith("F") else float(
+                celsius_to_fahrenheit(float(observed_temp))
+            )
+            for idx, b in enumerate(self.market_bins):
+                if np.isposinf(b.upper_bound_f):
+                    hit = obs_f >= b.lower_bound_f
+                elif np.isneginf(b.lower_bound_f):
+                    hit = obs_f < b.upper_bound_f
+                else:
+                    hit = b.lower_bound_f <= obs_f < b.upper_bound_f
+                if hit:
+                    return idx, b
+            raise ValueError(
+                f"No statutory discrete bin contains observed temperature {observed_temp}°{unit}"
+            )
         return BinConverter.determine_winning_bin(self.market_bins, observed_temp=observed_temp, unit=unit)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -121,13 +147,19 @@ class PredictionPipeline:
         climatology_calculator: Optional[Union[ClimatologyCalculator, Any]] = None,
         constraint_enforcer: Optional[ConstraintEnforcer] = None,
         bin_converter: Optional[BinConverter] = None,
+        dynamic_corrector: Optional[DynamicCorrector] = None,
+        mu_r_hook: Optional[MuRHook] = None,
         db_path: Union[str, Path] = DEFAULT_DB_PATH,
     ):
         self.static_predictor = StaticPredictor(
             model_registry=model_registry,
             climatology_calculator=climatology_calculator,
         )
-        self.dynamic_corrector = DynamicCorrector()
+        self.dynamic_corrector = (
+            dynamic_corrector
+            if dynamic_corrector is not None
+            else DynamicCorrector(mu_r_hook=mu_r_hook)
+        )
         self.constraint_enforcer = constraint_enforcer or ConstraintEnforcer()
         self.bin_converter = bin_converter or BinConverter()
         self.db_path = Path(db_path)
@@ -158,7 +190,16 @@ class PredictionPipeline:
         observation_time: Optional[Union[str, datetime]],
         delta_hours: Optional[float],
         custom_bins: Optional[List[MarketBin]],
-    ) -> Tuple[StaticPredictionResult, TruncatedDistribution, ConstrainedDistribution, List[MarketBin]]:
+        extreme_m: Optional[float] = None,
+        instant_x_t: Optional[float] = None,
+        t_local: Optional[Union[float, str, datetime]] = None,
+        station_state: Optional[StationDayState] = None,
+    ) -> Tuple[
+        StaticPredictionResult,
+        TruncatedDistribution,
+        ConstrainedDistribution,
+        List[Union[MarketBin, DiscreteBin]],
+    ]:
         """Run through the 4 prediction stages."""
         static_res = self.static_predictor.predict_single(
             station_id=station,
@@ -170,36 +211,89 @@ class PredictionPipeline:
             sigma_clim_squared=sigma_clim_squared,
         )
 
-        truncated_dist = self.dynamic_corrector.correct(
-            base_distribution=static_res,
-            target_type=t_type,
-            current_temperature=current_temp,
-            observation_time=observation_time if isinstance(observation_time, datetime) else None,
-        )
+        effective_t_local = t_local if t_local is not None else observation_time
+        if station_state is not None:
+            truncated_dist = self.dynamic_corrector.correct_with_station_state(
+                base_distribution=static_res,
+                station_state=station_state,
+                target_type=t_type,
+                t_local=effective_t_local,
+                station_id=station,
+                season=static_res.season,
+            )
+        else:
+            m_val = extreme_m if extreme_m is not None else current_temp
+            x_val = instant_x_t if instant_x_t is not None else current_temp
+            truncated_dist = self.dynamic_corrector.correct(
+                base_distribution=static_res,
+                target_type=t_type,
+                extreme_m=m_val,
+                instant_x_t=x_val,
+                t_local=effective_t_local,
+                station_id=station,
+                season=static_res.season,
+            )
 
         constrained_dist = self.constraint_enforcer.enforce(
             distribution=truncated_dist,
             station_id=station,
             season=static_res.season,
             target_type=t_type,
-            current_temp=current_temp,
+            current_temp=truncated_dist.extreme_m,
             observation_time=observation_time,
             delta_hours=delta_hours,
         )
 
-        market_bins = custom_bins if (custom_bins is not None and len(custom_bins) > 0) else self.bin_converter.generate_bins(
-            station_id=station,
-            center_temp=static_res.mu,
-            spread=static_res.sigma,
-        )
-
-        evaluated_bins = self.bin_converter.calculate_bin_probabilities(
-            distribution=constrained_dist,
-            bins=market_bins,
-            normalize=True,
-        )
+        if custom_bins is not None and len(custom_bins) > 0:
+            evaluated_bins: List[Union[MarketBin, DiscreteBin]] = self.bin_converter.calculate_bin_probabilities(
+                distribution=constrained_dist,
+                bins=custom_bins,
+                normalize=True,
+            )
+        elif station in ACTIVE_10_STATIONS:
+            # ACTIVE_10 models and settlement bins are both natively in °F;
+            # map directly onto the P4-AUDIT v1.1 2°F adsorbed grid without °C<->°F conversion.
+            evaluated_bins = self._generate_statutory_2deg_bins(
+                distribution=constrained_dist,
+                mu_fahrenheit=static_res.mu,
+                station=station,
+            )
+        else:
+            legacy_bins = self.bin_converter.generate_bins(
+                station_id=station,
+                center_temp=static_res.mu,
+                spread=static_res.sigma,
+            )
+            evaluated_bins = self.bin_converter.calculate_bin_probabilities(
+                distribution=constrained_dist,
+                bins=legacy_bins,
+                normalize=True,
+            )
 
         return static_res, truncated_dist, constrained_dist, evaluated_bins
+
+    def _generate_statutory_2deg_bins(
+        self,
+        distribution: ConstrainedDistribution,
+        mu_fahrenheit: float,
+        station: str,
+    ) -> List[DiscreteBin]:
+        """Build the P4-AUDIT v1.1 statutory 2°F adsorbed grid and integrate the constrained CDF onto it.
+
+        ACTIVE_10 models and statutory 2°F bins share the native °F unit; the constrained CDF
+        is evaluated directly on the °F edges without double °C<->°F conversion.
+        """
+        bins = DiscreteBinEngine.generate_2deg_adsorbed_bins(
+            mu=float(mu_fahrenheit),
+            station_id=station,
+        )
+        probabilities = DiscreteBinEngine.calculate_2deg_bin_probabilities(
+            bins,
+            cdf_fn=lambda bound_f: float(distribution.cdf(float(bound_f))),
+        )
+        for discrete_bin, probability in zip(bins, probabilities):
+            discrete_bin.probability = float(probability)
+        return bins
 
     def predict_single(
         self,
@@ -216,6 +310,10 @@ class PredictionPipeline:
         custom_bins: Optional[List[MarketBin]] = None,
         issue_time: Optional[str] = None,
         save_to_db: bool = True,
+        extreme_m: Optional[float] = None,
+        instant_x_t: Optional[float] = None,
+        t_local: Optional[Union[float, str, datetime]] = None,
+        station_state: Optional[StationDayState] = None,
     ) -> PredictionRecord:
         """Run the full 4-stage prediction pipeline for a single target."""
         station = station_id.upper()
@@ -223,7 +321,8 @@ class PredictionPipeline:
         t_type = target_type.lower()
         lead = float(lead_time_hours)
         now_iso = issue_time or datetime.now(timezone.utc).isoformat()
-        obs_time_str = observation_time.strftime("%H:%M") if isinstance(observation_time, datetime) else (str(observation_time) if observation_time else None)
+        time_src = t_local if t_local is not None else observation_time
+        obs_time_str = time_src.strftime("%H:%M") if isinstance(time_src, datetime) else (str(time_src) if time_src is not None else None)
 
         static_res, truncated_dist, constrained_dist, evaluated_bins = self._execute_prediction_stack(
             station=station,
@@ -237,6 +336,10 @@ class PredictionPipeline:
             observation_time=observation_time,
             delta_hours=delta_hours,
             custom_bins=custom_bins,
+            extreme_m=extreme_m,
+            instant_x_t=instant_x_t,
+            t_local=t_local,
+            station_state=station_state,
         )
 
         record = PredictionRecord(
@@ -247,7 +350,7 @@ class PredictionPipeline:
             issue_time=now_iso,
             predicted_mu=static_res.mu,
             predicted_sigma=static_res.sigma,
-            current_temp=current_temp,
+            current_temp=truncated_dist.extreme_m,
             observation_time=obs_time_str,
             static_distribution=static_res,
             dynamic_distribution=truncated_dist,
@@ -330,6 +433,9 @@ class PredictionPipeline:
                 sigma_clim_squared=float(row["sigma_clim_squared"]) if "sigma_clim_squared" in row and pd.notna(row["sigma_clim_squared"]) else None,
                 current_temp=float(row["current_temp"]) if "current_temp" in row and pd.notna(row["current_temp"]) else None,
                 observation_time=row.get("observation_time"),
+                extreme_m=float(row["extreme_m"]) if "extreme_m" in row and pd.notna(row["extreme_m"]) else None,
+                instant_x_t=float(row["instant_x_t"]) if "instant_x_t" in row and pd.notna(row["instant_x_t"]) else None,
+                t_local=row.get("t_local"),
                 save_to_db=save_to_db,
             )
             rec_dict = rec.to_dict()

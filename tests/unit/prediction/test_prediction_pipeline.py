@@ -22,6 +22,7 @@ import pytest
 from src.modeling.gaussian_emos import GaussianEMOS
 from src.prediction.bin_converter import BinConverter, MarketBin
 from src.prediction.constraint_enforcer import ConstraintEnforcer
+from src.prediction.discrete_bin_engine import DiscreteBin
 from src.prediction.dynamic_corrector import DynamicCorrector
 from src.prediction.prediction_pipeline import PredictionPipeline, PredictionRecord
 from src.prediction.static_predictor import StaticPredictor, StaticPredictionResult
@@ -35,6 +36,8 @@ class MockRegistry:
             ("ZSPD", "Jja", "max", 30): GaussianEMOS(a=1.0, b=0.95, c=0.4, d=0.8),
             ("ZSPD", "Djf", "min", 24): GaussianEMOS(a=-1.0, b=1.05, c=0.5, d=0.6),
             ("KDEN", "Jja", "max", 30): GaussianEMOS(a=0.0, b=1.0, c=0.3, d=0.7),
+            ("KORD", "Jja", "max", 30): GaussianEMOS(a=0.0, b=1.0, c=0.4, d=0.8),
+            ("KMIA", "Jja", "max", 30): GaussianEMOS(a=0.0, b=1.0, c=0.4, d=0.8),
         }
 
     def get_model(self, station_id, target_date, target_type, lead_hours):
@@ -100,7 +103,8 @@ class TestPredictionPipelineExecution:
         assert record.target_date == "2019-07-15"
         assert record.target_type == "max"
         assert np.isclose(record.predicted_mu, 29.5, atol=1e-5)
-        assert np.isclose(record.predicted_sigma, np.sqrt(5.44), atol=1e-5)
+        # ADR-0015 §2.1: sigma^2 = c^2 + d^2 * ens_var = 0.4^2 + 0.8^2 * 2.0 = 1.44 (clim addend abolished)
+        assert np.isclose(record.predicted_sigma, np.sqrt(1.44), atol=1e-5)
         assert record.is_truncated is True
         assert record.is_physically_constrained is True
 
@@ -134,6 +138,68 @@ class TestPredictionPipelineExecution:
         assert record.market_bins[0].unit == "F"
         total_p = sum(b.probability for b in record.market_bins)
         assert np.isclose(total_p, 1.0, atol=1e-6)
+
+    def test_active10_station_uses_statutory_2deg_grid(self, pipeline):
+        """KORD/KMIA operate natively in °F and land on the statutory 2°F adsorbed grid, never on 1°C bins."""
+        record = pipeline.predict_single(
+            station_id="KORD",
+            target_date="2019-07-15",
+            target_type="max",
+            lead_time_hours=30,
+            ensemble_mean=77.0,  # native °F -> center even bin 76-78°F
+            ensemble_variance=2.0,
+            current_temp=None,
+            save_to_db=False,
+        )
+
+        bins = record.market_bins
+        assert len(bins) == 11
+        assert all(isinstance(b, DiscreteBin) for b in bins)
+        assert bins[0].bin_type == "lte" and bins[-1].bin_type == "gte"
+        # Even-integer 2°F grid with half-degree continuity edges
+        assert bins[0].upper_bound_f == pytest.approx(67.5)
+        assert bins[-1].lower_bound_f == pytest.approx(85.5)
+        window = bins[1:-1]
+        assert all(b.upper_bound_f - b.lower_bound_f == pytest.approx(2.0) for b in window)
+        assert all(b.step_size == 2.0 for b in window)
+        assert np.isclose(sum(b.probability for b in bins), 1.0, atol=1e-9)
+
+        # Settlement uses the °F edges directly, no double °C<->°F conversion
+        idx, winner = record.get_winning_bin(observed_temp=77.0, unit="F")
+        assert winner.label == "76-78°F"
+        assert idx == 5
+
+    def test_active10_kmia_native_fahrenheit_constrained_and_truncated(self, pipeline):
+        """KMIA native °F prediction with dynamic truncation + physical bounds must center near 88°F, never 188-192°F."""
+        record = pipeline.predict_single(
+            station_id="KMIA",
+            target_date="2019-07-15",
+            target_type="max",
+            lead_time_hours=30,
+            ensemble_mean=85.0,  # native °F
+            ensemble_variance=2.0,
+            current_temp=86.0,  # native °F at 12:00 (delta_t = 3h, KMIA Summer r_warm = 6.3°F/h -> T_max = 104.9°F)
+            observation_time="12:00",
+            save_to_db=False,
+        )
+
+        assert np.isclose(record.predicted_mu, 85.0, atol=1e-6)
+        assert record.is_truncated is True
+        assert record.is_physically_constrained is True
+        assert np.isclose(record.constrained_distribution.t_min_possible, 86.0, atol=1e-6)
+        assert np.isclose(record.constrained_distribution.t_max_possible, 86.0 + 6.3 * 3.0, atol=1e-6)
+
+        bins = record.market_bins
+        assert len(bins) == 11
+        # Bins must center around 84-86°F (no 188-192°F double conversion)
+        assert bins[5].label == "84-86°F"
+        assert np.isclose(sum(b.probability for b in bins), 1.0, atol=1e-9)
+        # Dynamic truncation at 86.0°F zeroes <= 85.5°F bins and leaves surviving probability >= 86°F
+        assert bins[5].lower_bound_f == pytest.approx(83.5)
+        assert bins[5].upper_bound_f == pytest.approx(85.5)
+        assert bins[5].probability == pytest.approx(0.0, abs=1e-9)
+        assert bins[6].label == "86-88°F"
+        assert bins[6].probability > 0.3
 
     def test_unobserved_static_flow(self, pipeline):
         """When current_temp is omitted, pipeline generates base forecast + discrete bins without truncation."""
@@ -192,3 +258,49 @@ class TestPredictionPipelineExecution:
         win_idx, win_bin = record.get_winning_bin(observed_temp=30.2, unit="C")
         assert win_bin.label == "30°C"
         assert win_bin.contains(30.2, "C")
+
+
+    def test_predict_single_forwards_three_real_time_inputs_and_station_state(self, pipeline):
+        """PredictionPipeline passes separated extreme_m, instant_x_t, and t_local to DynamicCorrector."""
+        from datetime import datetime, timezone
+        from src.prediction.monotonic_confluence import MonotonicConfluenceEngine, ObservationPacket
+
+        engine = MonotonicConfluenceEngine()
+        t_obs = datetime(2019, 7, 15, 20, 0, tzinfo=timezone.utc)
+        engine.ingest(
+            ObservationPacket(
+                station_id="KMIA",
+                timestamp_utc=t_obs,
+                temp_c=None,
+                temp_f=89.0,
+                source_type="iem_metar",
+                is_speci=False,
+            )
+        )
+        state = engine.ingest(
+            ObservationPacket(
+                station_id="KMIA",
+                timestamp_utc=t_obs,
+                temp_c=None,
+                temp_f=84.0,
+                source_type="iem_metar",
+                is_speci=False,
+            )
+        )
+
+        record = pipeline.predict_single(
+            station_id="KMIA",
+            target_date="2019-07-15",
+            target_type="max",
+            lead_time_hours=30,
+            ensemble_mean=88.0,
+            ensemble_variance=2.0,
+            station_state=state,
+            t_local="15:30",
+            save_to_db=False,
+        )
+        assert record.dynamic_distribution.extreme_m == pytest.approx(89.0)
+        assert record.dynamic_distribution.instant_x_t == pytest.approx(84.0)
+        assert record.dynamic_distribution.t_local_hour == pytest.approx(15.5)
+        assert record.dynamic_distribution.mu_r_result is not None
+        assert record.dynamic_distribution.mu_r_result.mu_r < 0.0
