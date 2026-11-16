@@ -1,11 +1,11 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-11-16 21:20:00
+updated: 2026-11-17 00:35:00
 ---
-# 项目状态（唯一状态入口 · 已对齐 内核定稿 v1.0）
+# 项目状态（唯一状态入口 · 已对齐 `P8-KERNEL-CONSENSUS v1.1`）
 
-> 📌 **法定长线规划与新会话交接导航**：最新内核架构定稿见 [`P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)；战术活队列详见 [`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)；项目战略路线图详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)（`v1.2.0`）；检验 C 全过程档案详见 [`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
-> 📚 **核心宪法文档指针**：顶层方案 [`项目方案 (v2.9)`](docs/项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 Phase 2 执行文件 [`Phase 2 执行文件 v2.2`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 继续生效；`2026-11-16` 新增权威内核约束档 [`P8-KERNEL-CONSENSUS v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)。
+> 📌 **法定长线规划与新会话交接导航**：最新架构基线与增量决议见 [`P8-KERNEL-CONSENSUS v1.1`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)；资金与参数账本见 [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)；`w / φ` 执行设计见 [`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)；平台客观事实见 [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)；战术活队列详见 [`P8-GLOBAL-MAP v1.2`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)；战略路线图见 [`docs/ROADMAP.md v1.3.0`](docs/ROADMAP.md)；检验 C 全过程档案详见 [`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
+> 📚 **核心宪法文档指针**：顶层方案 [`项目方案 (v2.9)`](docs/项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 Phase 2 执行文件 [`Phase 2 执行文件 v2.2`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 继续生效；`2026-11-17` 所有新增参数与策略配置均为 **当前决策 / 首期选择 / 数据前预设（月度复检可替换）**。
 
 > 🚩 **【法定运行旗持续生效（下游强制带旗）】**：  
 > 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（交易窗口加权 ECE = `0.018318` 越线 0.0100，触发器计数 1/2 未达立项门槛；双城 24 格中 23 格 ECE 达标率 95.83%）。  
@@ -36,6 +36,7 @@ updated: 2026-11-16 21:20:00
 - **`2026-11-14 ~ 2026-11-16` 最新节点切换（已对齐 `P8-KERNEL-CONSENSUS v1.0`）**：
   - **检验 C 终裁与 `α` 冻结**：方案 `α` 经 2019 分支 A 与 `2019-SEALED-001` 穷举反事实落地 **`TIER_C`**（推送提交 `58f5b22`），[`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（`src/pricing/`）保持冻结。
   - **内核定稿与资产/路线切换（`2026-11-16`）**：废止合流测绘协议与 `GFS 2020–2024` 历史回填、`GHCN backfill` 降级挂账、`β/γ` 选型考场收缩为分叉 1 形态冒烟；确立“生产即测绘（四元组日志）+ 防污染三条款（记录只读 / 模型冻结 / 单向收紧）”；**`G-15` 结算口径逐字核查（`T1`）** 升为最优先阻塞项（同阶段 `T2–T4` 零成本并行），待 **三个分叉（形态确认 / 冻结周期 / 首检内容）** 拍板及 **`D-6` 制度合龙** 产出后推进 `T8` 改版实现。
+  - **`2026-11-17` 资金配置、`w / φ` 首期选择与分叉 1/2 关闭（当前决策 · 月度复检可替换）**：① 分叉 1（选 `1'`：移除 `T5`、`2019` 降级为 `T8` 影子形态验收）与分叉 2（首期 1 个月 + 方案 B）已关闭，新增 `T9` 后 **真盘切换门**；② [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) 确立总池 `$10,000 / $500/站 / k₀=2` 预设、门限额制与统一参数账本；③ [`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) 选定 `w=B2`（`p=1.5`）+ `φ=Edge` 感知 POV（`k=0` IOC）并暂缓主动退出至 `v2+`；④ [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md) 建账收拢外生平台事实；⑤ 当前处于 [`ROADMAP v1.3.0`](docs/ROADMAP.md) **切片 1（`D-A2 + T1 G-15 + T4 + T2/T3` 并行）**，分叉 3 与合龙细则留待 `D-6` 下一桌议程。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-11-16 21:20）
+（最近更新：2026-11-17 00:35）

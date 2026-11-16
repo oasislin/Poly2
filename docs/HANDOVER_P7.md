@@ -1,10 +1,11 @@
 # 新会话冷启动交接清单 (docs/HANDOVER_P7.md)
 
-> **[2026-11-16 版本标注：已对齐 [`P8-KERNEL-CONSENSUS v1.0`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)]**：  
-> 本文件下方历史正文保留 `Phase 7 / PR #132 (5c4a4c9)` 节点记录不回改。截至 `2026-11-16`（基线推送提交 `58f5b22`），最新推进位置请同步读取：  
-> 1. [`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)（内核六条、防污染三条款、废止清单、阶段 0–3 任务表、三个待拍板分叉与 `D-6` 下一桌议程）；  
-> 2. [`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)（`v1.1` 活队列：`阶段 0` 并行 `T1–T4`，`T1 G-15` 核查最优先）；  
-> 3. [`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)（检验 C `TIER_C` 终裁与 `2019-SEALED-001` 穷举结论，生产 `Proposal1CoolingDriftMuRHook` 已 `default-off`，`F-2 LOCKED` 未动）。
+> **[2026-11-17 版本标注：已对齐 [`P8-KERNEL-CONSENSUS v1.1`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) & [`P8-CAPITAL-CONFIG v1.0`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)]**：  
+> 本文件下方历史正文保留 `Phase 7 / PR #132 (5c4a4c9)` 节点记录不回改。截至 `2026-11-17`（上一批提交 `c6ee6af`），最新推进位置请同步读取：  
+> 1. [`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)（`v1.1`：分叉 1/2 关闭、`T5` 移除、真盘切换门插入、`T2/T4` 需求要点与 `D-6` 下一桌议程）；  
+> 2. [`docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) & [`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) & [`P8-FACTS-LEDGER v0.1`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)（`2026-11-17` 当前决策：门限额制 `w=B2` + `φ=Edge` 感知 POV `k=0` + 统一参数账本 + 外生平台事实库，月度复检可替换）；  
+> 3. [`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)（`v1.2` 活队列）与 [`docs/ROADMAP.md`](ROADMAP.md)（`v1.3.0` 四切片顺序：`D-A2 + T1 G-15 + T4 + T2/T3` 并行）；  
+> 4. [`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)（检验 C `TIER_C` 与 `2019-SEALED-001` 穷举结论，生产 `Proposal1CoolingDriftMuRHook` 已 `default-off`，`F-2 LOCKED` 未动）。
 
 > **文档性质**：新会话冷启动唯一交接引导包 (Handover Package)  
 > **适用对象**：开启新会话的 Antigravity / Claude Agent 及项目维护者  

@@ -1,14 +1,15 @@
 # Polymarket 温度预测与量化套利系统
 
 > [!NOTE]
-> **[2026-11-16 已对齐 [`内核讨论定稿 v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)]**：  
-> - **当前演进节点**：继方案 $\alpha$ 检验 C（2019 盲测及 `2019-SEALED-001` 穷举反事实）于 `2026-11-14` 终裁落地 **`TIER_C`**（推送提交 `58f5b22`）后，系统于 `2026-11-16` 完成 **`内核讨论定稿 v1.0`**（主体定稿，三个分叉待拍板，`D-6` 制度合龙留待下一桌议程）。现役 [`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）严格冻结不动。  
+> **[2026-11-17 已对齐 [`P8-KERNEL-CONSENSUS v1.1`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) & [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)]**：  
+> - **当前演进节点**：继方案 $\alpha$ 检验 C 终裁落地 **`TIER_C`**（`58f5b22`）及 `2026-11-16` 内核基础达成后，于 `2026-11-17` 完成当前决策收敛——**分叉 1（选 `1'`：`T5` 取消，`2019` 降级为 `T8` 影子形态验收）与分叉 2（首期 1 个月 + 方案 B 续冻结）已关闭**；确立资金框架（`$10,000 / $500 站限 / k₀=2` 预设）、门限额制 `w=B2` + `φ=Edge` 感知 POV（`k=0` IOC，`v1` 不做主动退出）、`T9` 后 **真盘切换门** 与 [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)。*上述参数与选择均为当前决策 / 首期选择 / 数据前预设（月度复检可替换；数据充分时形态让位于数据）*。现役 [`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）严格冻结不动。  
 > - **历史基线记录（保留不改）**：`[P7-DOC-RECON]` 对齐阶段主干固化于 `5c4a4c9`（PR #132 W1 合流，当时全库测试记录 `1006 passed, 10 skipped, 0 failed`；2026-11-14 `prediction + pricing` 单测集实测 `181 passed, 0 failed`）。
 
-> 📌 **核心定稿与导航入口**：  
-> • **内核讨论定稿 v1.0（2026-11-16）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)  
-> • **项目实时状态总入口**：[`STATUS.md`](STATUS.md) ｜ **战术活队列**：[`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)  
-> • **战略路线图（`v1.2.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md) ｜ **检验 C 司法总档案**：[`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)  
+> 📌 **核心文档与导航入口**：  
+> • **内核架构档（`v1.1` · `2026-11-17`）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)  
+> • **资金配置与参数账本（`v1.0`）**：[`P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) ｜ **执行设计 `w/φ`**：[`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)  
+> • **静态事实档案（`v0.1`）**：[`P8-FACTS-LEDGER_静态事实档案_v0.1.md`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md) ｜ **战术活队列**：[`P8-GLOBAL-MAP v1.2`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)  
+> • **项目实时状态总入口**：[`STATUS.md`](STATUS.md) ｜ **战略路线图（`v1.3.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md) ｜ **检验 C 司法总档案**：[`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)  
 > • **新会话冷启动交接清单**：[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md) ｜ **双城封盘九项门禁**：[`docs/SEALING_GATE.md`](docs/SEALING_GATE.md) ｜ **出域同步政策**：[`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)
 
 > 🚩 **【法定运行旗状态（对齐 main 现实）】**：  
@@ -229,10 +230,13 @@ RUN_NETWORK_TESTS=1 pytest tests/unit/data_acquisition/test_gefs_fetcher.py::tes
 
 ## 核心文档索引
 
-- **内核讨论定稿 v1.0（2026-11-16 架构定稿主档）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)
+- **内核架构档案（`v1.1` · `2026-11-17`）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)
+- **资金参数配置与参数账本（`v1.0` · `2026-11-17`）**：[`docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)
+- **`w` 与 `φ` 执行设计与决策记录（`v1.0` · `2026-11-17`）**：[`docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)
+- **Polymarket 静态事实档案（`v0.1` · `2026-11-17`）**：[`docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)
 - **项目实时状态（唯一状态入口）**：[`STATUS.md`](STATUS.md)
-- **战术全局图谱与活队列**：[`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)
-- **战略阶段路线图（`v1.2.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md)
+- **战术全局图谱与活队列（`v1.2`）**：[`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)
+- **战略阶段路线图（`v1.3.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md)
 - **检验 C 司法级完整档案（含 `2019-SEALED-001`）**：[`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)
 - **备选架构立项与机制分析（已对齐内核 v1.0）**：[`docs/audit/P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md`](docs/audit/P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md)
 - **待确认事项登记册 & 2019 消费台账**：[`docs/audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md`](docs/audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md)
