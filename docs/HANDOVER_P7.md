@@ -1,5 +1,11 @@
 # 新会话冷启动交接清单 (docs/HANDOVER_P7.md)
 
+> **[2026-11-16 版本标注：已对齐 [`P8-KERNEL-CONSENSUS v1.0`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)]**：  
+> 本文件下方历史正文保留 `Phase 7 / PR #132 (5c4a4c9)` 节点记录不回改。截至 `2026-11-16`（基线推送提交 `58f5b22`），最新推进位置请同步读取：  
+> 1. [`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)（内核六条、防污染三条款、废止清单、阶段 0–3 任务表、三个待拍板分叉与 `D-6` 下一桌议程）；  
+> 2. [`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)（`v1.1` 活队列：`阶段 0` 并行 `T1–T4`，`T1 G-15` 核查最优先）；  
+> 3. [`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)（检验 C `TIER_C` 终裁与 `2019-SEALED-001` 穷举结论，生产 `Proposal1CoolingDriftMuRHook` 已 `default-off`，`F-2 LOCKED` 未动）。
+
 > **文档性质**：新会话冷启动唯一交接引导包 (Handover Package)  
 > **适用对象**：开启新会话的 Antigravity / Claude Agent 及项目维护者  
 > **生效基准**：主干 `main` 严格锁定于 `5c4a4c9`（PR #132 合流线，包含 P7-W1-POOLPHASE 6h 池化相位重训与 Max 衰减补齐闭环，拔除运行旗 2）  

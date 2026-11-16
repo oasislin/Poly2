@@ -1,11 +1,11 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-11-02 15:15:00
+updated: 2026-11-16 21:20:00
 ---
-# 项目状态（唯一状态入口）
+# 项目状态（唯一状态入口 · 已对齐 内核定稿 v1.0）
 
-> 📌 **法定长线规划与新会话交接导航**：项目长线路线图详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁总清单详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
-> 📚 **核心宪法文档指针**：顶层方案已对账升级至 [`项目方案 (v2.9)`](docs/项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md)；Phase 2 执行文件已对账升级至 [`Phase 2 执行文件 v2.2`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md)（历史 v2.8/v2.1 保持冻结，修订依据：工单 P7-DOC-RECON / PR #131 / 批文 P7-DOC-RECON-GO-MERGE / G-9 裁决合流升版）。
+> 📌 **法定长线规划与新会话交接导航**：最新内核架构定稿见 [`P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)；战术活队列详见 [`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)；项目战略路线图详见 [`docs/ROADMAP.md`](docs/ROADMAP.md)（`v1.2.0`）；检验 C 全过程档案详见 [`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
+> 📚 **核心宪法文档指针**：顶层方案 [`项目方案 (v2.9)`](docs/项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 Phase 2 执行文件 [`Phase 2 执行文件 v2.2`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 继续生效；`2026-11-16` 新增权威内核约束档 [`P8-KERNEL-CONSENSUS v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)。
 
 > 🚩 **【法定运行旗持续生效（下游强制带旗）】**：  
 > 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（交易窗口加权 ECE = `0.018318` 越线 0.0100，触发器计数 1/2 未达立项门槛；双城 24 格中 23 格 ECE 达标率 95.83%）。  
@@ -33,6 +33,9 @@ updated: 2026-11-02 15:15:00
   - **议题 P6-TMIN-CV-LOCK**：TMin 480 格交叉验证脚本 hardcode 解锁与审计规划（状态：`REGISTERED`，波次三）。
   - **议题 P7-STA-SURVEY**：Active 8 站轻量三原型机械归类与偏离筛选（状态：`REGISTERED`，波次三，纸面盘期间并行）。
 - **为什么处于当前节点**：工单 P7-W1-POOLPHASE 全量通过验收并合流封卷（PR #132），拔旗令 P7-FLAG2-REMOVAL-R1 正式生效；当前节点 = W1 执结归档，进入 W2 短闭环预注册筹备。
+- **`2026-11-14 ~ 2026-11-16` 最新节点切换（已对齐 `P8-KERNEL-CONSENSUS v1.0`）**：
+  - **检验 C 终裁与 `α` 冻结**：方案 `α` 经 2019 分支 A 与 `2019-SEALED-001` 穷举反事实落地 **`TIER_C`**（推送提交 `58f5b22`），[`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（`src/pricing/`）保持冻结。
+  - **内核定稿与资产/路线切换（`2026-11-16`）**：废止合流测绘协议与 `GFS 2020–2024` 历史回填、`GHCN backfill` 降级挂账、`β/γ` 选型考场收缩为分叉 1 形态冒烟；确立“生产即测绘（四元组日志）+ 防污染三条款（记录只读 / 模型冻结 / 单向收紧）”；**`G-15` 结算口径逐字核查（`T1`）** 升为最优先阻塞项（同阶段 `T2–T4` 零成本并行），待 **三个分叉（形态确认 / 冻结周期 / 首检内容）** 拍板及 **`D-6` 制度合龙** 产出后推进 `T8` 改版实现。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-10-10 20:55）
+（最近更新：2026-11-16 21:20）

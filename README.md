@@ -1,21 +1,39 @@
-# Polymarket 温度预测与量化套利系统 - Phase 7 过渡态
+# Polymarket 温度预测与量化套利系统
 
 > [!NOTE]
-> **[P7-DOC-RECON 文档勘误与法定状态对齐 (2026-10-10)]**：  
-> 本文档已依据工单 `P7-DOC-RECON`、`STATUS.md`、`docs/HANDOVER_P7.md` 与 `docs/ROADMAP.md` 全面重写，对齐 **Phase 7 过渡态**（主线战略由“横向扩展”全面转向“纵向落地”）。  
-> 主干代码库严格固化于 **`5c4a4c9`**（PR #132 W1 合流线；前基线 `2975ec1` 为 PR #130 路线图线），全库测试基线保持 **`1006 passed, 10 skipped, 0 failed`**。
+> **[2026-11-16 已对齐 [`内核讨论定稿 v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)]**：  
+> - **当前演进节点**：继方案 $\alpha$ 检验 C（2019 盲测及 `2019-SEALED-001` 穷举反事实）于 `2026-11-14` 终裁落地 **`TIER_C`**（推送提交 `58f5b22`）后，系统于 `2026-11-16` 完成 **`内核讨论定稿 v1.0`**（主体定稿，三个分叉待拍板，`D-6` 制度合龙留待下一桌议程）。现役 [`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）严格冻结不动。  
+> - **历史基线记录（保留不改）**：`[P7-DOC-RECON]` 对齐阶段主干固化于 `5c4a4c9`（PR #132 W1 合流，当时全库测试记录 `1006 passed, 10 skipped, 0 failed`；2026-11-14 `prediction + pricing` 单测集实测 `181 passed, 0 failed`）。
 
-> 📌 **法定长线规划与新会话交接导航**：  
-> • 项目状态总入口：[`STATUS.md`](STATUS.md)  
-> • 三波次长线路线图：[`docs/ROADMAP.md`](docs/ROADMAP.md)  
-> • 新会话冷启动交接清单：[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)  
-> • 双城封盘九项门禁清单：[`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)  
-> • 受控出域同步政策：[`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)
+> 📌 **核心定稿与导航入口**：  
+> • **内核讨论定稿 v1.0（2026-11-16）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)  
+> • **项目实时状态总入口**：[`STATUS.md`](STATUS.md) ｜ **战术活队列**：[`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)  
+> • **战略路线图（`v1.2.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md) ｜ **检验 C 司法总档案**：[`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)  
+> • **新会话冷启动交接清单**：[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md) ｜ **双城封盘九项门禁**：[`docs/SEALING_GATE.md`](docs/SEALING_GATE.md) ｜ **出域同步政策**：[`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)
 
 > 🚩 **【法定运行旗状态（对齐 main 现实）】**：  
 > 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（加权 ECE = `0.018318` 越线 0.0100；经 MODEL_SCORECARD 与裁决令判为红级禁投 0.0x）；  
 > 2. `6h 池化回退层 (80 格)`：状态 **`UNFLAGGED` (已正式拔除)**（依据裁决令 `P7-FLAG2-REMOVAL-R1` / 工单 `P7-W1-POOLPHASE`，晨谷 ECE = `0.005977` 击穿 0.0100，四季膨胀比 1.0000 自洽，随 PR #132 合流入主干拔旗）。  
 > *下游引用约束*：交易盘口映射、分位数定价与风控链路在调用本格资产时，**必须显式带旗陈述，审慎收缩头寸，严禁脱旗裸跑**！
+
+---
+
+## 内核讨论定稿 v1.0 核心原则摘要（2026-11-16）
+
+> 完整条文、防污染约束与待拍板分叉见 [`P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)。
+
+1. **赚钱逻辑与市场定位（`D-1 / D-2 / D-5`）**：
+   - **目标式**：$\text{edge} = \text{我们的校准分布} - \text{市场隐含概率} - \text{摩擦（价差} + \text{冲击} + \text{安全垫）}$；参照系为市场价格而非绝对真值，**盈利性尚未实测（三项假设全部待真实盘口数据检验）**；
+   - **市场微观结构**：天气盘深度低、散户为主（`> 70%`，出处待入档），做市商属收费通道而非对手；仓位上限自改版首日起按**盘口深度倒推**，以持有至结算为主，采用**概率驱动退出**（不设主观价格阈值）与**多次、少金额、中频扫描**。
+2. **生产真实形态与基准澄清（`D-3`）**：
+   - 系统真实生产形态为：**`GFS` 翻译层（全程） + 桥收敛层（临近激活） + `G-15` 结算口径适配**；由 $\max$ 恒等式驱动，日内条件分布天然呈现 **“点质量（不创新高原子 `p_stay`）+ 条件超越”** 形态；
+   - **澄清入档**：生产线自始至终消费 `GFS` 预报；检验 C 中的气候学先验仅属离线实验隔离对照，**严禁在任何改版收益预期中引用该对照下的 `−48.3%`**。
+3. **生产即测绘、防污染与路线切换（`D-4` + 废止清单）**：
+   - **废止前置历史回填与测绘协议**：正式废止多年度“合流测绘协议（梯 0/1/2）”与 `GFS 2020–2024` 历史存档回填；`GHCN backfill` 降级挂账；原 `β/γ` 选型考场收缩为改版前形态冒烟（分叉 1）；市场侧快照自改版第一天起被动记录；
+   - **生产即测绘 + 防污染三条款**：桥随改版直接上线并在冻结周期内采集**四元组日志**（决策上下文 / 模型侧 / 市场侧 / 结算侧），以每个冻结周期沉淀日志作下一轮独立盲池；运行期严格执行 **记录只读 / 模型冻结（带版本号） / 单向收紧**（`F-2 LOCKED` 不动）。
+4. **当前推进队形（阶段 0 并行可开工 + 待定项）**：
+   - **阶段 0（零成本并行）**：**`T1` `G-15` 结算口径逐字核查（Polymarket FAQ vs ADR，最优先且阻塞代码实现）**、`T2` 四元组决策快照 schema、`T3` 市场侧被动记录管道设计、`T4` 改版设计文档；
+   - **待定议程**：`D-6` 制度合龙下一桌产出（`抽检定义 + 亮灯规则 + 灯到钱映射表`）及 **三个分叉**（形态确认 / 冻结周期 / 首检最小内容）待拍板后转入阶段 1–3（`T5 → T12`）。
 
 ---
 
@@ -91,8 +109,9 @@
 | **Phase 1.5: 数据重建** | **生产级校准语料库 `calib-dataset-v2.0` (Tag: `phase1.5-final`)**<br>• 外部冷存储 292,200 个 GRIB2 全球场补全与去重<br>• 10 站统一特征长表与 2000–2018 严格 OOS 气候方差底重建 | **100%** | `calib-dataset-v2.0/`<br>`gefs_factors/` (Parquet 特征库) |
 | **Phase 5: 审计工具重构** | **Layer 2 门禁立法与测试基线大筑底**<br>• 可靠度工具重构（S1~S5 盲测、20 桶分桶合并算法防凑答案审计）<br>• 全库 987 项测试基线（10 skipped, 0 failed）建立 | **100%** | `standalone_reliability_check.py`<br>测试基线 987 项全绿 |
 | **Phase 6: 双城封盘** | **双城 TMax 24 时间格 (96 季节格) 全网格 Block-CV 审计与封盘**<br>• KORD (11/12 Gaussian + 1 JSU) 封卷于 `COMPLETED_SEALED`<br>• KMIA (10/12 JSU + 1 EVT + 1 Split) 封卷于 `COMPLETED_SEALED_FLAGGED`<br>• 合流入主干基线 `6fe386c`（PR #129） | **100% 封卷** | `evidence/p6_tmax_methodology_closure.md`<br>双城 96 季节格审计汇总表 |
-| **Phase 7: 过渡态 (当前活跃)** | **长线路线图入册与三波次战略推进 (PR #130 合流至 `2975ec1`)**<br>• 战略转向：气象侧地基巩固，主线全面转向交易侧纵向落地<br>• **W1**: `P6-POOL-PHASE` 6h 池化按相位分层重训与衰减补全（工单领单中）<br>• **W2**: Phase 2 双站（KORD/KMIA）只读纸面盘短闭环主线（待启动）<br>• **W3**: Active 8 站三原型轻量筛查与 TMin 480 格审计规划（纸面盘期并行） | **进行中** | [`STATUS.md`](STATUS.md)<br>[`docs/ROADMAP.md`](docs/ROADMAP.md)<br>[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md) |
-| **生产交易引擎** | 盘口撮合、多项增量联合凯利、IOC 订单路由与异常中枢（实盘前置阶段） | 待实盘前置 | `OrderRouter`, `CentralExceptionArbiter` |
+| **Phase 7: 过渡态 (历史锚点)** | **长线路线图入册与三波次战略推进 (PR #130 合流至 `2975ec1`)**<br>• **W1**: `P6-POOL-PHASE` 已封卷合流（`5c4a4c9`），运行旗 2 已拔除<br>• **W2 / Task 08**: `F-2 LOCKED` 定价内核（`sigma_adj.py` / `penetration_probe.py`）已封盘 | **W1 封卷 / F-2 锁定** | [`STATUS.md`](STATUS.md)<br>[`docs/ROADMAP.md`](docs/ROADMAP.md)<br>[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md) |
+| **Phase 8: 检验 C 与内核定稿 (`2026-11-16` 当前)** | **方案 α 检验 C `TIER_C` 终裁归档 + [`内核讨论定稿 v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)**<br>• `Proposal1CoolingDriftMuRHook` 已切回生产 `default-off`（`58f5b22`）<br>• 废止历史回填前置阻塞，转为 **阶段 0（`T1 G-15 核查 [最优先]` / `T2` / `T3` / `T4`）** + 生产即测绘四元组日志，待三项分叉拍板及 `D-6` 制度合龙 | **阶段 0 并行筹备** | [`P8-KERNEL-CONSENSUS v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)<br>[`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)<br>[`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md) |
+| **生产交易引擎** | 盘口撮合、多项增量联合凯利、IOC 订单路由与异常中枢（阶段 2–3 改版落地推进） | 阶段 0 阻塞中 | `OrderRouter`, `CentralExceptionArbiter` |
 
 ---
 
@@ -210,8 +229,15 @@ RUN_NETWORK_TESTS=1 pytest tests/unit/data_acquisition/test_gefs_fetcher.py::tes
 
 ## 核心文档索引
 
+- **内核讨论定稿 v1.0（2026-11-16 架构定稿主档）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)
 - **项目实时状态（唯一状态入口）**：[`STATUS.md`](STATUS.md)
-- **三波次长线路线图**：[`docs/ROADMAP.md`](docs/ROADMAP.md)
+- **战术全局图谱与活队列**：[`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)
+- **战略阶段路线图（`v1.2.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md)
+- **检验 C 司法级完整档案（含 `2019-SEALED-001`）**：[`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)
+- **备选架构立项与机制分析（已对齐内核 v1.0）**：[`docs/audit/P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md`](docs/audit/P8-BETA-GAMMA-PROPOSAL_备选架构立项报告_20261114.md)
+- **待确认事项登记册 & 2019 消费台账**：[`docs/audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md`](docs/audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md)
+- **设计组裁决与审查记录**：[`docs/audit/P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md`](docs/audit/P8-DESIGN-TEAM-REVIEW_裁决与审查记录.md)
+- **端到端数学模型规格书（v2.0 含 G-14 勘误）**：[`docs/audit/P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md`](docs/audit/P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md)
 - **新会话冷启动交接清单**：[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)
 - **双城封盘门禁与事实核验报告**：[`evidence/p6_tmax_methodology_closure.md`](evidence/p6_tmax_methodology_closure.md)
 - **生产评估窗口法医穿透报告**：[`evidence/p6_window_forensic_report.md`](evidence/p6_window_forensic_report.md)
