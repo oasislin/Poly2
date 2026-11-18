@@ -1,0 +1,35 @@
+# M3 被动盘口采集器配置样例（S1-05 · 2026-11-18）
+# 严格只读：严禁填入私钥或交易凭证；D-A2 字段映射集中收拢于 field_mapping
+
+stations:
+  - KORD
+  - KMIA
+
+endpoints:
+  gamma_base_url: "https://gamma-api.polymarket.com"
+  clob_rest_base_url: "https://clob.polymarket.com"
+  clob_ws_url: "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+  # macOS 若存在系统级 SOCKS 代理但无 python-socks，保留 true 走直连（FACT-005 #3）
+  ws_disable_system_proxy: true
+
+recording:
+  capture_mode: "PASSIVE_RECORD"
+  output_root: "data/market_recordings"
+  heartbeat_interval_sec: 10.0
+  heartbeat_timeout_sec: 25.0
+  rest_fallback_interval_sec: 5.0
+  reconnect_backoff_sec: [1.0, 2.0, 5.0, 10.0]
+
+field_mapping:
+  tick_size_key: "tick_size"
+  gamma_tick_size_key: "orderPriceMinTickSize"
+  min_order_size_key: "min_order_size"
+  gamma_min_order_size_key: "orderMinSize"
+  fee_schedule_key: "feeSchedule"
+  fee_rate_field: "rate"
+  fees_enabled_key: "feesEnabled"
+  neg_risk_key: "neg_risk"
+  gamma_neg_risk_key: "negRisk"
+  default_fee_rate_fallback: 0.05
+  default_min_order_size_shares: 5.0
+  min_notional_usd_default: 1.0

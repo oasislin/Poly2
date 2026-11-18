@@ -69,13 +69,13 @@
 
 ## 四、 活队列（正式状态源，每轮更新 · `v1.3 · 2026-11-18 已对齐 项目方案 v3.0 §8`）
 
-- **`[当前节点]`**：`2026-11-18` 切片 1 **`S1-01/S1-02`（调研批）、`S1-03`（`T2 M7`）与 `S1-04`（`T4 M4/M5` 接口 + `src/pricing/edge_math.py` + `74 passed` 单测）已全部完成入档**（[`P8-T4-M4M5-INTERFACE v1.0`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md)）；收尾推进 **`S1-05`（`M3` 被动盘口采集器，交付可启动状态、不自行开录）**。
-- **`[切片 1 队列｜阶段 0 并行开工 · 模块归属已锚定]`**：
+- **`[当前节点]`**：`2026-11-18` **切片 1 五单（`S1-01 ~ S1-05`）全部收口完成**：`S1-01`（`D-A2` 五组）/`S1-02`（`T1 G-15` 三查，待用户裁决 `ADR` 3 处分叉）/`S1-03`（`P8-T2-M7-LOGGING v1.0`）/`S1-04`（`P8-T4-M4M5-INTERFACE v1.0` + `edge_math.py`）/`S1-05`（[`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) 可启动态，77 项单测 + live `--dry-run-discover` 66 token 全过）。**下一动作**：待用户一句话批复正式启动被动录盘（进切片 2）及裁决 `G-15 ADR` 分叉。
+- **`[切片 1 队列｜全五单已完成 ✅]`**：
   1. ✅ **`S1-01` (`D-A2` 五组调研收口，`M3`)**：已并入 [`P8-FACTS-LEDGER v0.2`](P8-FACTS-LEDGER_静态事实档案_v0.1.md) & `G-19`（含 `2026-11-20T23:59Z` `Weather feeRate 0.05 → 0.01` 官方变费预警）；
   2. ✅ **`S1-02` (`T1 G-15` 三查逐字核对，`M9` 前置)**：`P5 T_settle_close_utc` 已锚定为 `ZoneInfo` 站当地含 DST 次日零点；**3 处既有 `ADR-0009/0012` 分叉（`NWS WRH → aviationweather.gov`、`SPECI` 排除、`-8.5 → -8` 正无穷半度进位）** 已登记 [`P8-FACTS-LEDGER v0.2 §三`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#三-s1-02--t1-g-15-结算口径三查与既有-adr-分叉对照表2026-11-18) 待用户裁决；
   3. ✅ **`S1-03` (`T2` 日志审计文档本体，`M7`)**：[`P8-T2-M7-LOGGING v1.0`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md) 已成文，`P1/P3/P12/P13/P17/P19` 与 `M10 P10` 兼容目录确立；
   4. ✅ **`S1-04` (`T4` 接口文档 + `edge_math.py`，`M4 / M5`)**：[`P8-T4-M4M5-INTERFACE v1.0`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md) 已成文，`P2/P5/P6/P7/P8` 升格 `v1.0`，[`src/pricing/edge_math.py`](../../src/pricing/edge_math.py) & [`test_edge_math.py`](../../tests/unit/pricing/test_edge_math.py) 通过（`74 passed`）；
-  5. 🔄 **`S1-05` (被动盘口采集器，`M3`)**：正在推进（交付“可启动状态”，不擅自上线录盘）。
+  5. ✅ **`S1-05` (被动盘口采集器，`M3`)**：[`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) + [`passive_book_recorder.example.yaml`](../../configs/passive_book_recorder.example.yaml) + [`run_passive_book_recorder.py`](../../scripts/run_passive_book_recorder.py) + 冒烟单测通过（只读隔离、WS/REST 兜底、可启动态待批准上线）。
 - **`[切片 2 队列｜基线建立与 `D-6` 合龙]`**：
   - 被动录盘数天建 `AskBook` / 滑点基线（闭合 **`D-A1` `friction_median`** 阻塞门）；
   - **`D-6` 制度合龙（下一桌）**：抽检定义/亮灯规则/灯→钱映射表 + `分叉 3` + 月度复检三层防遗忘例程 + 真盘切换门三条件 + `ECE` 临界锚 + 黄灯分型 / `yellow_multiplier` 作用点 + 破冻程序 + `A` 类可追加性 + 真盘首期默认全额确认；
@@ -89,7 +89,7 @@
 | :---: | :--- | :--- | :--- |
 | **`M1`** | 气象数据管道 | 部分存在（生产先验数据管线运行中，`M_now` 抽象层待 `T8` 实现） | 待 `T1 G-15` + `T4` 接口冻结后进 `T8` |
 | **`M2`** | 预测引擎 | 存在（`v1` 冻结线；`TruncatedDistribution` 点质量与 `.5°F` 边界缺口已如实入档 `P5 rc`） | `T4` 规格固化、`T8` 对齐 `P5` 四不变量与整数刻度 |
-| **`M3`** | 盘口数据 | **`S1-01 D-A2` 五组调研已收口 ✅**；`P4-rc` 取值注记更新 | 待执行 `S1-05` 被动盘口采集器（`P4 + P13`）；`11-20T23:59Z` 降费后复验 Gamma `feeSchedule.rate` |
+| **`M3`** | 盘口数据 | **`S1-01 D-A2` + `S1-05` 被动采集器已落盘（可启动态 ✅）**（[`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py)） | **待用户一句话批复开录**（进切片 2）；`11-20T23:59Z` 后复验 `feeSchedule.rate` |
 | **`M4`** | 决策引擎 | **`S1-04 T4` 接口规格 + `edge_math.py` 已落盘 ✅**（[`P8-T4-M4M5-INTERFACE v1.0`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md)、`F-2` 零触碰、`74 passed`） | 待 `T8` 业务接入与 `D-6` 闭合 `P16` 消费语义 |
 | **`M5`** | 执行器 | **`S1-04 T4` `P2 plan_slice` / `P18` 延迟撮合接口已成文 ✅**（`w` 已切出 `M5`） | 待 `T8` 编码实现与网关/假盘回放联调 |
 | **`M6`** | 资金风控 | **`P7` 额度查询/占用（`N8` `B_eff` 兜底）已随 `T4` 成文 ✅**；`P19` 已入 `T2` | `D-6` 闭合 `P16` 灯级指令与切换门条款 |
