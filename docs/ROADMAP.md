@@ -158,8 +158,8 @@ flowchart LR
 | **`S1-01`** | `D-A2` 五组调研收口 | `M3` | [`P8-ALGO-REVIEW G-19`](audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md)、[`项目方案 v3.0 §8.4 P4`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md)、[`P8-FACTS-LEDGER v0.2`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md) | **`DONE`**（`2026-11-18` 五组实证收口；含 `2026-11-20T23:59Z` 降费至 `0.01` 预警） |
 | **`S1-02`** | `T1 G-15` 结算口径三查 | `M9` 前置 | [`P8-KERNEL-CONSENSUS v1.1 §六`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`项目方案 v3.0 §8.4 P5`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`DONE（外部收敛 · 待 ADR 裁决）`**（`T_settle_close_utc` 已锚；3 处既有 `ADR` 分叉提交用户裁决） |
 | **`S1-03`** | `T2` 日志审计文档本体 | `M7` | [`P8-KERNEL-CONSENSUS v1.1 §六 E/F`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`P8-T2-M7-LOGGING v1.0`](audit/P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md)、[`项目方案 v3.0 §8.2`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) | **`DONE`**（`2026-11-18` `P1/P3/P12/P13/P17/P19` 正文指针升级） |
-| **`S1-04`** | `T4` 决策执行接口文档 + `edge_math` 实现 | `M4 / M5` | [`P8-CAPITAL-CONFIG v1.0`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)、[`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)、[`项目方案 v3.0 §8.4–8.5`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`IN_PROGRESS`** |
-| **`S1-05`** | 被动盘口采集器（只读 · 可启动态） | `M3` | [`项目方案 v3.0 §8.2 P13 / §8.4 P4`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`PENDING`** |
+| **`S1-04`** | `T4` 决策执行接口文档 + `edge_math` 实现 | `M4 / M5` | [`P8-CAPITAL-CONFIG v1.0`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)、[`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)、[`P8-T4-M4M5-INTERFACE v1.0`](audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md)、[`项目方案 v3.0 §8.4–8.5`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`DONE`**（`2026-11-18` `P2/P5/P6/P7/P8 v1.0` + `edge_math.py` + 74 项 pricing 单测全绿） |
+| **`S1-05`** | 被动盘口采集器（只读 · 可启动态） | `M3` | [`项目方案 v3.0 §8.2 P13 / §8.4 P4`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`IN_PROGRESS`** |
 
 ---
 
