@@ -1,11 +1,12 @@
 # 新会话冷启动交接清单 (docs/HANDOVER_P7.md)
 
-> **[2026-11-17 版本标注：已对齐 [`P8-KERNEL-CONSENSUS v1.1`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) & [`P8-CAPITAL-CONFIG v1.0`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)]**：  
-> 本文件下方历史正文保留 `Phase 7 / PR #132 (5c4a4c9)` 节点记录不回改。截至 `2026-11-17`（上一批提交 `c6ee6af`），最新推进位置请同步读取：  
-> 1. [`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)（`v1.1`：分叉 1/2 关闭、`T5` 移除、真盘切换门插入、`T2/T4` 需求要点与 `D-6` 下一桌议程）；  
-> 2. [`docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) & [`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) & [`P8-FACTS-LEDGER v0.1`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)（`2026-11-17` 当前决策：门限额制 `w=B2` + `φ=Edge` 感知 POV `k=0` + 统一参数账本 + 外生平台事实库，月度复检可替换）；  
-> 3. [`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)（`v1.2` 活队列）与 [`docs/ROADMAP.md`](ROADMAP.md)（`v1.3.0` 四切片顺序：`D-A2 + T1 G-15 + T4 + T2/T3` 并行）；  
-> 4. [`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)（检验 C `TIER_C` 与 `2019-SEALED-001` 穷举结论，生产 `Proposal1CoolingDriftMuRHook` 已 `default-off`，`F-2 LOCKED` 未动）。
+> **[2026-11-18 版本标注：已对齐 [`项目方案 (v3.0) §8`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) & [`P8-GLOBAL-MAP v1.3`](audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)]**：  
+> 本文件下方历史正文保留 `Phase 7 / PR #132 (5c4a4c9)` 节点记录不回改。截至 `2026-11-18`（模块地图与协议层定版轮），最新推进位置请同步读取：  
+> 1. [`项目方案 (v3.0) §8`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策)（后 α `M1–M10` 十模块地图、`P1–P19` 协议清单、`A1/B5/N1–N8` 治理规则、`P4/P5/P6 v1.0-rc` 草案与 `src/pricing/edge_math.py` 规格书，切片 1 前置全部就绪）；  
+> 2. [`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)（`v1.1`：分叉 1/2 关闭、`T5` 移除、真盘切换门插入、`T2/T4` 需求要点与 `D-6` 下一桌议程）；  
+> 3. [`docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) & [`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) & [`P8-FACTS-LEDGER v0.1`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)（`2026-11-17` 当前决策：门限额制 `w=B2` + `φ=Edge` 感知 POV `k=0` + 统一参数账本 + 外生平台事实库，月度复检可替换）；  
+> 4. [`docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md`](audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)（`v1.3` 活队列与十模块动态状态）与 [`docs/ROADMAP.md`](ROADMAP.md)（`v1.3.1` 四切片顺序：`D-A2 扩五组 + T1 G-15 + T4 + T2/T3` 并行）；  
+> 5. [`docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md`](audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)（检验 C `TIER_C` 与 `2019-SEALED-001` 穷举结论，生产 `Proposal1CoolingDriftMuRHook` 已 `default-off`，`F-2 LOCKED` 未动）。
 
 > **文档性质**：新会话冷启动唯一交接引导包 (Handover Package)  
 > **适用对象**：开启新会话的 Antigravity / Claude Agent 及项目维护者  

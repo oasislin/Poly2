@@ -1,11 +1,11 @@
 ---
 created: 2026-09-04 14:07:02
-updated: 2026-11-17 00:35:00
+updated: 2026-11-18 00:00:00
 ---
-# 项目状态（唯一状态入口 · 已对齐 `P8-KERNEL-CONSENSUS v1.1`）
+# 项目状态（唯一状态入口 · 已对齐 `项目方案 v3.0 §8`）
 
-> 📌 **法定长线规划与新会话交接导航**：最新架构基线与增量决议见 [`P8-KERNEL-CONSENSUS v1.1`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)；资金与参数账本见 [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)；`w / φ` 执行设计见 [`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)；平台客观事实见 [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)；战术活队列详见 [`P8-GLOBAL-MAP v1.2`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)；战略路线图见 [`docs/ROADMAP.md v1.3.0`](docs/ROADMAP.md)；检验 C 全过程档案详见 [`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
-> 📚 **核心宪法文档指针**：顶层方案 [`项目方案 (v2.9)`](docs/项目方案和执行文档/项目方案%20(v2.9)：Polymarket%20温度市场量化投注系统.md) 与 Phase 2 执行文件 [`Phase 2 执行文件 v2.2`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 继续生效；`2026-11-17` 所有新增参数与策略配置均为 **当前决策 / 首期选择 / 数据前预设（月度复检可替换）**。
+> 📌 **法定长线规划与新会话交接导航**：最新架构基线与增量决议见 [`P8-KERNEL-CONSENSUS v1.1`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)；资金与参数账本见 [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)；`w / φ` 执行设计见 [`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)；平台客观事实见 [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)；战术活队列与十模块动态状态详见 [`P8-GLOBAL-MAP v1.3`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)；战略路线图见 [`docs/ROADMAP.md v1.3.1`](docs/ROADMAP.md)；检验 C 全过程档案详见 [`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)；新会话冷启动交接清单详见 [`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md)；封盘门禁详见 [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)；受控出域同步政策详见 [`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)。  
+> 📚 **核心宪法文档指针**：顶层方案 [`项目方案 (v3.0)`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md)（`§8` 新增 `M1–M10` 模块地图、`P1–P19` 协议清单、`rc` 草案与 `edge_math.py` 规格）与 Phase 2 执行文件 [`Phase 2 执行文件 v2.2`](docs/项目方案和执行文档/Phase%202%20执行文件%20v2.2：盘口定价、套利与执行引擎.md) 继续生效；`2026-11-17 / 2026-11-18` 所有新增参数与策略配置均为 **当前决策 / 首期选择 / 数据前预设（月度复检可替换）**。
 
 > 🚩 **【法定运行旗持续生效（下游强制带旗）】**：  
 > 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（交易窗口加权 ECE = `0.018318` 越线 0.0100，触发器计数 1/2 未达立项门槛；双城 24 格中 23 格 ECE 达标率 95.83%）。  
@@ -37,6 +37,7 @@ updated: 2026-11-17 00:35:00
   - **检验 C 终裁与 `α` 冻结**：方案 `α` 经 2019 分支 A 与 `2019-SEALED-001` 穷举反事实落地 **`TIER_C`**（推送提交 `58f5b22`），[`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（`src/pricing/`）保持冻结。
   - **内核定稿与资产/路线切换（`2026-11-16`）**：废止合流测绘协议与 `GFS 2020–2024` 历史回填、`GHCN backfill` 降级挂账、`β/γ` 选型考场收缩为分叉 1 形态冒烟；确立“生产即测绘（四元组日志）+ 防污染三条款（记录只读 / 模型冻结 / 单向收紧）”；**`G-15` 结算口径逐字核查（`T1`）** 升为最优先阻塞项（同阶段 `T2–T4` 零成本并行），待 **三个分叉（形态确认 / 冻结周期 / 首检内容）** 拍板及 **`D-6` 制度合龙** 产出后推进 `T8` 改版实现。
   - **`2026-11-17` 资金配置、`w / φ` 首期选择与分叉 1/2 关闭（当前决策 · 月度复检可替换）**：① 分叉 1（选 `1'`：移除 `T5`、`2019` 降级为 `T8` 影子形态验收）与分叉 2（首期 1 个月 + 方案 B）已关闭，新增 `T9` 后 **真盘切换门**；② [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) 确立总池 `$10,000 / $500/站 / k₀=2` 预设、门限额制与统一参数账本；③ [`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) 选定 `w=B2`（`p=1.5`）+ `φ=Edge` 感知 POV（`k=0` IOC）并暂缓主动退出至 `v2+`；④ [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md) 建账收拢外生平台事实；⑤ 当前处于 [`ROADMAP v1.3.0`](docs/ROADMAP.md) **切片 1（`D-A2 + T1 G-15 + T4 + T2/T3` 并行）**，分叉 3 与合龙细则留待 `D-6` 下一桌议程。
+  - **`2026-11-18` 模块地图与协议层落盘（当前决策）**：[`项目方案 (v3.0) §8`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 收编十模块 `M1–M10` 静态边界（含 `M10` 只读视图铁律）、`P1–P19` 协议清单、裁定 `A1`（灯级通道）/ `B5`（相对门槛公式与 `friction_median` 口径）/ `N1–N8`、`P4/P5/P6 v1.0-rc` 草案及 `src/pricing/edge_math.py` 规格；同步更新 [`AGENTS.md`](AGENTS.md) 项目管理纪律、[`P8-ALGO-REVIEW`](docs/audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md#g-19-2026-11-18-模块地图与协议层定版项目方案-v30-8及-d-a2-核查组四组扩五组--骨架批阶段二落盘--d-a2-扩五组待测)（`D-A2` 扩五组）与 [`P8-GLOBAL-MAP v1.3`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)；切片 1 前置全部就绪。
 - **更新纪律**：每周更新本文件，三行以内说清阶段变化
 
-（最近更新：2026-11-17 00:35）
+（最近更新：2026-11-18）
