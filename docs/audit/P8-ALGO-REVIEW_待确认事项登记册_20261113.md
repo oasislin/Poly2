@@ -168,8 +168,12 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   - D2: Commit SHA: `ca7dbc8` (`fix(pipeline): 消除主预测流水线静默吞异常并改为响亮失败 (P8 短时效路由缺陷单 D2)`)；
   - D3: Commit SHA: `fccae33` (`fix(modeling): 预测入口接入契约层 AUTHORIZED_LEAD_HOURS 强校验 (P8 短时效路由缺陷单 D3)`)（原混杂提交 `31e1d33` 已按业主批准拆分为纯 D3 提交，`load_model` 改动退回工作区并归入 G-5）。
 
-### G-5 待办项：273 项在途与未追踪文件（56 M + 217 ??）的盘点分流 ｜ 待办（后续安排）
-- **盘点范围**：当前工作区快照共 **273 项（`56 M + 217 ??`）**（注：随本批 `Commit A` 3 份新文档、`Commit B` 2 份基线文档与 1 份独立测试文件入库后，留待 G-5 窗口清点分流为 **267 项：`56 M + 211 ??`**）；分流三去向不变：**正式提交 / `.gitignore` 忽略 / 清理抛弃**。
+### G-5 待办项：273 项在途与未追踪文件（56 M + 217 ??）的盘点分流 ｜ 待办（后续安排 · `2026-11-18 切片 1 开工前置已盘点对账 263 项`）
+- **盘点范围**：`2026-11-13` 原快照 **273 项（`56 M + 217 ??`）**（注：经多轮治理论证与定版文档入库后，**`2026-11-18` 切片 1 开工前实测盘点为 `263 项：53 M + 210 ??`**）；分流三去向不变：**正式提交 / `.gitignore` 忽略 / 清理抛弃**。
+- **`2026-11-18` 切片 1 开工前白名单隔离核验**：
+  - `53 M` 构成：`docs/` `4` 项（均停留在 `G-5` 前未动）、`evidence/` `19` 项（mtime `2026-11-10`）、`scripts/` `5` 项（`2026-11-10`）、`src/` `12` 项（`modeling / metrics / prediction / utils / verification`，`2026-11-10` 及 `registry.py` `2026-11-13`）、`tests/` `13` 项（`2026-11-10 / 11-13`）；
+  - `210 ??` 构成：`docs/audit/` `93`、`docs/handoffs/` `73`、`evidence/` `33`、`scripts/` `11`（mtime `2026-11-06 ~ 11-10`）；`src/` 与 `tests/` 未追踪数为 `0`；
+  - **锁定区与切片 1 零交集确认**：`src/pricing/` 与 `src/contract/`（`F-2 LOCKED`）均为 **`0` 修改 / `0` 未追踪**；切片 1 全部分批提交强制执行显式文件清单 `git add` + `git diff <base>..HEAD` 校验，严格隔离该 `263` 项历史在途文件（等待专门 `G-5` 分流窗口处理，未经用户明令不擅删任何历史在途文件）。
 - **`M` 计数对账（`57 → 56` vs 预期 `54`）**：
   - 实测 `56 M` 构成为：`docs/` 4 项 + `evidence/` 19 项 + `scripts/` 5 项 + `src/` 13 项 + `tests/` 15 项。
   - **已核实非今日测试运行再生 `evidence` 所致**：`19` 个 `M` 状态 `evidence/` 文件的 `mtime` 均停留在 `2026-10`～`2026-11-10 16:14:26`（`2026-11-13` 再生成数为 `0`）；仅減至 `56` 而非 `54` 的原因在于 `registry.py`（`fccae33`）拆分后 `load_model` PKL-first 改动留回 `M`、`gefs_extract.py`/`interpolator.py`/`main_pipeline.py` 经 `6af817d`/`f2e01d2`/`ca7dbc8` 清空（原“57”为提交前叠加口径估算）。另将 `evidence/` 下可再生成评估工件列为 `.gitignore` 候选。
@@ -399,7 +403,7 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
 
 ---
 
-### G-19 `2026-11-18` 模块地图与协议层定版（`项目方案 v3.0 §8`）及 `D-A2` 核查组四组扩五组 ｜ **骨架批阶段二落盘 / `D-A2` 扩五组待测**
+### G-19 `2026-11-18` 模块地图与协议层定版（`项目方案 v3.0 §8`）及 `D-A2` 核查组四组扩五组 ｜ **`D-A2` 五组调研已收口 `✅`（`2026-11-18`，待 `11-20` 降费后复验）**
 
 > 本条依据 `阶段二落盘任务书（v2 定版，2026-11-18）` 登记；所有新增协议口径、核查项与治理条款均属 **`2026-11-18` 当前决策 / 首期选择（月度复检可替换）**。
 
@@ -410,3 +414,14 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
   3. **组 3｜最小单双约束组**：实测活跃天气市场 `gamma.minimum_order_size`（`shares`）分布，**并入 `min_notional_usd` 存在性与数值核验**（含网关 `$1.00` 等名义金额底线及截断小数位规则）；
   4. **组 4｜发单语义、回执终态与运行时权威端（`D1`）组**：实测 `FAK/IOC` 部分成交返回值、批量 `POST /orders` 上限及限频，**并入运行时 `feeRate` 端点可达性核验（`D1` 权威源判定）**（验证 Gamma/CLOB 是否实时返回 `feeRate`，以确立 `P4.fee_rate_provenance` 取 `"API_RUNTIME"` 抑或退回 `"FACT-001"`）；
   5. **组 5（新增 `N6`）｜`fee` 计费函数形式核验**：虽然 `fee_rate = 0.05` 数值已双源对齐，但 **`q_eff = p × (1 + fee × (1 − p))` 之函数形式尚未对照平台实际计费公式逐位实测核验**。核验方法：① 对照 Polymarket 官方费用计算公式与五位小数精度规则逐价位验证；② 或通过历史/极小实盘成交回执中的实际 `fee` 扣款字段反向求解核验。**偏差处置规则**：如实测发现公式偏差，先如实写入 [`P8-FACTS-LEDGER v0.1`](P8-FACTS-LEDGER_静态事实档案_v0.1.md) 并按变更分类流程申请修改，**调研批严禁擅动 `src/pricing/` 锁定文件**。
+- **`S1-01` 五组实证收口回执（`2026-11-18`）**：
+  - 全部 5 组经 `docs.polymarket.com`、`gamma-api.polymarket.com`、`clob.polymarket.com` 与 `wss://ws-subscriptions-clob.polymarket.com/ws/market` 实测收口并入档 [`P8-FACTS-LEDGER v0.2`](P8-FACTS-LEDGER_静态事实档案_v0.1.md)；
+  - 关键新发现：① **`2026-11-20T23:59Z` 起 `Weather feeRate` 官方将由 `0.05` 下调至 `0.01`**；② Gamma `feeSchedule.rate` 为 `D1` 权威源（跳过 CLOB `/fee-rate` `base_fee: 1000`）；③ `tick_size` 可在 `0.308` 等中性价位动态切换 `0.001`；④ `min_order_size_shares=5`（`shares`）由 live `0.12 × 5 = $0.60` 实盘挂单证实，`FAK` `$1` 名义门槛保留保守占位待真盘首单确认；⑤ WS `book` 帧不返回 `min_order_size` / `neg_risk`，且系统 SOCKS 环境下须 `proxy=None`。
+
+---
+
+### G-20 `2026-11-18` `T1 G-15` 结算口径三查实证结果与既有 `ADR` 分叉裁决登记 ｜ **`P5 T_settle_close_utc` 已锚定 / 3 处 `ADR` 分叉待用户裁决**
+
+- **核查依据与档案落点**：严格对照 [`P8-KERNEL-CONSENSUS v1.1`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) `G-15` 三查，完成 Active 10 站（`KORD/KLGA/KATL/KDAL/KSEA/KLAX/KHOU/KMIA/KSFO/KAUS`）现役 Gamma 市场原文与历史 `2026-10-20` vs `2026-10-25` 对照取证，详见 [`P8-FACTS-LEDGER v0.2 §三`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#三-s1-02--t1-g-15-结算口径三查与既有-adr-分叉对照表2026-11-18)。
+- **已收敛锚点**：`P5 tau_hours` 之 **`T_settle_close_utc` 正式锚定为 `(target_date + 1d) 00:00:00 Station Local (ZoneInfo, 含 DST) → UTC`**（与现役规则“含夏令时站当地日历日”及 `ADR-0012 D2` 一致；明确不采用 Gamma `endDate=12:00Z`）。
+- **暴露分叉（提请用户拍板修订 `ADR-0009 / ADR-0012`，不擅改历史 ADR）**：① 主数据源由 `NWS WRH` 切换至 `aviationweather.gov` 常规 `METAR`（`T` 组 `0.1°C` 优先 / 次位 `TT/TD`；`WU` 兜底）；② **现役规则明确排除 `SPECI`**（与 `ADR-0009 / ADR-0012` 强制纳入相反）；③ 负温 `.5°F` 向正无穷进位（`-8.5°F → -8°F`，区别于 `Decimal.ROUND_HALF_UP` 的 `-9`）；④ 锁定截止为次日首条常规 METAR 或 `11:59 PM ET` 先到者（`COR` 锁前有效）。
