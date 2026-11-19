@@ -28,16 +28,16 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
 
     by_id = {t["id"]: t for t in data["tasks"]}
     for tid in ALGORITHM_PROTECTED_IDS:
-        assert by_id[tid]["acceptance"] == "待架构侧供给"
-        assert "阻塞于架构侧" in by_id[tid]["dependencies_label"]
-        assert by_id[tid]["status"] == "BLOCKED"
+        assert by_id[tid]["status"] == "DESIGNING"
+        assert by_id[tid]["acceptance"] != "待架构侧供给"
 
     assert by_id["S2-01"]["status"] == "PENDING_APPROVAL"
     assert "待用户批准" in by_id["S2-01"]["dependencies_label"]
     assert by_id["S2-05"]["status"] == "DONE"
 
     assert len(data["mainline_reviews"]) == 1
-    assert data["mainline_reviews"][0] == {"date": "", "priority": "", "rationale": ""}
+    assert data["mainline_reviews"][0]["date"] == "2026-11-19"
+    assert "算法四单设计" in data["mainline_reviews"][0]["priority"]
 
     # Zero external CDN or network asset dependencies inside rendered HTML
     html_text = render_html(data)
@@ -55,8 +55,12 @@ def test_real_board_matches_ledger_via_check_cli() -> None:
 def test_cycle_detection_and_algo_guardrail(tmp_path: Path) -> None:
     raw = REAL_LEDGER.read_text(encoding="utf-8")
 
-    # 1. Tampering S3-01 acceptance must fail unless --allow-arch-supplied
-    tampered_algo = raw.replace("| `S1-06, S2-03, 阻塞于架构侧（待供给算法验收标准）` | 待架构侧供给 | `BLOCKED` |", "| `S1-06, S2-03, 阻塞于架构侧（待供给算法验收标准）` | 擅自拟定阈值 | `BLOCKED` |", 1)
+    # 1. Blocked algorithm task without placeholder must fail unless --allow-arch-supplied
+    tampered_algo = raw.replace(
+        "| 假盘 `M_now` 与结算口径逐帧一致 | `DESIGNING` |",
+        "| 擅自拟定阈值 | `BLOCKED` |",
+        1,
+    )
     p1 = tmp_path / "tampered_algo.md"
     p1.write_text(tampered_algo, encoding="utf-8")
     with pytest.raises(LedgerValidationError, match="待架构侧供给"):

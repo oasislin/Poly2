@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 ALLOWED_MODULE_STATES = frozenset({"已就绪", "待实现", "待修复", "待改造"})
 ALLOWED_TASK_STATES = frozenset(
-    {"DONE", "PENDING_APPROVAL", "READY", "BLOCKED", "PLANNED"}
+    {"DONE", "DESIGNING", "PENDING_APPROVAL", "READY", "BLOCKED", "PLANNED"}
 )
 EXPECTED_MODULE_IDS = tuple(f"M{i}" for i in range(1, 11))
 ALGORITHM_PROTECTED_IDS = frozenset({"S3-01", "S3-02", "S3-04", "S3-05"})
@@ -224,14 +224,20 @@ def load_task_ledger(
                     raise LedgerValidationError(f"Task {tid} has empty required field '{field_name}'")
 
             if tid in ALGORITHM_PROTECTED_IDS and not allow_arch_supplied:
-                if acceptance != "待架构侧供给":
-                    raise LedgerValidationError(
-                        f"Protected algorithm task {tid} acceptance must remain '待架构侧供给', got '{acceptance}'"
-                    )
-                if "阻塞于架构侧" not in deps_text:
-                    raise LedgerValidationError(
-                        f"Protected algorithm task {tid} dependencies must include '阻塞于架构侧'"
-                    )
+                if status == "BLOCKED":
+                    if acceptance != "待架构侧供给":
+                        raise LedgerValidationError(
+                            f"Blocked algorithm task {tid} acceptance must remain '待架构侧供给', got '{acceptance}'"
+                        )
+                    if "阻塞于架构侧" not in deps_text:
+                        raise LedgerValidationError(
+                            f"Blocked algorithm task {tid} dependencies must include '阻塞于架构侧'"
+                        )
+                elif status == "DESIGNING":
+                    if acceptance == "待架构侧供给":
+                        raise LedgerValidationError(
+                            f"Designing algorithm task {tid} must carry supplied acceptance criteria"
+                        )
 
             depends_on = []
             for dep in _TASK_ID_RE.findall(deps_text):
@@ -391,6 +397,7 @@ def render_html(data: Dict[str, Any]) -> str:
     border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
   }}
   .st-DONE, .ms-已就绪 {{ background: var(--green-bg); color: var(--green); border-color: rgba(16,185,129,0.35); }}
+  .st-DESIGNING {{ background: var(--purple-bg); color: var(--purple); border-color: rgba(167,139,250,0.45); }}
   .st-PENDING_APPROVAL {{ background: var(--amber-bg); color: var(--amber); border-color: rgba(245,158,11,0.45); }}
   .st-READY, .ms-待实现 {{ background: var(--blue-bg); color: var(--blue); border-color: rgba(56,189,248,0.35); }}
   .st-BLOCKED, .ms-待修复 {{ background: var(--red-bg); color: var(--red); border-color: rgba(239,68,68,0.38); }}
@@ -475,15 +482,16 @@ def render_html(data: Dict[str, Any]) -> str:
     <div class="tabs">
       <button class="tab-btn active" data-view="modules">按模块十宫格 (M1–M10)</button>
       <button class="tab-btn" data-view="slices">按切片泳道 × 依赖高亮 (切片 1–4)</button>
-      <button class="tab-btn" data-view="actions">阻塞 / 待批 / 待供给清单</button>
+      <button class="tab-btn" data-view="actions">阻塞 / 设计中 / 待批清单</button>
     </div>
     <div class="filters">
       <input id="search-input" type="search" placeholder="搜索单号 / 模块 / 关键词..." />
       <select id="status-filter">
         <option value="ALL">全部状态</option>
+        <option value="DESIGNING">DESIGNING (设计中)</option>
         <option value="PENDING_APPROVAL">PENDING_APPROVAL (待用户批准)</option>
         <option value="READY">READY (就绪可开)</option>
-        <option value="BLOCKED">BLOCKED (受阻/待架构侧)</option>
+        <option value="BLOCKED">BLOCKED (受阻)</option>
         <option value="PLANNED">PLANNED (排期中)</option>
         <option value="DONE">DONE (已完成)</option>
       </select>
@@ -504,6 +512,7 @@ def render_html(data: Dict[str, Any]) -> str:
   const DATA = JSON.parse(document.getElementById("board-data").textContent);
   const STATUS_TEXT = {{
     DONE: "DONE · 已完成",
+    DESIGNING: "DESIGNING · 设计中",
     PENDING_APPROVAL: "PENDING_APPROVAL · 待用户批准",
     READY: "READY · 就绪可开",
     BLOCKED: "BLOCKED · 受阻",
@@ -547,7 +556,7 @@ def render_html(data: Dict[str, Any]) -> str:
   function renderKpis() {{
     const kpiRow = document.getElementById("kpi-row");
     const pending = DATA.tasks.filter(t => t.status === "PENDING_APPROVAL").length;
-    const archPending = DATA.tasks.filter(t => t.is_arch_pending).length;
+    const designing = DATA.tasks.filter(t => t.status === "DESIGNING").length;
     const blocked = DATA.tasks.filter(t => t.status === "BLOCKED").length;
     const ready = DATA.tasks.filter(t => t.status === "READY").length;
     const sliceHtml = DATA.slices.map(s => {{
@@ -558,7 +567,7 @@ def render_html(data: Dict[str, Any]) -> str:
 
     kpiRow.innerHTML = kpiRow.children[0].outerHTML + kpiRow.children[1].outerHTML + `
       <div class="kpi"><div class="kpi-label">待用户批准节点</div><div class="kpi-val" style="color:var(--amber)">${{pending}} 项</div></div>
-      <div class="kpi"><div class="kpi-label">算法四单（待架构侧供给）</div><div class="kpi-val" style="color:var(--purple)">${{archPending}} 项</div></div>
+      <div class="kpi"><div class="kpi-label">算法四单（设计中 / 待审核）</div><div class="kpi-val" style="color:var(--purple)">${{designing}} 项</div></div>
       <div class="kpi"><div class="kpi-label">BLOCKED / READY</div><div class="kpi-val">${{blocked}} / ${{ready}}</div></div>
       <div class="kpi"><div class="kpi-label">四切片完成分布</div><div class="kpi-val" style="font-size:13px;margin-top:6px">${{esc(sliceHtml)}}</div></div>
     `;
@@ -714,8 +723,8 @@ def render_html(data: Dict[str, Any]) -> str:
     const el = document.getElementById("view-actions");
     const matched = DATA.tasks.filter(matchesFilter);
     const pendingList = matched.filter(t => t.status === "PENDING_APPROVAL");
-    const archList = matched.filter(t => t.is_arch_pending);
-    const readyBlockedList = matched.filter(t => (t.status === "READY" || t.status === "BLOCKED") && !t.is_arch_pending);
+    const archList = matched.filter(t => t.is_algo_protected || t.is_arch_pending || t.status === "DESIGNING");
+    const readyBlockedList = matched.filter(t => (t.status === "READY" || t.status === "BLOCKED") && !t.is_algo_protected && !t.is_arch_pending);
 
     const stRows = (DATA.stations || []).map(r => `<tr>
       <td><strong>${{esc(r["站点"])}}</strong></td>
@@ -734,7 +743,7 @@ def render_html(data: Dict[str, Any]) -> str:
         ${{stRows ? `<div style="margin-top:12px"><div style="font-size:12px;color:var(--muted);margin-bottom:6px"><strong>S2-01 默认建议站表（档 B · 5 站）与 Active 10 流动性参照：</strong></div><table><thead><tr><th>站点</th><th>城市</th><th>流动性</th><th>成交量</th><th>并发天数</th><th>档 B 默认建议</th><th>说明</th></tr></thead><tbody>${{stRows}}</tbody></table></div>` : ""}}
       </div>
       <div class="action-section">
-        <h2 style="color:var(--purple)">2. 算法改造四单（阻塞于架构侧 · 验收标准待架构侧供给）</h2>
+        <h2 style="color:var(--purple)">2. 算法改造四单（S3-01 / S3-02 / S3-04 / S3-05 · 设计中待审核）</h2>
         ${{renderTaskTable(archList)}}
       </div>
       <div class="action-section">
