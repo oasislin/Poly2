@@ -36,8 +36,12 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert "待用户批准" in by_id["S2-01"]["dependencies_label"]
     assert by_id["S2-05"]["status"] == "DONE"
 
+    assert len(data["mainline_reviews"]) == 1
+    assert data["mainline_reviews"][0] == {"date": "", "priority": "", "rationale": ""}
+
     # Zero external CDN or network asset dependencies inside rendered HTML
     html_text = render_html(data)
+    assert "主线审视记录" in html_text
     assert "<script src=" not in html_text
     assert "<link rel=\"stylesheet\"" not in html_text
     assert "cdn." not in html_text.lower()

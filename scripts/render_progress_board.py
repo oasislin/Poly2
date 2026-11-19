@@ -271,6 +271,25 @@ def load_task_ledger(
             for row in st_tables[0]:
                 stations.append({k: _strip_md(v) for k, v in row.items()})
 
+    # Parse optional §4 Mainline review log table (append-only, blank placeholder allowed)
+    mainline_reviews: List[Dict[str, str]] = []
+    if "§4" in sections:
+        rv_tables = parse_markdown_tables(sections["§4"])
+        if rv_tables:
+            required_rv_cols = {"日期", "当轮优先级排序", "依据"}
+            if rv_tables[0] and not required_rv_cols.issubset(rv_tables[0][0].keys()):
+                raise LedgerValidationError(
+                    f"§4 mainline review table missing columns: {sorted(required_rv_cols - set(rv_tables[0][0].keys()))}"
+                )
+            for row in rv_tables[0]:
+                mainline_reviews.append(
+                    {
+                        "date": _strip_md(row.get("日期", "")),
+                        "priority": _strip_md(row.get("当轮优先级排序", "")),
+                        "rationale": _strip_md(row.get("依据", "")),
+                    }
+                )
+
     return {
         "ledger_file": ledger_path.name,
         "source_sha256": source_sha256,
@@ -279,6 +298,7 @@ def load_task_ledger(
         "modules": modules,
         "tasks": tasks,
         "stations": stations,
+        "mainline_reviews": mainline_reviews,
     }
 
 
@@ -475,6 +495,7 @@ def render_html(data: Dict[str, Any]) -> str:
   <section id="view-slices" class="hidden"></section>
   <section id="view-actions" class="hidden"></section>
   <div id="detail-drawer" class="detail-box hidden"></div>
+  <section id="mainline-review-section" class="action-section" style="margin-top:16px"></section>
 </div>
 
 <script id="board-data" type="application/json">{payload_json}</script>
@@ -729,6 +750,35 @@ def render_html(data: Dict[str, Any]) -> str:
     }});
   }}
 
+  function renderMainlineReviews() {{
+    const el = document.getElementById("mainline-review-section");
+    const list = DATA.mainline_reviews || [];
+    const rowsHtml = list.length
+      ? list.map((r, idx) => {{
+          const isBlank = !r.date && !r.priority && !r.rationale;
+          if (isBlank) {{
+            return `<tr><td colspan="3" style="color:var(--muted);font-style:italic">第 ${{idx + 1}} 行预留空行 · 待首次主线审视填写</td></tr>`;
+          }}
+          return `<tr>
+            <td style="white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${{esc(r.date || "—")}}</td>
+            <td>${{esc(r.priority || "—")}}</td>
+            <td>${{esc(r.rationale || "—")}}</td>
+          </tr>`;
+        }}).join("")
+      : '<tr><td colspan="3" style="color:var(--muted)">台账 §4 暂无主线审视记录</td></tr>';
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <h2 style="margin:0;font-size:15px">主线审视记录（每计划点一行 · 增补式登记）</h2>
+        <span style="font-size:12px;color:var(--muted)">来源: P8-PROJECT-TASKS §4（只追不改）</span>
+      </div>
+      <table>
+        <thead><tr><th style="width:140px">日期</th><th style="width:38%">当轮优先级排序</th><th>依据</th></tr></thead>
+        <tbody>${{rowsHtml}}</tbody>
+      </table>
+    `;
+  }}
+
   function renderAll() {{
     renderKpis();
     document.getElementById("view-modules").classList.toggle("hidden", currentView !== "modules");
@@ -738,6 +788,7 @@ def render_html(data: Dict[str, Any]) -> str:
     else if (currentView === "slices") renderSlices();
     else renderActions();
     renderTaskDetail(selectedTaskId);
+    renderMainlineReviews();
   }}
 
   document.querySelectorAll(".tab-btn[data-view]").forEach(btn => {{
