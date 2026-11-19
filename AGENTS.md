@@ -40,12 +40,13 @@
 - 若文件创建或重构的规模很大，将任务拆分为多个步骤/函数分步完成。
 - 工具调用前后的注释与说明保持简洁。
 
-## 项目管理纪律（`2026-11-18` 当前决策 · 月度复检可替换）
+## 项目管理纪律（`2026-11-19` 当前决策 · 月度复检可替换）
 
-- **术语规范**：**任务** = 模块级，必须挂入上层任务表（[`docs/ROADMAP.md §3.4`](docs/ROADMAP.md) / [`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)）；**待办** = 模块内细项，必须挂入对应模块支撑文档。
+- **术语规范**：**任务** = 模块级，必须挂入唯一权威任务表（[`P8-PROJECT-TASKS v1.0`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md)）；**待办** = 模块内细项，必须挂入对应模块支撑文档。
 - **文档锚点纪律**：开具任何工单/任务单必引法定锚点（文件 + 节号），**无锚点不开单**。
 - **协议同步纪律**：协议变更须严格执行 [`项目方案 (v3.0) §8.3`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#83-协议治理规则2026-11-18-当前决策) 联动规则——协议正文改版 + `§8.2` 清单版本号/指针刷新 + 协议两侧模块支撑文档复核，**同一提交完成并列入提交校验清单**；特则（`C3`）：`P4 MarketBookSnapshot` 任何升版，须将 **`P13` 录制序列化器、`P18` 假盘回放撮合器与 `M7` 审计解析器**列入同提交强制复核清单。
-- **任务表唯一源**：文档内任务表与 [`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md) 活队列为唯一权威进度源；`GitHub Issues` `v1` 默认不开，前述 `Phase 2` `Task YY - Ticket ZZ` 条款仅保留作未来开启 Issues 时的命名格式规范，不构成双轨同步承诺。
+- **任务表唯一源**：[`P8-PROJECT-TASKS_全量任务分解台账_v1.0.md`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md) 为全仓唯一权威实时任务与十模块状态进度源（[`P8-GLOBAL-MAP §4`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md) 已收窄为摘要指针，[`docs/ROADMAP.md §3.5`](docs/ROADMAP.md) 仅作切片 1 历史闭合快照保留，不再双头维护）；`GitHub Issues` `v1` 默认不开，前述 `Phase 2` `Task YY - Ticket ZZ` 条款仅保留作未来开启 Issues 时的命名格式规范，不构成双轨同步承诺。
+- **任务台账与看板联动校验条款（`2026-11-19` 新增）**：凡涉及任务状态变更（`READY / BLOCKED / PENDING_APPROVAL / PLANNED / DONE`）或新开/闭合任务的提交，必须在**同一 Git Commit** 内同步更新 [`P8-PROJECT-TASKS_全量任务分解台账_v1.0.md`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md)，运行 `python3 scripts/render_progress_board.py` 刷新 [`progress_board.html`](docs/audit/progress_board.html)，并执行 `python3 scripts/render_progress_board.py --check` 确认 `0` 解析告警、DAG 无环与字节级一致性后方可提交。
 - **文件增殖判据**：新建任何独立文档文件前，须核验满足 **“无既有文档可合理承载该职责”** 或 **“强行塞入既有文档将导致职责混杂”** 之一，否则一律在既有归属文档加节。
 - **坐标声明三行惯例**：每批阶段任务书开头固定给出三行坐标声明——① 地图位置、② 本批贡献、③ 离实钱步数。
 
