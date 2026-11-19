@@ -420,8 +420,11 @@ $s_{\text{oos}} > 1$（误差方差大于预报方差，分布过窄）在学术
 
 ---
 
-### G-20 `2026-11-18` `T1 G-15` 结算口径三查实证结果与既有 `ADR` 分叉裁决登记 ｜ **`P5 T_settle_close_utc` 已锚定 / 3 处 `ADR` 分叉待用户裁决**
+### G-20 `2026-11-18 ~ 2026-11-19` `T1 G-15` 结算口径三查实证结果与 `ADR` 修订闭环（`S1-06`） ｜ **`已闭环 ✅（2026-11-19 裁决落地 · 喂桥结算同构）`**
 
-- **核查依据与档案落点**：严格对照 [`P8-KERNEL-CONSENSUS v1.1`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) `G-15` 三查，完成 Active 10 站（`KORD/KLGA/KATL/KDAL/KSEA/KLAX/KHOU/KMIA/KSFO/KAUS`）现役 Gamma 市场原文与历史 `2026-10-20` vs `2026-10-25` 对照取证，详见 [`P8-FACTS-LEDGER v0.2 §三`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#三-s1-02--t1-g-15-结算口径三查与既有-adr-分叉对照表2026-11-18)。
-- **已收敛锚点**：`P5 tau_hours` 之 **`T_settle_close_utc` 正式锚定为 `(target_date + 1d) 00:00:00 Station Local (ZoneInfo, 含 DST) → UTC`**（与现役规则“含夏令时站当地日历日”及 `ADR-0012 D2` 一致；明确不采用 Gamma `endDate=12:00Z`）。
-- **暴露分叉（提请用户拍板修订 `ADR-0009 / ADR-0012`，不擅改历史 ADR）**：① 主数据源由 `NWS WRH` 切换至 `aviationweather.gov` 常规 `METAR`（`T` 组 `0.1°C` 优先 / 次位 `TT/TD`；`WU` 兜底）；② **现役规则明确排除 `SPECI`**（与 `ADR-0009 / ADR-0012` 强制纳入相反）；③ 负温 `.5°F` 向正无穷进位（`-8.5°F → -8°F`，区别于 `Decimal.ROUND_HALF_UP` 的 `-9`）；④ 锁定截止为次日首条常规 METAR 或 `11:59 PM ET` 先到者（`COR` 锁前有效）。
+- **核查依据与档案落点**：严格对照 [`P8-KERNEL-CONSENSUS v1.1`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) `G-15` 三查，完成 Active 10 站（`KORD/KLGA/KATL/KDAL/KSEA/KLAX/KHOU/KMIA/KSFO/KAUS`）现役 Gamma 市场原文与历史 `2026-10-20` vs `2026-10-25` 对照取证，详见 [`P8-FACTS-LEDGER v0.3 §三`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#三-s1-02--t1-g-15-结算口径三查与既有-adr-分叉对照表2026-11-18)。
+- **已收敛锚点**：`P5 tau_hours` 之 **`T_settle_close_utc` 正式锚定为 `(target_date + 1d) 00:00:00 Station Local (ZoneInfo, 含 DST) → UTC`**（明确不采用 Gamma `endDate=12:00Z`）。
+- **`S1-06` 裁决就地闭环（`2026-11-19` · 世界事实变更跟随，~`2026-10-23` 起生效）**：
+  1. [`ADR-0009 §4`](../adr/ADR-0009：芝加哥%2008-31%20特报（SPECI）结算语义裁决与截断层规则.md#4-2026-11-19-s1-06--g-15-修订节--世界事实变更跟随当前决策) 与 [`ADR-0012 §5`](../adr/ADR-0012：法定结算真值源（NWS%20WRH）、僵尸仓位双轨估值与舍入闭环裁决.md#5-2026-11-19-s1-06--g-15-修订节--世界事实变更跟随当前决策) 均以**增补修订节（不重写历史正文）**登记三处规则切换：① 主源切换为 **`aviationweather.gov` 常规 `METAR`**（`T`-group `0.1°C` 优先 / 次位体 `TT/TD` 整度 / 无报回退 **Weather Underground**）；② **排除 `SPECI`**（生产喂桥流严格常规 METAR only，`M1` 全量含 `SPECI` 流仅并行留档备查）；③ 负温 `.5°F` **向 $+\infty$ 进位**（`floor(x+0.5)`，`-8.5 → -8`）；
+  2. [`P8-KERNEL-CONSENSUS §七`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#七-s1-06-g-15-裁决事实增补max-恒等式定义域论证与-t8-m1-规格输入2026-11-19-当前决策) 完成 **`max` 恒等式收窄定义域单调证明**、`oracle_compliant`（`T8` 对 `M1` 字段需求，不虚拟改 `P11`）、`SPECI` 混合条件化移入 `D-6/T8` 停车场、以及 **`M1` `T8` 五项改造清单**登记；
+  3. [`P8-FACTS-LEDGER v0.3 §2.1`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#21-2026-11-19-s1-06-变费复核与-费率时代标记规则当前决策) 确立 `2026-11-20T23:59Z` 跨断点 **费率时代禁混采规则**（主样本取 `0.01` 时代），[`P8-T4-M4M5-INTERFACE §2.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#24-s1-06-费率消费与回放口径隔离规则p4--p18--2026-11-19-当前决策) 与 [`项目方案 §8.2 P18`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) 锁定 **回放一律取帧自带 `P4.fee_rate`**。

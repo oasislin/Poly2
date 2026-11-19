@@ -89,6 +89,11 @@ def plan_slice(
   - 向 `M7` 只读查询 `(token_id=ask_book_frame.token_id, after_ts=submit_ts_utc + latency_ms)` 对应的 **`P13` 录制流下一真实帧**；
   - 若命中帧 `gap_detected == True` 或缺失可匹配帧：**立即终止本笔模拟撮合**，回传 **`PAPER_MATCH_ABORTED_GAP`** 写入 `P3` 并通知 `P14` 解冻预冻结额；**严禁回退使用决策瞬间快照零延迟成交，严禁旁路直读 `live WS` 流**。
 
+### 2.4 `S1-06` 费率消费与回放口径隔离规则（`P4 / P18` · `2026-11-19` 当前决策）
+
+- **回放 / 离线评估 / 假盘录盘撮合路径（消费 `P13 / P18` 录盘数据）**：凡消费录盘帧的路径（含 `P18` 假盘撮合、`M4/M5` 历史盘口回放、`T3` 走簿分析及 `P3` 滑点归因），计算含费 `edge` 与模拟撮合手续费时，**`fee_rate` 一律严格取所消费帧自带的 `P4.fee_rate`（即录盘时点之真实历史费率）**，严禁跨越 `2026-11-20T23:59Z` 变费断点用今日实时费率去覆写历史录盘帧；并按 [`P8-FACTS-LEDGER v0.3 §2.1`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#21-2026-11-19-s1-06-变费复核与-费率时代标记规则当前决策) 标注 `fee_era`（跨断点不混采）。
+- **实盘实时下单路径（`LIVE`）**：取运行时 **Gamma `/markets` `feeSchedule.rate`**（`D1` 权威源，`API_RUNTIME`；字段缺失时退回 `FACT-001` 并如实标注 `fee_rate_provenance="FACT-001"`）。
+
 ---
 
 ## 三、 本批正式确立协议正文（`P7`、`P8`、`P5 v1.0`、`P6 v1.0`）
@@ -146,7 +151,7 @@ class QuotaSnapshot:
 - **三态合法矩阵（`Q-B2`）**：`is_bridge_active=True` $\implies$ `m_now_f != None`；`False` & `None`（开盘前/断流降级）合法；`False` & `m_now_f != None`（预热维持先验）合法但必有 `p_stay=None` 且不强行清零死档。
 - **`tau_hours` 与 `T_settle_close_utc` 晚绑定与 `S1-02 G-15` 对齐说明**：
   - 接口显式接收 `settle_close_utc: datetime`（与 `gefs_lead_hours` 完全分离，绝不混用），天然支持按站点动态注入与晚绑定；
-  - 结合 `S1-02 T1 G-15` 实证核查结果（见 [`P8-FACTS-LEDGER v0.2 §三`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#三-s1-02--t1-g-15-结算口径三查与既有-adr-分叉对照表2026-11-18)），`T_settle_close_utc` 锚定为 `(target_date + 1d) 00:00:00 Station Local (tz=ZoneInfo(station.tz)) → UTC`（含 DST；不取 Gamma `endDate=12:00Z`），具体结算数据源修订（`AWC routine METAR` vs `ADR-0012`）待用户拍板 `G-15` 分叉后于 `T8` 代码批落实。
+  - 结合 `S1-02 T1 G-15` 与 **`S1-06`（`2026-11-19`）** 裁决闭环（[`P8-KERNEL-CONSENSUS §七`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#七-s1-06-g-15-裁决事实增补max-恒等式定义域论证与-t8-m1-规格输入2026-11-19-当前决策)），`T_settle_close_utc` 正式锚定为 `(target_date + 1d) 00:00:00 Station Local (tz=ZoneInfo(station.tz)) → UTC`（含 DST；不取 Gamma `endDate=12:00Z`），且 **`P5` 四条不变量与死档清零定义域严格限定为“`M_now` 来自常规 `METAR` 结算同构流（$\mathcal{O}_{\text{settle}}(D, t) \subseteq \mathcal{O}_{\text{settle}}(D)$）”**，具体 `M1 / M9` 代码切换于 `T8` 落实。
 - **`T8` 现役代码改造接口映射（延续 `P5 rc` 诚实披露）**：`T8` 阶段 `M2` 改造须补齐 `TruncatedDistribution.cdf()` 对 `mu_r_result` 的消费以落实点质量包含律，并按 `G-15` 核定之整数格点与 `.5` 正无穷进位口径重构 [`DiscreteBinEngine`](../../src/prediction/discrete_bin_engine.py) 边界映射。
 
 ---

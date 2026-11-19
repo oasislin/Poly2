@@ -113,3 +113,20 @@ $$\text{Total Bankroll} = \text{Free USDC} + \text{Active Locked} + \text{Zombie
 - 挂账闭环：`docs/reports/phase1.5-task03-pending-clearance.md`（PENDING-01）
 - 执行规范：`docs/项目方案和执行文档/Phase 2 执行文件 v1.3：盘口定价、套利与执行引擎.md` (§1, §3, §5.1, §5.2)
 - 总体方案：`docs/项目方案和执行文档/项目方案 (v2.6)：Polymarket 温度市场量化投注系统.md` (§5, §8.1, §8.2, §9)
+
+---
+
+## 5. `[2026-11-19 S1-06 / G-15 修订节 · 世界事实变更跟随（当前决策）]`
+
+> **变更分类与修订原则**：**世界事实变更跟随（World-Fact Drift Alignment）**；严格保留上方 §§1–4 历史原文不改写。本修订节登记 `2026-11-18` `T1 G-15` 对 Polymarket 国际站现役十站（`KORD/KLGA/KATL/KDAL/KSEA/KLAX/KHOU/KMIA/KSFO/KAUS`）合约原文核查确认之 **三项外部世界规则切换（约 `~2026-10-23` 起生效）**，作为 `T8 M1 / M9` 工程改造之法定依据。
+
+| 维度 | 旧 `ADR-0012` 规定 | 现役实盘规则（`~2026-10-23` 起） | 官方原文逐字依据（`S1-02` 实采留档） |
+| :--- | :--- | :--- | :--- |
+| **1. 主/备数据源** | `D1`：**NWS WRH** 官方时序表唯一法定 | 主源 **`aviationweather.gov` 常规 `METAR`**（`T`-group `0.1°C` 优先；缺备注退回体 `TT/TD` 整度 `°C`）；全天无常规报仅此时回退 **Weather Underground Daily Observations**；双方皆无则落最低档 | *"The qualifying value is the highest temperature reported in the hourly temperature remark of any routine (METAR) observation... If a routine observation does not carry the hourly temperature remark, the temperature group in the body... governs... In the event that the Aviation Weather Center has published no routine observation... by 11:59 PM ET on the day following the observation date, the Weather Underground Daily Observations table will be used..."* |
+| **2. `SPECI` 效力** | `D1`（对齐 `ADR-0009`）：**强制纳入 `SPECI`** | **`SPECI` 不计**（仅常规 `METAR`、`COR` 锁前计数、非 `SPECI` 标签或非整点常规报均计） | *"A report whose line begins with SPECI is a special observation and does not count. Every other report is routine, including one issued off the nominal hour and one that carries no METAR or SPECI label."* |
+| **3. 负温半度舍入** | `D3`：`Decimal(..., rounding=ROUND_HALF_UP)`（注：Python `Decimal.ROUND_HALF_UP` 对 `-8.5` 返回 **`-9`**） | **`.5` 向 $+\infty$ 进位**（`-8.5°F → -8°F`，等价 `math.floor(x + 0.5)`） | *"rounded to the nearest whole degree, with a value ending in exactly half rounded up to the next higher whole degree... For example... −22.5°C is exactly −8.5°F and counts as −8°F."* |
+
+- **时区日界与修订窗口确认（与旧 `D2` 一致）**：
+  - 官方原文：*"An observation counts if its time stamp, converted to the station's local time (including any daylight-saving shift in effect), falls on the observation date."*（即 `ZoneInfo` 站当地含夏令时日历日闭合，`P5 T_settle_close_utc` 继续锚定次日 `00:00:00 Local → UTC`）；
+  - 修订锁定期：次日首条常规 METAR 发布或次日 `11:59 PM ET` 先到者锁定，此前 `COR` 计数、此后修订不计（错报保留 7 天 ET 澄清期）。
+- **历史回测切分注记**：涉及 `~2026-10-23` 之前已结算历史合约对账时，仍按当时合约文本（`NWS WRH + SPECI`）区分；现役与后续 `T8` 生产链路（`M1` 喂桥流与 `M9` 结算器）统一对齐本修订节新口径。
