@@ -1,7 +1,7 @@
 # P8-FACTS-LEDGER：Polymarket 外部静态事实档案（`v0.2` · `2026-11-18` 已对齐 `S1-01 D-A2` 与 `S1-02 T1 G-15`）
 
 - **治理编号**：`P8-FACTS-LEDGER`（B 线治理 / 外部平台事实基线档案）
-- **版本与日期**：`v0.1`（`2026-11-17`）→ `v0.2`（`2026-11-18`：`S1-01/S1-02`）→ **`v0.3`（`2026-11-19`：`S1-06` 补丁落地 `G-15` 裁决、增补费率时代标记规则与跨断点分采铁律）**
+- **版本与日期**：`v0.1`（`2026-11-17`）→ `v0.2`（`2026-11-18`：`S1-01/S1-02`）→ `v0.3`（`2026-11-19`：`S1-06` `G-15` 落地）→ **`v0.4`（`2026-11-19`：`T8 v0.3` 增补 `CalculatorHelper.sol` `min(p, 1-p)` 链上签名上限澄清与 `py-clob-client #326` 佐证）**
 - **性质声明**：
   > **参数账本（[`P8-CAPITAL-CONFIG §7`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#7-参数账本全案占位参数统一登记表--2026-11-17)）管我们要拟合与校准的内生模型/执行参数；本静态事实档案管外部世界（Polymarket 网关、Gamma 元数据、官方结算机构）的既成客观事实。所有新增结论均为 `2026-11-18` 当前实证基线（受官方规则后续修订约束）。**
 - **强校验规则**：每一条记录必须写清 **值 / 来源（本地或线上核实）/ 核实日期 / 复核触发**；涉及与既有 `ADR` 文本存在客观背离的条款，原样如实列示并提交用户裁决，严禁擅自修改既有已批准 `ADR`。
@@ -37,6 +37,9 @@
    - 切换时间戳：**`2026-11-20T23:59:00Z`**（UTC 显式边界）；
    - `D1` 权威源字段：**Gamma `/markets` `feeSchedule.rate`**（运行时实时存在并 `feesEnabled=True` 时标 `fee_rate_provenance = "API_RUNTIME"`；仅字段缺失时回退 `FACT-001` 默认占位并标 `"FACT-001"`）；
    - 公式等价性代数核验：对任意成交份额 $C > 0$ 与档位卖价 $p \in (0, 1)$，协议买单总现金流出 $C \cdot p + C \cdot \text{feeRate} \cdot p(1 - p) = C \cdot p[1 + \text{feeRate}(1 - p)] = C \cdot q_{\text{eff}}$（注：实盘网关单笔费用按 `5` 位小数舍入、最小收费 `0.00001 USDC`，微差不超过 `0.00001`）。
+   - **链上 `CalculatorHelper.sol` `min(p, 1 − p)` 条目澄清（`2026-11-19` `v0.4` 增补 · 杜绝二次混淆）**：
+     - Polymarket 官方文档 [`docs.polymarket.com/trading/fees.md`](https://docs.polymarket.com/trading/fees.md) 逐字写明 **`fee = C × feeRate × p × (1 - p)`**，[`fee-and-rebate-changes-november-2026.md`](https://docs.polymarket.com/programs/fee-and-rebate-changes-november-2026.md) 逐字重申 **`fee = shares × feeRate × price × (1 − price)`**，同页 `100 shares`（`Weather 0.05`）数值表 `$0.10 → $0.45`、`$0.25 → $0.94`、`$0.50 → $1.25` 亦精确符合 $p(1-p)$；
+     - 链上合约 [`Polymarket/ctf-exchange/.../CalculatorHelper.sol`](https://raw.githubusercontent.com/Polymarket/ctf-exchange/main/src/exchange/libraries/CalculatorHelper.sol) 中出现之 `feeRateBps * min(price, 1 - price)` 实为**链上订单签名最大费用保护上限校验公式**（对应 CLOB `/fee-rate` 返回 `base_fee = 1000` 即 `10%` 签名上限），并非 Gamma `feeSchedule.rate`（`0.05 / 0.01`）的实际计费曲线；社区同源佐证见 [`Polymarket/py-clob-client#326`](https://github.com/Polymarket/py-clob-client/issues/326)（*"Fee documentation contradicts CLOB API fee-rate endpoint for Sports markets"*）。在 `p ∈ (0, 1)` 上实际扣费 `rate × p(1−p) ≤ 0.10 × min(p, 1−p)` 恒严格低于链上签名上限；现役只读 [`edge_math.py#L65`](../../src/pricing/edge_math.py#L65) 与 [`penetration_probe.py#L168`](../../src/pricing/penetration_probe.py#L168) 核验一致、无缺陷。
 2. **费率时代标记规则（跨断点禁混采铁律）**：
    - 按 `P4.fee_rate` 将历史录盘帧与 `P1/P3` 日志严格划分为 **`fee_era = "0.05_PRE_20261120"`** 与 **`fee_era = "0.01_POST_20261120"`**；
    - **跨断点不混采**：一切费率敏感统计量（含 `friction_median` 换算后边际、`edge` 分布、净期望收益率、各时代滑点对比与盈亏回溯）**严禁跨越 `2026-11-20T23:59Z` 混合池化计算**；

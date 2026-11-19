@@ -116,7 +116,7 @@
 ### 2.3 `P17 ForecastSnapshotLog`（`M2 → M7`）
 
 - **语义**：每次预测引擎推理（每站 × 每目标日 × 每次信息钟/触发更新）异步持久化一条 **`P5 ForecastDistributionSnapshot` 全量记录**；既是 `P1.forecast_id` 的外键宿主机，也是 **`P8` 校准样本流的唯一合法源头**（严禁 `M2` 旁路直写 `M8`）。
-- **核心字段**：完整包含 `P5` 字段（`forecast_id`, `issue_ts_utc`, `station_id`, `target_date`, `target_type`, `gefs_lead_hours`, `tau_hours`, `settle_close_utc`, `model_hash`, `prior_mu0`, `prior_sigma0`, `family`, `m_now_f`, `is_bridge_active`, `p_stay`, `bin_probs` 列表、`sigma_delta_sample`），附加 `schema_version="p17.v1"`, `session_id`, `execution_mode`, `config_hash`, `record_sha256`。
+- **核心字段**：完整包含 [`P5 v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) 字段（`forecast_id`, `issue_ts_utc`, `station_id`, `target_date`, `target_type`, `gefs_lead_hours`, `tau_hours`, `settle_close_utc`, `model_hash`, `prior_mu0`, `prior_sigma0`, `family`, `m_now_f`, `m_now_int_f`, `oracle_compliant`, `upstream_obs_fresh`, `is_bridge_active`, `p_stay_phys`, `p_bin_stay`, `bin_probs` 整数边界列表 `lower_int_f/upper_int_f`、`sigma_delta_sample`），附加 `schema_version="p17.v1"`, `session_id`, `execution_mode`, `config_hash`, `record_sha256`。
 
 ---
 

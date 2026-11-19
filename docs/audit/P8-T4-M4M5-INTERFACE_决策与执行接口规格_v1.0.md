@@ -137,22 +137,28 @@ class QuotaSnapshot:
 
 ---
 
-### 3.3 `P5 ForecastDistributionSnapshot v1.0`（`M2 → M4 / M7` · 由 `rc` 正式成文）
+### 3.3 `P5 ForecastDistributionSnapshot v1.1`（`M2 → M4 / M7` · `2026-11-19` `S3-02 / T8 v0.3` 联动升版）
+
+> **升版说明（`v1.0 → v1.1` · `2026-11-19`）**：依据 `S3-02` 结算同构整数刻度裁决及 `T8 v0.3` 评审令：① 废弃 `.5°F` 边界，改为闭整数端点；② 严禁单字段双语义，将原 `p_stay` 拆分为全档同义之物理点质量 **`p_stay_phys`** 与档内锁定概率 **`p_bin_stay`**；③ 明确 `M4` 最新 `issue_ts_utc` 胜出消费规则、超龄降级与 `M2/M4` 双龄分段职责。
 
 - **结构字段**：
   - 路由与溯源：`forecast_id: str`, `issue_ts_utc: datetime`, `station_id: str`, `target_date: date`, `target_type: Literal["TMAX", "TMIN"]`, `gefs_lead_hours: int`, `tau_hours: float`, `settle_close_utc: datetime`, `model_hash: str`；
-  - 先验与桥状态：`prior_mu0: float`, `prior_sigma0: float`, `family: str`, `m_now_f: Optional[float]`, `is_bridge_active: bool`, `p_stay: Optional[float]`；
-  - 输出向量与样本：`bin_probs: tuple[BinProb, ...]`（`BinProb(bin_id, label, lower_f, upper_f, p_model)`）、`sigma_delta_sample: float`（仅经 `P17` 落盘供 `P8` 月度离线校准）。
-- **四条硬不变量（`Q-B1` · 已入 [`test_edge_math.py`](../../tests/unit/pricing/test_edge_math.py) `N7` 随机参数测试清单）**：
-  1. 概率单纯形完备：$\sum_k p_{\text{model}, k} = 1.0$（浮点容差 $\le 10^{-5}$）且每项 $\in [0.0, 1.0]$；
-  2. 边界点质量域：`p_stay is None` 当且仅当 `is_bridge_active == False`；当 `is_bridge_active == True` 时 $0.0 \le p_{\text{stay}} \le 1.0$；
-  3. 极性敏感死档清零：`TMAX` 全部 $k < j$（$U_k \le m_{\text{now}}$）恒有 `p_model == 0.0`；`TMIN` 对称全部 $k > j$（$L_k \ge m_{\text{now}}$）恒有 `p_model == 0.0`；
-  4. **点质量包含律**：边界档 $j$ 恒满足 **`bin_probs[j].p_model >= p_stay`**（非叠加重复计入）；若落入开放极值档（`U_{K-1}=+inf` / `L_0=-inf`），则 `p_stay == 1.0` 且该档 `p_model == 1.0`。
-- **三态合法矩阵（`Q-B2`）**：`is_bridge_active=True` $\implies$ `m_now_f != None`；`False` & `None`（开盘前/断流降级）合法；`False` & `m_now_f != None`（预热维持先验）合法但必有 `p_stay=None` 且不强行清零死档。
+  - 结算口径与桥状态：`prior_mu0: float`, `prior_sigma0: float`, `family: str`, `m_now_f: Optional[float]`, `m_now_int_f: Optional[int]`（$\lfloor m_{\text{now}} + 0.5 \rfloor$）, `oracle_compliant: bool`, `upstream_obs_fresh: bool`（`M2` 侧校验之 `M1→M2` 观测新鲜度）, `is_bridge_active: bool`, **`p_stay_phys: Optional[float]`**（物理极值不创新高/低 Dirac 原子质量，全档统一定义不截顶）, **`p_bin_stay: Optional[float]`**（归属当前极值所在离散档位之锁定留存概率）；
+  - 输出向量与样本：`bin_probs: tuple[BinProb, ...]`（`BinProb(bin_id, label, lower_int_f: Optional[int], upper_int_f: Optional[int], p_model: float)`，`None` 表示开区间尾端 $-\infty / +\infty$，**严禁再出现 `.5°F` 边界字段**）、`sigma_delta_sample: float`（仅经 `P17` 落盘供 `P8` 月度离线校准）。
+- **四条硬不变量（`Q-B1` · 已入 [`test_edge_math.py`](../../tests/unit/pricing/test_edge_math.py) `N7` 随机参数测试清单，随 `T8` 升级至 `v1.1` 双字段校验）**：
+  1. 概率单纯形完备（依赖连贯档梯守卫）：$\sum_k p_{\text{model}, k} = 1.0$（浮点容差 $\le 10^{-5}$）且每项 $\in [0.0, 1.0]$；
+  2. 双原子字段正交域（禁用单字段双语义）：`p_stay_phys is None` 当且仅当 `p_bin_stay is None` 当且仅当 `is_bridge_active == False`；当 `is_bridge_active == True` 时必有 $0.0 \le p_{\text{stay\_phys}} \le 1.0$ 且 $0.0 \le p_{\text{bin\_stay}} \le 1.0$；
+  3. 极性敏感死档清零（全整数域）：设 $m_{\text{now}}^{\text{int}} = \lfloor m_{\text{now}} + 0.5 \rfloor$，`TMAX` 全部 `upper_int_f is not None and upper_int_f < m_now_int` 之档恒有 `p_model == 0.0`；`TMIN` 对称全部 `lower_int_f is not None and lower_int_f > m_now_int` 之档恒有 `p_model == 0.0`；
+  4. **点质量与档内锁定双包含律**：含 $m_{\text{now}}^{\text{int}}$ 之边界档 $j$ 恒满足 **`bin_probs[j].p_model == p_bin_stay >= p_stay_phys`**（`p_stay_phys` 为全档同义物理原子成分、`p_bin_stay` 为档内留存概率，二者均内包于 `p_model` 绝不重复叠加）；当落入开放尾档（`TMAX` `upper_int_f is None` / `TMIN` `lower_int_f is None`）时，**`p_bin_stay == 1.0` 且 `bin_probs[j].p_model == 1.0`**，而 **`p_stay_phys` 继续保持其未截顶物理原子概率 $\Phi(-\mu_R/\sigma_{\text{rem}})$**。
+- **`M4` 消费、`issue_ts` 胜出与双龄分段规则（`2026-11-19` `v1.1` 新增）**：
+  - **最新 `issue_ts_utc` 胜出，严禁回替**：`M4` 对同 `(station_id, target_date, target_type)` 取 `issue_ts_utc <= scan_ts_utc` 的最新一条 `P5` 快照；若该最新快照不满足 `oracle_compliant` 或超龄，**严禁回退消费更早的历史 `P5` 快照**；
+  - **超龄走降级枚举**：若 `scan_ts_utc - P5.issue_ts_utc > forecast_age_limit_sec`（可配置参数，附 `provenance`），`M4` 停止按该过期预测新开仓并记入降级/阻塞事件状态；
+  - **双龄职责分段（各管一段）**：`M2` 专属负责签发前校验 **`M1 → M2` 观测数据新鲜度**（`P11` `physical_age / dispatch_age`）并写入 `upstream_obs_fresh`（超限时置 `is_bridge_active=False` 退先验）；`M4` 专属负责决策瞬间校验 **`M2 → M4` 预测签发龄（`scan_ts_utc - P5.issue_ts_utc`）与 `M3 → M4` 盘口龄（`scan_ts_utc - P4.recv_ts_utc`）**。
+- **三态合法矩阵（`Q-B2`）**：`is_bridge_active=True` $\implies$ `m_now_f != None and m_now_int_f != None and oracle_compliant`；`False` & `None`（开盘前/断流降级）合法；`False` & `m_now_f != None`（预热维持先验）合法但必有 `p_stay_phys=None, p_bin_stay=None` 且不强行清零死档。
 - **`tau_hours` 与 `T_settle_close_utc` 晚绑定与 `S1-02 G-15` 对齐说明**：
   - 接口显式接收 `settle_close_utc: datetime`（与 `gefs_lead_hours` 完全分离，绝不混用），天然支持按站点动态注入与晚绑定；
   - 结合 `S1-02 T1 G-15` 与 **`S1-06`（`2026-11-19`）** 裁决闭环（[`P8-KERNEL-CONSENSUS §七`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#七-s1-06-g-15-裁决事实增补max-恒等式定义域论证与-t8-m1-规格输入2026-11-19-当前决策)），`T_settle_close_utc` 正式锚定为 `(target_date + 1d) 00:00:00 Station Local (tz=ZoneInfo(station.tz)) → UTC`（含 DST；不取 Gamma `endDate=12:00Z`），且 **`P5` 四条不变量与死档清零定义域严格限定为“`M_now` 来自常规 `METAR` 结算同构流（$\mathcal{O}_{\text{settle}}(D, t) \subseteq \mathcal{O}_{\text{settle}}(D)$）”**，具体 `M1 / M9` 代码切换于 `T8` 落实。
-- **`T8` 现役代码改造接口映射（延续 `P5 rc` 诚实披露）**：`T8` 阶段 `M2` 改造须补齐 `TruncatedDistribution.cdf()` 对 `mu_r_result` 的消费以落实点质量包含律，并按 `G-15` 核定之整数格点与 `.5` 正无穷进位口径重构 [`DiscreteBinEngine`](../../src/prediction/discrete_bin_engine.py) 边界映射。
+- **`T8` 现役代码改造接口映射（对齐 [`P8-T8-ALGO4-DESIGN v0.3`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md)）**：`T8` 阶段 `M2` 改造须补齐 `TruncatedDistribution` 对 `MuRHook` 的核一致 Hurdle/点质量导出（产出 `p_stay_phys` 与 `p_bin_stay`），并重构 [`DiscreteBinEngine`](../../src/prediction/discrete_bin_engine.py) 为纯整数闭合区间与连贯档梯守卫。
 
 ---
 
