@@ -811,3 +811,152 @@ def test_s3_01_acceptance_frame_by_frame_settlement_isomorphism() -> None:
     assert final_ev.state.specis_seen_count == 1
     assert final_ev.state.cor_overwrites_count == 2
     assert "POST_LOCK_COR_IGNORED" in final_ev.state.gap_flags
+
+
+def test_post_close_lock_monotonic_under_conservative_lag_bound() -> None:
+    """Patch 1: lock time aligns with effective causal availability under CONSERVATIVE_LAG_BOUND."""
+    reports = [
+        RawMetarReport(
+            station_id="KORD",
+            obs_ts_utc=_dt("2026-01-15T18:00:00Z"),
+            dispatch_ts_utc=_dt("2026-01-15T18:05:00Z"),
+            report_type="METAR",
+            is_cor=False,
+            raw_text="METAR KORD 151800Z 20/10 RMK T02000100",
+            source_channel="PAPER_REPLAY",
+            sequence_hint=1,
+        ),
+        # COR arrives at 06:55Z: before next-day METAR bounded visibility (06:51Z + 20m = 07:11Z)
+        RawMetarReport(
+            station_id="KORD",
+            obs_ts_utc=_dt("2026-01-15T18:00:00Z"),
+            dispatch_ts_utc=_dt("2026-01-16T06:55:00Z"),
+            report_type="METAR",
+            is_cor=True,
+            raw_text="METAR COR KORD 151800Z 25/10 RMK T02500100",
+            source_channel="PAPER_REPLAY",
+            sequence_hint=2,
+        ),
+        # Late post-lock COR at 07:20Z (> 07:11Z): MUST be ignored once lock activates
+        RawMetarReport(
+            station_id="KORD",
+            obs_ts_utc=_dt("2026-01-15T18:00:00Z"),
+            dispatch_ts_utc=_dt("2026-01-16T07:20:00Z"),
+            report_type="METAR",
+            is_cor=True,
+            raw_text="METAR COR KORD 151800Z 30/10 RMK T03000100",
+            source_channel="PAPER_REPLAY",
+            sequence_hint=3,
+        ),
+        # Next-day routine METAR with missing dispatch_ts_utc -> bounded lock at 06:51 + 20m = 07:11Z
+        RawMetarReport(
+            station_id="KORD",
+            obs_ts_utc=_dt("2026-01-16T06:51:00Z"),
+            dispatch_ts_utc=None,
+            report_type="METAR",
+            is_cor=False,
+            raw_text="METAR KORD 160651Z 10/05 RMK T01000050",
+            source_channel="HISTORICAL_SHADOW",
+            sequence_hint=4,
+        ),
+    ]
+    engine = SettlementMetarStreamEngine(
+        source=PaperReplayMetarAdapter(reports),
+        freshness_policy=FreshnessPolicy(
+            physical_age_limit_sec=100000.0,
+            provenance="TEST_POST_CLOSE_LOCK",
+        ),
+        missing_dispatch_policy=MissingDispatchPolicy(
+            mode="CONSERVATIVE_LAG_BOUND",
+            conservative_lag_bound_sec=1200.0,
+            provenance="TEST_LAG_BOUND_1200S",
+        ),
+    )
+
+    ev_before_lock = engine.evaluate_as_of(
+        station_id="KORD",
+        target_date=date(2026, 1, 15),
+        as_of_ts_utc=_dt("2026-01-16T07:05:00Z"),
+        session_id="sess-lock-mono",
+        execution_mode="PAPER",
+        model_hash="m",
+        config_hash="c",
+    )
+    assert ev_before_lock.state.m_now_int_f == 77  # 25.0°C = 77°F
+
+    # After 07:11Z lock activates: 06:55Z COR MUST NOT be retroactively revoked (stays 77°F),
+    # while 07:20Z COR MUST be rejected.
+    ev_after_lock = engine.evaluate_as_of(
+        station_id="KORD",
+        target_date=date(2026, 1, 15),
+        as_of_ts_utc=_dt("2026-01-16T07:25:00Z"),
+        session_id="sess-lock-mono",
+        execution_mode="PAPER",
+        model_hash="m",
+        config_hash="c",
+    )
+    assert ev_after_lock.state.m_now_int_f == 77
+    assert "POST_LOCK_COR_IGNORED" in ev_after_lock.state.gap_flags
+
+
+def test_live_awc_adapter_naive_utc_timestamps_and_historical_date_param(tmp_path: Path) -> None:
+    """Patch 2: AWC adapter parses naive UTC API strings and supplies `date=` for past windows."""
+    captured_params: Dict[str, object] = {}
+
+    def fake_get(url: str, params: Dict[str, object], timeout: float) -> object:
+        captured_params.clear()
+        captured_params.update(params)
+        return [
+            {
+                "icaoId": "KORD",
+                "reportTime": "2026-07-10 14:51:00",
+                "receiptTime": "2026-07-10 14:54:00",
+                "metarType": "METAR",
+                "rawOb": "METAR KORD 101451Z 27008KT 10SM CLR 25/15 A3000 RMK AO2 T02500150",
+            }
+        ]
+
+    adapter = LiveAwcMetarAdapter(
+        http_get=fake_get,
+        clock_utc=lambda: _dt("2026-07-15T16:00:00Z"),
+    )
+    past_start = _dt("2026-07-10T05:00:00Z")
+    past_end = _dt("2026-07-11T05:00:00Z")
+    out = adapter.fetch_window("KORD", past_start, past_end)
+    assert len(out) == 1
+    assert out[0].obs_ts_utc == _dt("2026-07-10T14:51:00Z")
+    assert out[0].dispatch_ts_utc == _dt("2026-07-10T14:54:00Z")
+    assert captured_params["date"] == "2026-07-11T05:00:00Z"
+    assert captured_params["hours"] == 25
+
+    # Core replay adapter still strictly rejects naive ISO strings
+    bad_jsonl = tmp_path / "naive.jsonl"
+    bad_jsonl.write_text(
+        json.dumps(
+            {
+                "station_id": "KORD",
+                "obs_ts_utc": "2026-07-10 14:51:00",
+                "dispatch_ts_utc": "2026-07-10 14:54:00",
+                "raw_text": "METAR KORD 101451Z 25/15",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(CausalInputError):
+        PaperReplayMetarAdapter.from_jsonl(bad_jsonl)
+
+
+def test_wmo_equals_terminated_tgroup_and_body_temp_parsing() -> None:
+    """Patch 3: WMO `=` terminator attached without whitespace must not hide T-group or TT/TD."""
+    tc_t, tier_t = SettlementIsomorphicParser.parse_temperature_c(
+        "METAR KORD 181451Z 27010KT 10SM CLR 20/15 A3001 RMK AO2 SLP162 T02030150="
+    )
+    assert tc_t == Decimal("20.3")
+    assert tier_t == "AWC_METAR_TGROUP"
+
+    tc_b, tier_b = SettlementIsomorphicParser.parse_temperature_c(
+        "METAR KORD 181451Z 27010KT 10SM CLR M05/M10="
+    )
+    assert tc_b == Decimal("-5")
+    assert tier_b == "AWC_METAR_BODY"

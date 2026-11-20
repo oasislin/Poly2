@@ -62,8 +62,8 @@ _US_EASTERN_TZ = ZoneInfo("America/New_York")
 # - T-group in RMK: 8-digit TsnTTTsnTdTdTd (also supports missing dewpoint TsnTTT////)
 # - Main body dry bulb/dewpoint before RMK: TT/TD or TT/// (e.g. 28/25, M05/M10, 00/M02, 21///)
 _RMK_SPLIT_RE = re.compile(r"\bRMK\b", re.IGNORECASE)
-_TGROUP_RE = re.compile(r"(?:^|\s)T([01])(\d{3})(?:[01]\d{3}|////)(?=\s|$)")
-_BODY_TEMP_RE = re.compile(r"(?:^|\s)(M?\d{2})/(?:M?\d{2}|//)(?=\s|$)")
+_TGROUP_RE = re.compile(r"(?:^|\s)T([01])(\d{3})(?:[01]\d{3}|////)(?=\s|=|$)")
+_BODY_TEMP_RE = re.compile(r"(?:^|\s)(M?\d{2})/(?:M?\d{2}|//)(?=\s|=|$)")
 _FORBIDDEN_WU_CHANNEL_RE = re.compile(
     r"(?:^|[^A-Z0-9])(WU|WUNDERGROUND|WEATHER_UNDERGROUND)(?:[^A-Z0-9]|$)",
     re.IGNORECASE,
@@ -519,12 +519,18 @@ def compute_settlement_lock_ts_utc(
     target_date: date,
     station_tz: ZoneInfo,
     reports: Sequence[RawMetarReport],
+    *,
+    causal_lock_candidates_utc: Optional[Sequence[datetime]] = None,
 ) -> datetime:
     """Compute Polymarket revision lock point per ADR-0012 §5.
 
     Locks at the earlier of:
-    1. First routine METAR observation timestamp (or dispatch time if present) on `target_date + 1`+,
+    1. First routine METAR causal availability timestamp on `target_date + 1`+,
     2. `11:59 PM America/New_York` on `target_date + 1`.
+
+    When `causal_lock_candidates_utc` is supplied (resolved via `_resolve_causal_ts`), lock
+    timing uses the exact same causal availability timestamps (`eff_ts`) as visibility filtering,
+    preventing retroactive COR revocation under `CONSERVATIVE_LAG_BOUND`.
     """
     _, settle_close_utc = compute_local_day_window_utc(target_date, station_tz)
     next_day = target_date + timedelta(days=1)
@@ -533,16 +539,39 @@ def compute_settlement_lock_ts_utc(
     ).astimezone(timezone.utc)
 
     next_day_candidates: List[datetime] = []
-    for rep in reports:
-        if rep.report_type != "METAR":
-            continue
-        if rep.obs_ts_utc >= settle_close_utc:
-            ts = rep.dispatch_ts_utc if rep.dispatch_ts_utc is not None else rep.obs_ts_utc
-            next_day_candidates.append(ts)
+    if causal_lock_candidates_utc is not None:
+        for ts in causal_lock_candidates_utc:
+            next_day_candidates.append(_ensure_utc(ts, field_name="causal_lock_candidates_utc"))
+    else:
+        for rep in reports:
+            if rep.report_type != "METAR":
+                continue
+            if rep.obs_ts_utc >= settle_close_utc:
+                ts = rep.dispatch_ts_utc if rep.dispatch_ts_utc is not None else rep.obs_ts_utc
+                next_day_candidates.append(ts)
 
     if not next_day_candidates:
         return et_deadline_utc
     return min(min(next_day_candidates), et_deadline_utc)
+
+
+def _parse_awc_utc_timestamp(value: Any, *, field_name: str) -> datetime:
+    """Parse AWC JSON timestamp where string values without tz suffix (e.g. `receiptTime`) denote UTC."""
+    if isinstance(value, datetime):
+        return _ensure_utc(value, field_name=field_name)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return datetime.fromtimestamp(float(value), tz=timezone.utc)
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            raise CausalInputError(f"{field_name} cannot be an empty string")
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    raise CausalInputError(f"{field_name}: unsupported timestamp value {value!r}")
 
 
 class LiveAwcMetarAdapter:
@@ -581,12 +610,21 @@ class LiveAwcMetarAdapter:
 
         code = station_id.strip().upper()
         now_utc = _ensure_utc(self._clock_utc(), field_name="clock_utc")
-        hours_back = max(1, int(((now_utc - start).total_seconds() + 3599) // 3600) + 1)
-        params = {
-            "ids": code,
-            "format": "json",
-            "hours": hours_back,
-        }
+        if end <= now_utc:
+            window_hours = max(1, int(((end - start).total_seconds() + 3599) // 3600) + 1)
+            params: Dict[str, Any] = {
+                "ids": code,
+                "format": "json",
+                "date": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "hours": window_hours,
+            }
+        else:
+            hours_back = max(1, int(((now_utc - start).total_seconds() + 3599) // 3600) + 1)
+            params = {
+                "ids": code,
+                "format": "json",
+                "hours": hours_back,
+            }
         payload = self._http_get(self.BASE_URL, params, self._timeout_sec)
         if not payload:
             return ()
@@ -607,13 +645,13 @@ class LiveAwcMetarAdapter:
                 obs_raw = item.get("reportTime")
             if obs_raw is None:
                 continue
-            obs_ts = _parse_iso_or_epoch_utc(obs_raw, field_name="obsTime")
+            obs_ts = _parse_awc_utc_timestamp(obs_raw, field_name="obsTime")
             if not (start <= obs_ts < end):
                 continue
 
             receipt_raw = item.get("receiptTime")
             dispatch_ts = (
-                _parse_iso_or_epoch_utc(receipt_raw, field_name="receiptTime")
+                _parse_awc_utc_timestamp(receipt_raw, field_name="receiptTime")
                 if receipt_raw is not None
                 else now_utc
             )
@@ -812,14 +850,22 @@ class SettlementMetarStreamEngine:
 
         # Causally filter next-day reports before computing post-close lock point
         causal_next_day: List[RawMetarReport] = []
+        causal_next_day_lock_ts: List[datetime] = []
         for rep in next_day_reports:
             eff_ts = self._resolve_causal_ts(rep, as_of, gap_flags_out=None)
             if eff_ts is not None:
                 causal_next_day.append(rep)
+                if rep.report_type == "METAR":
+                    causal_next_day_lock_ts.append(eff_ts)
 
         lock_ts_utc: Optional[datetime] = None
         if apply_post_close_settlement_lock and as_of >= settle_close_utc:
-            lock_ts_utc = compute_settlement_lock_ts_utc(target_date, station_tz, causal_next_day)
+            lock_ts_utc = compute_settlement_lock_ts_utc(
+                target_date,
+                station_tz,
+                causal_next_day,
+                causal_lock_candidates_utc=causal_next_day_lock_ts,
+            )
 
         archival_obs: List[ParsedMetarObservation] = []
         routine_by_obs_ts: Dict[datetime, List[ParsedMetarObservation]] = {}
