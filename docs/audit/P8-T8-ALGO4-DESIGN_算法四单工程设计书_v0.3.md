@@ -98,6 +98,16 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
    - 对全部相邻档对 $0 \le b < M-1$ 严格校验整数无缝衔接：**`bins[b].upper_int_f + 1 == bins[b + 1].lower_int_f`**（等价连续实轴端点 $c_b = U_b + 0.5 = (U_b + 1) - 0.5 = L_{b+1} - 0.5 = a_{b+1}$）；
    - 经该档梯守卫后，$p_{\text{model}, b} = F(c_b^-) - F(a_b^-)$ 经严格望远镜求和必然收于 $1.0$（容差 $\le 10^{-5}$），与 `P5 v1.1` 全部四条硬不变量 100% 闭环验证通过。
 
+### 2.4 模块内遗留工程待办（`2026-11-21` 依《规范 §10》自 `P8-MODEL_PENDING_20261110` 并账迁入）
+
+- **`P8-MODEL-PENDING-01`｜`ModelRegistry` 对已归档目录 `base_dir / "emos"` 的静默空集风险（`OPEN / NON-BLOCKING`）**：
+  - **来源与迁移依据**：原记于 [`docs/handoffs/P8-MODEL_PENDING_20261110.md`](../handoffs/P8-MODEL_PENDING_20261110.md#L8-L48)（`P8-MODEL_第二步核验ticket_20261110.md §三`），属 [`AGENTS.md`](../../AGENTS.md) 界定之 **`M2` 模块内工程维护细项待办**；依据 `P8-WO-20261123-G5FACT-CHECK` 按《项目编号与命名规范 §10》正式并账迁入本节（`§2.1–§2.3` 原文与 `S3-02` 已闭合交付范围保持不变）。
+  - **核实源码现况（`HEAD = ba0a7da` 与工作区同态，未修复）**：
+    1. [`src/modeling/registry.py#L83-L89`](../../src/modeling/registry.py#L83-L89)（`format_model_relpath_json`）：仍拼接 `Path("emos") / st / f"{var}_{seas}_{lead}h.json"`；[`src/modeling/pipeline.py#L104`](../../src/modeling/pipeline.py#L104) `save_scorecard_json()` 若在生产目录执行仍写入已归档路径 `data/models/emos/`；
+    2. [`src/modeling/registry.py#L165-L177`](../../src/modeling/registry.py#L165-L177)（`generate_manifest`）：`saved_relpaths is None` 分支仍直接扫描 `(self.base_dir / "emos").glob("**/*.json")`，在 `data/models/emos/` 已归档下**静默返回 `[]` 且会覆盖 `manifest.json` 为 `total_models: 0`**；
+    3. [`src/modeling/registry.py#L524-L550`](../../src/modeling/registry.py#L524-L550)（`list_inventory`）：`if emos_dir.exists():` 缺失时仍静默跳过，不输出归档/缺失告警。
+  - **后续处置方向（待单独工程维护单实施，不阻塞当前主线与 `S3-02`）**：① 防御 `generate_manifest()` 无参扫空静默覆写现有 `manifest.json`（改抛明确异常或支持 `.pkl` 清单）；② `list_inventory()` 在 `emos/` 缺失时记录显式日志告警；③ 评估统一或淘汰 `TrainingPipeline.run()` 中的 `save_scorecard_json()` 双轨写入。
+
 ---
 
 ## §3 `S3-04` · `M4` 决策引擎：`P5` 消费规则、双龄分段与 `session_id` 确定性重放
