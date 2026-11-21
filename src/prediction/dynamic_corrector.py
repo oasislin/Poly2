@@ -29,8 +29,14 @@ from typing import Any, Dict, Mapping, Optional, Protocol, Sequence, Tuple, Unio
 import numpy as np
 import pandas as pd
 from scipy import stats
+from scipy.special import ndtr
 
 from src.modeling.gaussian_emos import GaussianEMOS
+from src.prediction.discrete_bin_engine import (
+    DiscreteBinEngine,
+    IntegerBinSpec,
+    settle_half_up,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -293,6 +299,7 @@ class TruncatedDistribution:
         mu: Optional[float] = None,
         sigma: Optional[float] = None,
         mu_r_result: Optional[MuRResult] = None,
+        sigma_rem: Optional[float] = None,
     ):
         self.base_distribution = base_distribution
         self.target_type = target_type.lower()
@@ -303,6 +310,7 @@ class TruncatedDistribution:
         self.observation_time = t_local if isinstance(t_local, datetime) else None
         self.t_local_hour: Optional[float] = _coerce_t_local_hour(t_local)
         self.mu_r_result: Optional[MuRResult] = mu_r_result
+        self.sigma_rem: Optional[float] = float(sigma_rem) if sigma_rem is not None else None
 
         # Validate extreme observation M_t / m_t (conditioning boundary)
         if extreme_m is not None and not np.isnan(extreme_m):
@@ -339,6 +347,55 @@ class TruncatedDistribution:
     def current_temperature(self) -> Optional[float]:
         """Compatibility alias exposing conditioning extremum extreme_m (distinct from instant_x_t)."""
         return self.extreme_m
+
+    def _resolve_hurdle_params(self, sigma_rem: Optional[float] = None) -> Tuple[float, float, float]:
+        if self.target_type != "max":
+            raise NotImplementedError(
+                "Hurdle kernel export only covers T_max; T_min awaits W3 signed mirror calibration."
+            )
+        eff_sigma_rem = sigma_rem if sigma_rem is not None else self.sigma_rem
+        if eff_sigma_rem is None or not math.isfinite(eff_sigma_rem) or eff_sigma_rem <= 0.0:
+            raise ValueError(f"sigma_rem must be positive finite for hurdle export, got {eff_sigma_rem!r}")
+        if self.extreme_m is None or self.mu_r_result is None:
+            raise ValueError("Hurdle export requires active extreme_m and MuRResult")
+        return float(self.extreme_m), float(self.mu_r_result.mu_r), float(eff_sigma_rem)
+
+    def p_stay_phys(self, sigma_rem: Optional[float] = None) -> Optional[float]:
+        """Universal unclipped Dirac point-mass probability `P(R_t <= 0)` when bridge is active."""
+        if self.is_truncated and self.target_type != "max":
+            self._resolve_hurdle_params(sigma_rem)
+        if not self.is_truncated or self.extreme_m is None or self.mu_r_result is None:
+            return None
+        _, mu_r, eff_sigma_rem = self._resolve_hurdle_params(sigma_rem)
+        return min(1.0, max(0.0, float(ndtr(-mu_r / eff_sigma_rem))))
+
+    def hurdle_left_limit_cdf(self, x: float, sigma_rem: Optional[float] = None) -> float:
+        """Evaluate left-limit hurdle CDF `F_post(x^-)` (or prior CDF when untruncated)."""
+        if self.is_truncated and self.target_type != "max":
+            self._resolve_hurdle_params(sigma_rem)
+        if not self.is_truncated or self.extreme_m is None or self.mu_r_result is None:
+            return float(self.base_distribution.cdf(x=x, mu=self.mu, sigma=self.sigma))
+        if math.isinf(x):
+            return 0.0 if x < 0.0 else 1.0
+        m_val, mu_r, eff_sigma_rem = self._resolve_hurdle_params(sigma_rem)
+        if x <= m_val:
+            return 0.0
+        return min(1.0, max(0.0, float(ndtr((float(x) - m_val - mu_r) / eff_sigma_rem))))
+
+    def p_bin_stay(
+        self, bins: Sequence[IntegerBinSpec], sigma_rem: Optional[float] = None
+    ) -> Optional[float]:
+        """Containment-bin retention probability `p_bin_stay` over pure integer bins."""
+        if not self.is_truncated or self.extreme_m is None or self.mu_r_result is None:
+            return None
+        m_int = settle_half_up(float(self.extreme_m))
+        _, p_bin = DiscreteBinEngine.calculate_integer_bin_probabilities(
+            bins,
+            lambda x: self.hurdle_left_limit_cdf(x, sigma_rem=sigma_rem),
+            m_now_int_f=m_int,
+            is_bridge_active=True,
+        )
+        return p_bin
 
     def cdf(self, x: Union[float, np.ndarray, pd.Series, Sequence[float]]) -> Union[float, np.ndarray]:
         """Compute the conditionally truncated cumulative distribution function F_post(x)."""

@@ -56,22 +56,10 @@ def exact_decimal_context(
         yield
 
 
-def to_guarded_decimal(
-    value: DecimalInput,
-    *,
-    name: str,
-    max_sig_digits: int = DEFAULT_MAX_OPERAND_SIG_DIGITS,
-    max_abs_exponent: int = DEFAULT_MAX_ABS_EXPONENT,
-) -> Decimal:
-    """Convert `value` to `Decimal` and enforce finiteness, digit-count, and scale bounds.
-
-    Inspects the raw coefficient tuple length `len(d.as_tuple().digits)` (not merely stripped
-    digits) because Python `Decimal` arithmetic retains trailing fractional zeros when forming
-    intermediate products, which could otherwise trigger premature precision exhaustion.
-    """
+def _coerce_to_decimal(value: DecimalInput, *, name: str) -> Decimal:
+    """Convert raw numeric input into Decimal while rejecting bool, None, and non-finite literals."""
     if isinstance(value, bool) or value is None:
         raise DecimalOperandBoundsError(f"{name}: bool/None is not a valid Decimal operand")
-
     try:
         if isinstance(value, Decimal):
             dec = value
@@ -87,29 +75,49 @@ def to_guarded_decimal(
             )
     except InvalidOperation as exc:
         raise DecimalOperandBoundsError(f"{name}: invalid Decimal literal {value!r}") from exc
-
     if not dec.is_finite():
         raise DecimalOperandBoundsError(f"{name}: operand must be finite, got {dec!r}")
+    return dec
 
+
+def _validate_decimal_bounds(
+    dec: Decimal,
+    *,
+    name: str,
+    max_sig_digits: int,
+    max_abs_exponent: int,
+) -> None:
+    """Enforce raw coefficient digit count and exponent bounds on finite Decimal."""
     if isinstance(max_sig_digits, bool) or max_sig_digits < 1:
         raise ValueError(f"max_sig_digits must be >= 1, got {max_sig_digits!r}")
-
-    tup = dec.as_tuple()
-    raw_digit_count = len(tup.digits)
+    raw_digit_count = len(dec.as_tuple().digits)
     if raw_digit_count > max_sig_digits:
         raise DecimalOperandBoundsError(
             f"{name}: operand {dec!r} has {raw_digit_count} digits, "
             f"exceeding structural bound max_sig_digits={max_sig_digits}"
         )
+    if dec != 0 and abs(dec.adjusted()) > max_abs_exponent:
+        raise DecimalOperandBoundsError(
+            f"{name}: operand {dec!r} has adjusted exponent {dec.adjusted()}, "
+            f"exceeding structural bound max_abs_exponent={max_abs_exponent}"
+        )
 
-    if dec != 0:
-        adjusted_exp = dec.adjusted()
-        if abs(adjusted_exp) > max_abs_exponent:
-            raise DecimalOperandBoundsError(
-                f"{name}: operand {dec!r} has adjusted exponent {adjusted_exp}, "
-                f"exceeding structural bound max_abs_exponent={max_abs_exponent}"
-            )
 
+def to_guarded_decimal(
+    value: DecimalInput,
+    *,
+    name: str,
+    max_sig_digits: int = DEFAULT_MAX_OPERAND_SIG_DIGITS,
+    max_abs_exponent: int = DEFAULT_MAX_ABS_EXPONENT,
+) -> Decimal:
+    """Convert `value` to `Decimal` and enforce finiteness, digit-count, and scale bounds."""
+    dec = _coerce_to_decimal(value, name=name)
+    _validate_decimal_bounds(
+        dec,
+        name=name,
+        max_sig_digits=max_sig_digits,
+        max_abs_exponent=max_abs_exponent,
+    )
     return dec
 
 

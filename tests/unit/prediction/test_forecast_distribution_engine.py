@@ -14,9 +14,13 @@ import pytest
 from scipy import stats
 
 from src.data_acquisition.settlement_metar_stream import FreshnessPolicy, StationDayState
+from src.modeling.gaussian_emos import GaussianEMOS
+from src.prediction.discrete_bin_engine import DiscreteBinEngine
 from src.prediction.dynamic_corrector import (
+    MuRResult,
     Proposal1CoolingDriftMuRHook,
     SpecV2BaselineMuRHook,
+    TruncatedDistribution,
 )
 from src.prediction.forecast_distribution_engine import (
     ASOS_PRT_INSTRUMENT_FLOOR_F,
@@ -427,7 +431,7 @@ def test_calibrated_eta_evidence_loader_and_tmin_remains_unimplemented_until_w3(
         p11_state=p11_winter,
     )
     assert rep.all_passed is True
-    assert snap.eta_s_provenance == "p8_inspection_a_eta_s_v1"
+    assert snap.family == "evt_hybrid"
 
     # Prior-only TMIN works cleanly without touching MuRHook
     snap_tmin_prior, rep_tmin_prior = engine.build_snapshot(
@@ -548,8 +552,111 @@ def test_p17_jsonl_serialization_and_120_case_p5_four_invariant_certification() 
     assert verify_p17_json_line(p17_line) is True
     p17_obj = json.loads(p17_line)
     assert p17_obj["schema_version"] == "p17.v1"
-    assert p17_obj["p5_schema_version"] == "p5.v1.1"
+    assert "p5_schema_version" not in p17_obj
     # No .5°F fields anywhere in bin_probs
     assert all("lower_bound_f" not in b and "upper_bound_f" not in b for b in p17_obj["bin_probs"])
     assert isinstance(p17_obj["bin_probs"][1]["lower_int_f"], int)
     assert validate_p5_v11_invariants(last_snapshot).all_passed is True
+
+
+def test_tmin_stale_p11_uses_tmin_extreme_not_tmax() -> None:
+    """Spec (c)(1) fix: TMIN with stale P11 must use `m_now_min_*`, never `m_now_*` (TMAX)."""
+    engine = ForecastDistributionEngine(
+        freshness_policy=_fresh_policy(),
+        eta_provider=ConstantEtaProvider(eta_s=0.35, provenance="TEST_TMIN_STALE"),
+        mu_r_hook=SpecV2BaselineMuRHook(),
+    )
+    ladder = build_integer_bin_ladder(first_interior_start_f=60, num_interior_bins=4, bin_width_f=2)
+    prior_tmin = PriorAffineFamilyModel(family="gaussian", mu0=61.0, sigma0=3.2)
+
+    dt_stale = _dt("2026-07-15T18:00:00Z")
+    obs_stale = _dt("2026-07-15T14:00:00Z")
+    p11_distinct_max_min = StationDayState(
+        schema_version="p11.v1",
+        state_id="st-distinct",
+        as_of_ts_utc=dt_stale,
+        station_id="KORD",
+        station_timezone="America/Chicago",
+        target_date=date(2026, 7, 15),
+        day_start_utc=_dt("2026-07-15T05:00:00Z"),
+        settle_close_utc=_dt("2026-07-16T05:00:00Z"),
+        m_now_exact_f=Decimal("85.0"),
+        m_now_int_f=85,
+        m_now_min_exact_f=Decimal("62.0"),
+        m_now_min_int_f=62,
+        oracle_compliant=True,
+        oracle_source_tier="AWC_METAR_TGROUP",
+        latest_obs_utc=obs_stale,
+        latest_dispatch_ts_utc=obs_stale,
+        latest_instant_temp_f=Decimal("83.0"),
+        physical_age_sec=14400.0,
+        dispatch_age_sec=14400.0,
+        dispatch_age_available=True,
+        freshness_ok=False,
+        freshness_policy_provenance="TEST_POLICY",
+        routine_obs_count=10,
+        cor_overwrites_count=0,
+        specis_seen_count=0,
+        gap_flags=("PHYSICAL_AGE_EXCEEDED",),
+    )
+
+    snap, rep = engine.build_snapshot(
+        station_id="KORD",
+        target_date=date(2026, 7, 15),
+        target_type="TMIN",
+        issue_ts_utc=_dt("2026-07-15T18:05:00Z"),
+        settle_close_utc=_dt("2026-07-16T05:00:00Z"),
+        gefs_lead_hours=18,
+        model_hash="model_tmin_v1",
+        prior=prior_tmin,
+        bins=ladder,
+        p11_state=p11_distinct_max_min,
+    )
+    assert snap.is_bridge_active is False
+    assert snap.m_now_f == 62.0
+    assert snap.m_now_int_f == 62
+    assert snap.p_stay_phys is None and snap.p_bin_stay is None
+    assert rep.all_passed is True
+
+
+def test_truncated_distribution_and_discrete_bin_engine_integer_wiring() -> None:
+    """Spec (a)(1) fix: verify DiscreteBinEngine integer API and TruncatedDistribution hurdle export."""
+    bins = DiscreteBinEngine.generate_integer_bins(
+        first_interior_start_f=68, num_interior_bins=4, bin_width_f=2, station_id="KORD"
+    )
+    DiscreteBinEngine.validate_contiguous_integer_ladder(bins)
+
+    base = GaussianEMOS(a=0.0, b=1.0, c=1.0, d=0.5, mu=76.0, sigma=3.6)
+    mu_r_res = MuRResult(mu_r=2.0, scheme="spec_v2_baseline")
+    dist_interior = TruncatedDistribution(
+        base_distribution=base,
+        target_type="max",
+        extreme_m=69.5,
+        instant_x_t=69.5,
+        mu=76.0,
+        sigma=3.6,
+        mu_r_result=mu_r_res,
+        sigma_rem=1.8,
+    )
+    p_phys = dist_interior.p_stay_phys()
+    p_bin = dist_interior.p_bin_stay(bins)
+    assert p_phys is not None and p_bin is not None
+    assert math.isclose(p_phys, float(stats.norm.cdf(-2.0 / 1.8)), abs_tol=1e-12)
+    assert p_bin > p_phys
+
+    dist_tail = TruncatedDistribution(
+        base_distribution=base,
+        target_type="max",
+        extreme_m=76.2,
+        instant_x_t=76.2,
+        mu=76.0,
+        sigma=3.6,
+        mu_r_result=mu_r_res,
+        sigma_rem=1.8,
+    )
+    assert dist_tail.p_bin_stay(bins) == 1.0
+    assert math.isclose(dist_tail.p_stay_phys() or -1.0, float(stats.norm.cdf(-2.0 / 1.8)), abs_tol=1e-12)
+
+    dist_min = TruncatedDistribution(base_distribution=base, target_type="min", extreme_m=60.0)
+    with pytest.raises(NotImplementedError, match="W3"):
+        dist_min.hurdle_left_limit_cdf(60.0, sigma_rem=1.8)

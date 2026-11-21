@@ -302,7 +302,8 @@ def test_speci_excluded_from_m_now_but_preserved_in_archival_and_p12() -> None:
     parsed = json.loads(line)
     assert parsed["schema_version"] == "p12.v1"
     assert parsed["specis_seen_count"] == 1
-    assert parsed["total_reports_archived_count"] == 2
+    assert "total_reports_archived_count" not in parsed
+    assert "oracle_compliant" not in parsed
     assert parsed["metar_obs_count_window"] == 1
     # Tampering breaks SHA256 verification
     parsed["specis_seen_count"] = 99
@@ -960,3 +961,44 @@ def test_wmo_equals_terminated_tgroup_and_body_temp_parsing() -> None:
     )
     assert tc_b == Decimal("-5")
     assert tier_b == "AWC_METAR_BODY"
+
+
+def test_live_awc_adapter_preserves_none_when_receipt_time_missing() -> None:
+    """Spec (c)(2) fix: AWC items omitting `receiptTime` keep `dispatch_ts_utc=None` (no 0s/now_utc lag)."""
+    adapter = LiveAwcMetarAdapter(
+        http_get=lambda url, params, timeout: [
+            {
+                "icaoId": "KORD",
+                "obsTime": int(_dt("2026-07-10T14:51:00Z").timestamp()),
+                "receiptTime": None,
+                "metarType": "METAR",
+                "rawOb": "METAR KORD 101451Z 27008KT 10SM CLR 25/15 A3000 RMK AO2 T02500150",
+            }
+        ],
+        clock_utc=lambda: _dt("2026-07-15T16:00:00Z"),
+    )
+    fetched = adapter.fetch_window("KORD", _dt("2026-07-10T05:00:00Z"), _dt("2026-07-11T05:00:00Z"))
+    assert len(fetched) == 1
+    assert fetched[0].dispatch_ts_utc is None
+
+    ev = SettlementMetarStreamEngine(
+        source=adapter,
+        freshness_policy=_default_freshness(),
+        missing_dispatch_policy=MissingDispatchPolicy(
+            mode="CONSERVATIVE_LAG_BOUND",
+            conservative_lag_bound_sec=1200.0,
+            provenance="AWC_MISSING_RECEIPT_BOUND",
+        ),
+    ).evaluate_as_of(
+        station_id="KORD",
+        target_date=date(2026, 7, 10),
+        as_of_ts_utc=_dt("2026-07-10T15:30:00Z"),
+        session_id="sess-awc-missing-receipt",
+        execution_mode="PAPER",
+        model_hash="m",
+        config_hash="c",
+    )
+    assert ev.state.m_now_int_f == 77
+    assert ev.state.dispatch_age_available is False
+    assert ev.coverage_ledger.dispatch_age_available is False
+    assert "MISSING_DISPATCH_TS_BOUNDED" in ev.state.gap_flags
