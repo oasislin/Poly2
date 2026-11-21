@@ -29,7 +29,13 @@ from src.execution.stub_generator import (
 from src.utils.causal_utils import verify_record_sha256_line
 
 
-def _sample_policy_bundle(t0: datetime, *, is_overdue: bool = False, friction_median: float | None = 0.01):
+def _sample_policy_bundle(
+    t0: datetime,
+    *,
+    is_overdue: bool = False,
+    friction_median: float | None = 0.01,
+    yellow_multiplier: float = 1.0,
+):
     return build_execution_policy_bundle(
         policy_version="p6.test.v1",
         signed_at_utc=t0 - timedelta(hours=2),
@@ -51,6 +57,7 @@ def _sample_policy_bundle(t0: datetime, *, is_overdue: bool = False, friction_me
         sigma_delta_frozen=SigmaDeltaFrozen(0.02, "test", "cyc-1"),
         friction_median=friction_median,
         m_floor=0.02,
+        yellow_multiplier=yellow_multiplier,
         allow_provisional_none_friction=False,
     )
 
@@ -288,3 +295,115 @@ def test_p6_scaler_mirror_p7_quota_provider_and_p16_slot() -> None:
     parsed_p1 = json.loads(ev.to_json_line())
     assert parsed_p1["light_status"] == "YELLOW"
     assert parsed_p1["p16_event_id"] == "p16-ev-01"
+
+
+def _eval_light_case(
+    *,
+    yellow_multiplier: float = 0.5,
+    level: str | None = None,
+    market_held_usd: float = 0.0,
+    asks: tuple[tuple[float, float], ...] = ((0.25, 100.0), (0.28, 200.0)),
+):
+    t0 = datetime(2026, 11, 21, 14, 0, 0, tzinfo=timezone.utc)
+    slot = P16SubscriptionSlot()
+    if level is not None:
+        slot.publish(LightLevelEvent(f"p16-{level.lower()}", level, f"TEST_{level}", t0, "KORD"))
+    bundle = _sample_policy_bundle(t0, yellow_multiplier=yellow_multiplier)
+    fc = build_stub_forecast_v11(issue_ts_utc=t0 - timedelta(minutes=15), settle_close_utc=t0 + timedelta(hours=10))
+    ask_yes, _ = build_p4_v11_stub_envelope(
+        session_id="base-sess", seq_id=1, frame_seq=1, token_id="tok-y", market_id="mkt-1",
+        condition_id="c1", station_id="KORD", target_date="2026-11-21", bin_label="58-59°F",
+        outcome="YES", regime="ask_only", recv_ts_utc=t0 - timedelta(seconds=1), asks=asks, bids=(),
+    )
+    decider = DeterministicDecider(exec_config=default_stub_trading_config(), p16_slot=slot)
+    return decider.evaluate_bin(
+        orig_session_id="base-sess", execution_mode="PAPER", scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0, station_id="KORD", target_date="2026-11-21", bin_id="bin-58-59",
+        market_id="mkt-1", yes_token_id="tok-y", forecasts=[fc], policy_bundle=bundle,
+        quota=_sample_quota(market_held_usd=market_held_usd), yes_frame=ask_yes.payload,
+    )
+
+
+def test_p16_lambda_l_four_states_and_configurable_yellow_multiplier() -> None:
+    ev_none = _eval_light_case(yellow_multiplier=0.5, level=None)
+    ev_green = _eval_light_case(yellow_multiplier=0.5, level="GREEN")
+    ev_yellow_05 = _eval_light_case(yellow_multiplier=0.5, level="YELLOW")
+    ev_yellow_025 = _eval_light_case(yellow_multiplier=0.25, level="YELLOW")
+    ev_yellow_075 = _eval_light_case(yellow_multiplier=0.75, level="YELLOW")
+    ev_red = _eval_light_case(yellow_multiplier=0.5, level="RED")
+
+    assert ev_none.light_status is None and ev_green.light_status == "GREEN"
+    assert ev_green.g_cap_usd == ev_none.g_cap_usd
+    assert ev_green.headroom_d == ev_none.headroom_d
+    assert ev_yellow_05.g_cap_usd == pytest.approx(ev_green.g_cap_usd * 0.5)
+    assert ev_yellow_025.g_cap_usd == pytest.approx(ev_green.g_cap_usd * 0.25)
+    assert ev_yellow_075.g_cap_usd == pytest.approx(ev_green.g_cap_usd * 0.75)
+    assert ev_red.g_cap_usd == 0.0 and ev_red.headroom_d == 0.0
+
+
+def test_p16_red_blocks_new_entries_and_yellow_held_over_cap_stops_adding() -> None:
+    ev_red = _eval_light_case(yellow_multiplier=0.5, level="RED")
+    assert ev_red.light_status == "RED"
+    assert ev_red.decision_outcome == "IDLE_BUDGET_EXHAUSTED"
+    assert ev_red.degradation_reason == "P16_RED_LIGHT_BLOCKED"
+    assert ev_red.target_slice_usd == 0.0 and ev_red.slice_plan is None
+    parsed = json.loads(ev_red.to_json_line())
+    assert parsed["decision_outcome"] == "IDLE_BUDGET_EXHAUSTED" and parsed["light_status"] == "RED"
+
+    # D-6 §6 L109: holding > G_yellow triggers IDLE_BUDGET_EXHAUSTED without active selling
+    ev_held_over = _eval_light_case(yellow_multiplier=0.5, level="YELLOW", market_held_usd=100.0)
+    assert ev_held_over.g_cap_usd < 100.0
+    assert ev_held_over.headroom_d == 0.0
+    assert ev_held_over.decision_outcome == "IDLE_BUDGET_EXHAUSTED"
+    assert ev_held_over.target_slice_usd == 0.0 and ev_held_over.slice_plan is None
+
+    # RED with edge < m_threshold cleanly emits SKIP_EDGE_BELOW_M and zero slice
+    ev_red_no_edge = _eval_light_case(yellow_multiplier=0.5, level="RED", asks=((0.95, 100.0),))
+    assert ev_red_no_edge.decision_outcome == "SKIP_EDGE_BELOW_M"
+    assert ev_red_no_edge.target_slice_usd == 0.0 and ev_red_no_edge.g_cap_usd == 0.0
+
+
+def test_p16_none_default_bitwise_regression_equivalence_and_bounds() -> None:
+    t0 = datetime(2026, 11, 21, 14, 0, 0, tzinfo=timezone.utc)
+    expected_baseline_jsonl = (
+        '{"b_budget_usd":250.0,"best_ask_edge":1.183622828784119,"best_ask_price":0.25,'
+        '"bin_id":"bin-58-59","book_frame_ref":1,"config_hash":"97885953b1ce2260",'
+        '"decision_id":"9b306f27-0fe1-5c37-be8c-a341de55173f","decision_outcome":"ORDERED",'
+        '"degradation_reason":null,"execution_mode":"PAPER","forecast_id":"fc-20ae8269c7f54f31",'
+        '"g_cap_usd":125.24384332715898,"headroom_d":125.24384332715898,"held_usd":0.0,'
+        '"light_status":null,"m_threshold":0.05,"market_id":"mkt-1","model_hash":"stub-model-hash-v1",'
+        '"p16_event_id":null,"policy_overdue":false,"policy_version":"p6.base.v1",'
+        '"record_sha256":"ed9fd44eb6daf835c88f9bf014ac8a520804f99bc919216b1e143919ce9981c0",'
+        '"s_edge":1.0,"scaler_policy_id":"provisional_identity_v0",'
+        '"scaler_provenance":"PROVISIONAL_UNTIL_D6","scaler_provisional":true,'
+        '"scan_clock":"PRICE_CLOCK","scan_ts_utc":"2026-11-21T14:00:00+00:00",'
+        '"schema_version":"p1.v1","session_id":"base-sess","station_id":"KORD",'
+        '"target_date":"2026-11-21","target_slice_usd":24.2984,"target_type":"TMAX",'
+        '"tau_hours":10.0,"token_id":"tok-y","w_tau":0.500975373308636}'
+    )
+    bundle_none = build_execution_policy_bundle(
+        policy_version="p6.base.v1", signed_at_utc=t0 - timedelta(hours=2), is_overdue=False,
+        w0_intent=0.10, min_order_usd_eff=5.0, p=1.5, tau_max_h=24.0, station_cap_usd=500.0,
+        concurrent_days=2, w_provenance="P8-CAPITAL-CONFIG v1.0",
+        phi_policy=PhiPolicy(rho_0=Decimal("0.30"), k_slope=Decimal("0.0"), rho_min=Decimal("0.10"), rho_max=Decimal("0.50")),
+        k0_threshold_coef=2.0, sigma_delta_frozen=SigmaDeltaFrozen(0.02, "test", "cyc-1"),
+        friction_median=0.01, m_floor=0.02, yellow_multiplier=0.5,
+    )
+    fc = build_stub_forecast_v11(issue_ts_utc=t0 - timedelta(minutes=15), settle_close_utc=t0 + timedelta(hours=10))
+    ask_yes, _ = build_p4_v11_stub_envelope(
+        session_id="base-sess", seq_id=1, frame_seq=1, token_id="tok-y", market_id="mkt-1",
+        condition_id="c1", station_id="KORD", target_date="2026-11-21", bin_label="58-59°F",
+        outcome="YES", regime="ask_only", recv_ts_utc=t0 - timedelta(seconds=1),
+        asks=((0.25, 100.0), (0.28, 200.0)), bids=(),
+    )
+    ev = DeterministicDecider(exec_config=default_stub_trading_config()).evaluate_bin(
+        orig_session_id="base-sess", execution_mode="PAPER", scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0, station_id="KORD", target_date="2026-11-21", bin_id="bin-58-59",
+        market_id="mkt-1", yes_token_id="tok-y", forecasts=[fc], policy_bundle=bundle_none,
+        quota=_sample_quota(), yes_frame=ask_yes.payload, include_no_side=False,
+    )
+    assert ev.to_json_line() == expected_baseline_jsonl
+    with pytest.raises(ValueError, match="yellow_multiplier"):
+        _sample_policy_bundle(t0, yellow_multiplier=1.1)
+    with pytest.raises(ValueError, match="yellow_multiplier"):
+        _sample_policy_bundle(t0, yellow_multiplier=-0.1)

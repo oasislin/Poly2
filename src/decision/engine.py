@@ -126,7 +126,9 @@ class RiskGatePolicy:
     m_floor: float
     station_cap_usd: float = 500.0
     concurrent_days: int = 2
-    yellow_multiplier: float = 1.0  # D-6 closure: lambda(YELLOW)=0.5 in G = B * w(tau) * [s(edge) * lambda(L)]
+    # P8-D6-POLICY-CLOSURE §1.3 & §6: G = B * w(tau) * [s(edge) * lambda(L)];
+    # YELLOW reads RiskGatePolicy.yellow_multiplier (D-6 v1 preset = 0.5).
+    yellow_multiplier: float = 1.0
     yellow_multiplier_note: str = "待 D-6 作用点"
     allow_provisional_none_friction: bool = False
 
@@ -139,6 +141,8 @@ class RiskGatePolicy:
             raise ValueError(f"friction_median must be >= 0, got {self.friction_median}")
         if self.m_floor < 0.0 or self.k0_threshold_coef < 0.0:
             raise ValueError("m_floor and k0_threshold_coef must be >= 0")
+        if not (0.0 <= float(self.yellow_multiplier) <= 1.0):
+            raise ValueError(f"yellow_multiplier must be in [0.0, 1.0], got {self.yellow_multiplier}")
 
     @property
     def m_threshold(self) -> float:
@@ -683,29 +687,36 @@ class DeterministicDecider:
             return self._build_scan_event(ctx, "BLOCKED_NO_BOOK_DEPTH", reason="NO_ASK_DEPTH")
         return None
 
-    def _apply_headroom_and_slice(
+    @staticmethod
+    def _resolve_lambda_l(
+        light_status: Optional[LightLevel],
+        risk_gate: RiskGatePolicy,
+    ) -> float:
+        """Resolve discrete P16 light multiplier `lambda(L)` (`P8-D6-POLICY-CLOSURE §1.3 & §6`)."""
+        if light_status is None or light_status == "GREEN":
+            return 1.0
+        if light_status == "YELLOW":
+            return float(risk_gate.yellow_multiplier)
+        if light_status == "RED":
+            return 0.0
+        raise ValueError(f"Unsupported P16 LightLevel: {light_status!r}")
+
+    @staticmethod
+    def _compute_g_cap(ctx: _DecisionContext, s_edge: float, lambda_l: float) -> float:
+        """Compute `G = B * w(tau) * [s(edge) * lambda(L)]` (`P8-D6-POLICY-CLOSURE §6 L110`)."""
+        return ctx.b_budget * ctx.w_tau * (s_edge * lambda_l)
+
+    def _slice_and_finalize(
         self,
         ctx: _DecisionContext,
         view: MergedYesAskView,
         p_model: float,
         best_ask_price: float,
         best_ask_edge: float,
+        s_edge: float,
+        g_cap_usd: float,
+        headroom_d: float,
     ) -> ScanDecisionEvent:
-        s_edge = float(self.scaler.scale(best_ask_edge=best_ask_edge, m_threshold=ctx.m_threshold))
-        # Target gate equation (D-6 S2-03): G = B * w(tau) * [s(edge) * lambda(L)] (S3-06 wires light multiplier).
-        g_cap_usd = ctx.b_budget * ctx.w_tau * s_edge
-        q = ctx.quota
-        if q.account_drawdown_brake_tripped or q.station_loss_gate_tripped:
-            return self._build_scan_event(
-                ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason or "RISK_BRAKE_TRIPPED",
-                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=g_cap_usd,
-            )
-        headroom_d = max(0.0, min(g_cap_usd - float(q.market_held_usd), float(q.b_eff_headroom_usd)))
-        if headroom_d <= 0.0:
-            return self._build_scan_event(
-                ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason,
-                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=g_cap_usd,
-            )
         slice_plan = plan_slice(
             d_headroom_usd=to_guarded_decimal(round(headroom_d, 6), name="headroom_d"),
             ask_book_frame=view, p_model=p_model, m_threshold=ctx.m_threshold,
@@ -727,6 +738,67 @@ class DeterministicDecider:
         return self._build_scan_event(
             ctx, "ORDERED", best_ask_price=best_ask_price, best_ask_edge=best_ask_edge,
             s_edge=s_edge, g_cap=g_cap_usd, headroom_d=headroom_d, slice_plan=slice_plan,
+        )
+
+    def _apply_headroom_and_slice(
+        self,
+        ctx: _DecisionContext,
+        view: MergedYesAskView,
+        p_model: float,
+        best_ask_price: float,
+        best_ask_edge: float,
+    ) -> ScanDecisionEvent:
+        s_edge = float(self.scaler.scale(best_ask_edge=best_ask_edge, m_threshold=ctx.m_threshold))
+        lambda_l = self._resolve_lambda_l(ctx.light_status, ctx.policy_bundle.risk_gate)
+        # Target gate equation (P8-D6-POLICY-CLOSURE §1.3 & §6): G = B * w(tau) * [s(edge) * lambda(L)].
+        g_cap_usd = self._compute_g_cap(ctx, s_edge, lambda_l)
+        q = ctx.quota
+        if ctx.light_status == "RED" or lambda_l <= 0.0:
+            return self._build_scan_event(
+                ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason or "P16_RED_LIGHT_BLOCKED",
+                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=0.0,
+            )
+        if q.account_drawdown_brake_tripped or q.station_loss_gate_tripped:
+            return self._build_scan_event(
+                ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason or "RISK_BRAKE_TRIPPED",
+                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=g_cap_usd,
+            )
+        headroom_d = max(0.0, min(g_cap_usd - float(q.market_held_usd), float(q.b_eff_headroom_usd)))
+        if headroom_d <= 0.0:
+            return self._build_scan_event(
+                ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason,
+                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=g_cap_usd,
+            )
+        return self._slice_and_finalize(
+            ctx, view, p_model, best_ask_price, best_ask_edge, s_edge, g_cap_usd, headroom_d
+        )
+
+    def _evaluate_bin_with_view(
+        self,
+        ctx: _DecisionContext,
+        assembled: AssembledScanInputs,
+        bin_id: str,
+    ) -> ScanDecisionEvent:
+        assert assembled.winning_forecast is not None
+        view = assembled.merged_view
+        assert view.ask_book is not None and view.legged_levels
+
+        bin_match = next((bp for bp in assembled.winning_forecast.bin_probs if bp.bin_id == bin_id), None)
+        if bin_match is None:
+            return self._build_scan_event(ctx, "BLOCKED_NO_BOOK_DEPTH", reason=f"UNKNOWN_BIN_ID:{bin_id}")
+
+        edge_summary = evaluate_book_edges(
+            ask_book=view.ask_book, p_model=bin_match.p_model,
+            m=ctx.m_threshold, fee_rate=float(view.legged_levels[0].fee_rate),
+        )
+        best_ask_price = float(view.ask_book.levels[0][0])
+        best_ask_edge = float(edge_summary.best_ask_edge)
+        if best_ask_edge < ctx.m_threshold or not edge_summary.qualified_levels:
+            return self._build_scan_event(
+                ctx, "SKIP_EDGE_BELOW_M", best_ask_price=best_ask_price, best_ask_edge=best_ask_edge
+            )
+        return self._apply_headroom_and_slice(
+            ctx, view, bin_match.p_model, best_ask_price, best_ask_edge
         )
 
     def evaluate_bin(
@@ -773,27 +845,7 @@ class DeterministicDecider:
         gate_block = self._check_input_gates(ctx, assembled)
         if gate_block is not None:
             return gate_block
-        assert assembled.winning_forecast is not None
-        view = assembled.merged_view
-        assert view.ask_book is not None and view.legged_levels
-
-        bin_match = next((bp for bp in assembled.winning_forecast.bin_probs if bp.bin_id == bin_id), None)
-        if bin_match is None:
-            return self._build_scan_event(ctx, "BLOCKED_NO_BOOK_DEPTH", reason=f"UNKNOWN_BIN_ID:{bin_id}")
-
-        edge_summary = evaluate_book_edges(
-            ask_book=view.ask_book, p_model=bin_match.p_model,
-            m=ctx.m_threshold, fee_rate=float(view.legged_levels[0].fee_rate),
-        )
-        best_ask_price = float(view.ask_book.levels[0][0])
-        best_ask_edge = float(edge_summary.best_ask_edge)
-        if best_ask_edge < ctx.m_threshold or not edge_summary.qualified_levels:
-            return self._build_scan_event(
-                ctx, "SKIP_EDGE_BELOW_M", best_ask_price=best_ask_price, best_ask_edge=best_ask_edge
-            )
-        return self._apply_headroom_and_slice(
-            ctx, view, bin_match.p_model, best_ask_price, best_ask_edge
-        )
+        return self._evaluate_bin_with_view(ctx, assembled, bin_id)
 
 
 __all__ = [
