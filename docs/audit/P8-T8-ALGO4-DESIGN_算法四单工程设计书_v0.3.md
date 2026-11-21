@@ -60,6 +60,7 @@ flowchart LR
    - **喂桥流（`oracle_compliant = True`）**：仅纳入常规 `METAR`（完全剔除 `SPECI`），依站点 `ZoneInfo` 当地含 DST 日历窗口推进；尚无常规报时置 `m_now_exact_f = None, m_now_int_f = None`。
    - **全量留档流（`P12 CoverageLedgerLog`）**：同步记录 `METAR + SPECI`、`specis_seen_count`、缺口及观测双龄（`physical_age_sec`、`dispatch_age_sec`、`dispatch_age_available`），配置级阈值 `physical_age_limit` / `dispatch_age_limit` 均携带 `provenance`（待标定前采用保守配置并记入 §5 #2）。
    - **逐帧验收**：对假盘前缀 $\mathcal{O}_{\text{settle}}(D, t_i)$，与 `M9` 结算归并器比对恒有 $\text{P11}(t_i).m_{\text{now}}^{\text{int}} \equiv T_{\text{settle}}^{(t_i)} \le T_{\text{settle}}(D)$。
+   - **`2026-11-21` `M1 (S3-01)` 验收闭环与尾项登记**：`S3-01` 已完成模块编码与自检补丁并回签转 `DONE`（`64339fd` + `6094dd1`）；尾项 **「`LiveAwcMetarAdapter` 真实端点连通冒烟」** 挂入 `T8` 影子验证（`S3-03`）前置，不回开 `S3-01` 编码态、不阻塞 `M2`。
 
 ---
 
@@ -115,9 +116,12 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
 
 ### 3.2 `s(edge)` 端口化（`IdentityScaler`, `provisional`）与交易面常数配置化
 
-1. **`OpportunityScaler`（`IdentityScaler` + `provisional` 标记）**：
+1. **`OpportunityScaler`（`IdentityScaler` 三条件约束 · `2026-11-21` 抽查 ② 补正）**：
    - 当 `best_ask_edge < m_threshold` 时必有 $s(\text{edge}) = 0.0$；
-   - 当 `best_ask_edge >= m_threshold` 时，因 [`P8-KERNEL-CONSENSUS §六 G`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#g下一桌-d-6-制度合龙议程登记只登记不开桌--2026-11-17) 将 `s(edge)` 形状及 `P16 yellow_multiplier` 作用点明确列为 **`D-6` 待决前置**，`v0.3` 显式将其端口化为 `OpportunityScaler` Protocol，并以 **`IdentityScaler`** 作为首期默认实现（仅对 `best_ask_edge >= m_threshold` 返回 `1.0`，显式携带元数据 **`provisional = True, provenance = "PROVISIONAL_UNTIL_D6"`**，随 `P1 / P6` 留痕；一旦 `D-6` 成文可无侵入热替换）。
+   - 当 `best_ask_edge >= m_threshold` 时，因 [`P8-KERNEL-CONSENSUS §六 G`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#g下一桌-d-6-制度合龙议程登记只登记不开桌--2026-11-17) 将 `s(edge)` 形状及 `P16 yellow_multiplier` 作用点明确列为 **`D-6` 待决前置**，`v0.3` 显式将其端口化为 `OpportunityScaler` Protocol，并以 **`IdentityScaler`**（返回 `1.0`）作为首期默认实现；`M4` 编码实现必须**强制落盘且受以下三项硬约束**：
+     1. **固定命名与 `policy_id` 强制落盘**：默认缩放器固定命名为 **`provisional_identity_v0`**，且强制将 **`policy_id = "provisional_identity_v0"`**、**`provisional = True`** 与 **`provenance = "PROVISIONAL_UNTIL_D6"`** 随 `P1 / P6` 强制落盘留痕；
+     2. **产出用途严格受限**：启用 `provisional_identity_v0` 期间产出的全部决策与模拟结果**仅限链路验证（pipeline verification）与摩擦实测（friction measurement）**，严禁充当正式盈亏/阈值标定定论或绕过 `D-6` 上线实盘；
+     3. **`D-6` 成文即作废重跑**：一旦 **`D-6` 规则正式成文**确立 `s(edge)` 与 `yellow_multiplier` 作用点，原标记 `policy_id = "provisional_identity_v0"` 之产出**立即作废**，必须以正式 `OpportunityScaler` **重新运行并重算决策评价**，严禁跨前后口径混算。
 2. **交易面常数全部配置化 + `provenance`（小项 ①）**：
    - `M4 / M5` 运行内核中**禁止出现无来源裸数字**：`min_order_size_shares`（源自 `FACT-004`）、`min_notional_usd`（源自 `FACT-004` 占位）、`forecast_age_limit_sec`、`max_book_staleness_sec`、`latency_ms` 等交易面参数均收敛至只读 `TradingExecutionConfig`，且每项字段均配套 `<field>_provenance: str`（或分组 `ConfigProvenance` 元数据）。
 
@@ -142,7 +146,8 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
      - `limit_price_dec = (Decimal(str(raw_limit_price)) // tick_dec) * tick_dec`（向下整数倍对齐动态 `0.01 / 0.001` tick，消除 `float` 除法漂移导致网关 `breaks minimum tick size rule` 拒单）；
      - `target_shares_dec = (target_usd_dec / limit_price_dec).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)`（精确 2 位小数，符合 `FACT-003` 与 `P8-T4-M4M5-INTERFACE §2.2`，确保 `target_shares_dec * limit_price_dec <= target_usd_dec` 零超限）；
      - 核验 `target_shares_dec >= Decimal(str(min_order_size_shares))` 与 `target_shares_dec * limit_price_dec >= Decimal(str(min_notional_usd))`；
-     - 序列化写入 `P3` 或网关传参时按精确字符串/定点数输出。
+     - 序列化写入 `P3` 或网关传参时按精确字符串/定点数输出；
+     - **`2026-11-21` 口径对齐登记**：[`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) `SlicePlan` 现行定义为 `float` 域，与本节 `Decimal` 精确域存在口径差，已登记**于 `M5 (S3-05)` 编码批内按 `§8.3` 同步升版 `P2` 对齐**（本批不动 `M5` / `P2` 正文）。
 
 ### 4.2 `P18` 保守延迟撮合（禁插值、`Decimal` 点费与逐帧复算）
 
@@ -168,5 +173,5 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
 | 1 | `S3-01` | 历史/回放 `RawMetarReport` 缺失 `dispatch_ts_utc` 处理 | **`已裁决`** | **严禁假定 `0s` 滞后**；标 `dispatch_age_available = False` 入 `P12`；假盘/历史因果验证配置可选择按“已戳报文实测滞后上界”保守过滤或拒用无派发戳帧（参数配置化带 `provenance`） |
 | 2 | `S3-01` | `M1/M2/M4` 双龄分段与配置门限注入 | **`已裁决`** | **`M2` 管 `M1→M2` 观测龄**（物理/派发龄，写入 `P5.upstream_obs_fresh`）、**`M4` 管 `M2→M4` 预测龄与 `M3→M4` 盘口龄**；门限参数全部配置化附 `provenance`（[`P8-ALGO-DEF-SPEC §1.2`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md#12-受控参数三分类法定字典) 未标定前取保守配置），最新 `issue_ts` 胜出不回替 |
 | 3 | `S3-02` | **`P5` 升版 `v1.1`（整数端点 + 双字段拆分）** | **`已裁决`** | 按本令第 3 条升级版执行：**整数闭区间端点**（废弃 `.5°F`）+ **`p_stay_phys`（全档同义物理原子，不截顶）与 `p_bin_stay`（档内锁定概率，开放尾档为 `1.0`）双字段拆分**；同步联动改写 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)、[`项目方案 v3.0 §8.2`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) 与 [`P17`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#23-p17-forecastsnapshotlogm2--m7) |
-| 4 | `S3-04` / `S3-05` | `ρ(edge)` 依据与 `s(edge)` 端口化规格 | **`已裁决`** | **`ρ(edge)` 严格引 `P2` 条款 `§2.2` 公式**（`k_slope = 0.0` 起步）；**`s(edge)`** 因受 `D-6` 前置约束，在 `M4` 中端口化为 `OpportunityScaler` 并默认采用 **`IdentityScaler` 显式标 `provisional = True`**，待 `D-6` 成文后替换 |
+| 4 | `S3-04` / `S3-05` | `ρ(edge)` 依据与 `s(edge)` 端口化规格 | **`已裁决`** | **`ρ(edge)` 严格引 `P2` 条款 `§2.2` 公式**（`k_slope = 0.0` 起步，`M5` 编码批内按 `§8.3` 升版 `P2 SlicePlan` 对齐 `Decimal` 域）；**`s(edge)`** 在 `M4` 端口化为 `OpportunityScaler`，默认 `IdentityScaler` 须满足 **`provisional_identity_v0` + `policy_id` 强制落盘 / 产出限链路验证与摩擦实测 / `D-6` 成文即作废重跑** 三条件 |
 | 5 | `S3-05` | `fee` 公式、`Decimal` 精度、重放 `session_id` 与延迟配置 | **`已裁决`** | **`fee = shares × feeRate × p × (1−p)`**（`fees.md` 官方定案，`edge_math.py` 核验零缺陷）；`shares / tick / fee` 全程 **`Decimal` 精确域**；重放复用原 **`P1.session_id`**；全部交易常数与 `latency_ms` 配置化注入并附 `provenance` |

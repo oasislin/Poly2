@@ -746,7 +746,7 @@ def render_html(data: Dict[str, Any]) -> str:
         ${{stRows ? `<div style="margin-top:12px"><div style="font-size:12px;color:var(--muted);margin-bottom:6px"><strong>S2-01 默认建议站表（档 B · 5 站）与 Active 10 流动性参照：</strong></div><table><thead><tr><th>站点</th><th>城市</th><th>流动性</th><th>成交量</th><th>并发天数</th><th>档 B 默认建议</th><th>说明</th></tr></thead><tbody>${{stRows}}</tbody></table></div>` : ""}}
       </div>
       <div class="action-section">
-        <h2 style="color:#22d3ee">2. 算法改造四单（S3-01 / S3-02 / S3-04 / S3-05 · 编码中 · M1 第一优先）</h2>
+        <h2 style="color:#22d3ee">2. 算法改造四单（S3-01 DONE · S3-02 / S3-04 / S3-05 编码中）</h2>
         ${{renderTaskTable(archList)}}
       </div>
       <div class="action-section">

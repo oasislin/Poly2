@@ -27,8 +27,10 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert {t["slice"] for t in data["tasks"]} == {"切片 1", "切片 2", "切片 3", "切片 4"}
 
     by_id = {t["id"]: t for t in data["tasks"]}
-    for tid in ALGORITHM_PROTECTED_IDS:
+    assert by_id["S3-01"]["status"] == "DONE"
+    for tid in ("S3-02", "S3-04", "S3-05"):
         assert by_id[tid]["status"] == "CODING"
+    for tid in ALGORITHM_PROTECTED_IDS:
         assert by_id[tid]["acceptance"] != "待架构侧供给"
 
     assert by_id["S2-01"]["status"] == "PENDING_APPROVAL"
@@ -57,7 +59,7 @@ def test_cycle_detection_and_algo_guardrail(tmp_path: Path) -> None:
 
     # 1. Blocked algorithm task without placeholder must fail unless --allow-arch-supplied
     tampered_algo = raw.replace(
-        "| 假盘 `M_now` 与结算口径逐帧一致 | `CODING` |",
+        "| `P5 v1.1` 不变量组全过 | `CODING` |",
         "| 擅自拟定阈值 | `BLOCKED` |",
         1,
     )
