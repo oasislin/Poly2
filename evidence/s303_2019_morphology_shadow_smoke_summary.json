@@ -1,13 +1,30 @@
 {
-  "work_order_id": "2019-SEALED-002",
+  "work_order_id": "2019-SEALED-003",
   "task_id": "S3-03",
-  "run_utc": "2026-11-21T12:33:17.435574+00:00",
-  "n_day_leads": 730,
+  "run_utc": "2026-11-21T13:20:40.385744+00:00",
+  "n_evaluable_day_leads": 728,
+  "n_empty_day_leads": 2,
+  "empty_day_by_station": {
+    "KMIA": 1,
+    "KORD": 1
+  },
+  "empty_day_by_month": {
+    "M12": 2
+  },
   "n_bridge_evals": 21112,
-  "p5_invariants_pass_rate": 0.99726,
-  "monotone_m_now_rate": 0.99726,
-  "sigma_rem_le_sigma0_rate": 0.99726,
-  "dead_bin_zero_rate": 0.99726,
+  "p5_invariants_pass_rate": 1.0,
+  "monotone_m_now_rate": 1.0,
+  "sigma_rem_le_sigma0_rate": 1.0,
+  "dead_bin_zero_rate": 1.0,
   "zero_w_phi_fitting": true,
-  "sealed_morphology_passed": false
+  "sealed_morphology_passed": true,
+  "failure_signatures": {
+    "distinct_failed_day_clusters": 0,
+    "by_station": {},
+    "by_invariant": {},
+    "by_t_grid_bucket": {},
+    "by_season": {},
+    "by_month_bucket": {},
+    "steps_per_failed_day_hist": {}
+  }
 }

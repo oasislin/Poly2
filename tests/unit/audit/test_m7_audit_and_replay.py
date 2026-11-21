@@ -237,8 +237,13 @@ def test_p8_aggregator_reads_only_m7_logs_and_computes_overdue_ratio(tmp_path: P
 
 
 def test_s303_sealed_corpus_evaluator_runs_m2_bridge_without_reading_2019_disk() -> None:
-    d0 = date(2019, 7, 15)
-    prior_dfs = {"KORD": pd.DataFrame([{"target_date": d0, "season": "summer", "mu_0": 80.0, "sigma_0": 3.5}])}
+    d0, d_empty = date(2019, 7, 15), date(2019, 12, 31)
+    prior_dfs = {
+        "KORD": pd.DataFrame([
+            {"target_date": d0, "season": "summer", "mu_0": 80.0, "sigma_0": 3.5},
+            {"target_date": d_empty, "season": "winter", "mu_0": 32.0, "sigma_0": 3.5},
+        ])
+    }
     obs_summaries = {
         ("KORD", 12.0): pd.DataFrame({"mt": [74.0]}, index=[d0]),
         ("KORD", 16.0): pd.DataFrame({"mt": [79.0]}, index=[d0]),
@@ -246,13 +251,23 @@ def test_s303_sealed_corpus_evaluator_runs_m2_bridge_without_reading_2019_disk()
     eta_p = ConstantEtaProvider(eta_s=0.25, provenance="synthetic_sealed_test")
     engine = ForecastDistributionEngine(
         freshness_policy=FreshnessPolicy(physical_age_limit_sec=86400.0, provenance="test"),
-        eta_provider=eta_p,
-        mu_r_hook=SpecV2BaselineMuRHook(),
+        eta_provider=eta_p, mu_r_hook=SpecV2BaselineMuRHook(),
     )
     res = evaluate_sealed_2019_corpus(
         prior_dfs=prior_dfs, obs_summaries=obs_summaries, t_grid=(12.0, 16.0),
         engine=engine, eta_provider=eta_p,
-        climate_calib={"KORD": {"seasons": {"summer": {"selected_family": "gaussian", "shape_params": {}}}}},
+        climate_calib={
+            "KORD": {
+                "seasons": {
+                    "summer": {"selected_family": "gaussian", "shape_params": {}},
+                    "winter": {"selected_family": "gaussian", "shape_params": {}},
+                }
+            }
+        },
     )
-    assert res["n_day_leads"] == 1 and res["n_bridge_evals"] == 2
+    assert res["n_evaluable_day_leads"] == 1 and res["n_empty_day_leads"] == 1
+    assert res["empty_day_by_station"] == {"KORD": 1} and res["empty_day_by_month"] == {"M12": 1}
+    assert res["n_bridge_evals"] == 2
+    assert res["p5_invariants_pass_rate"] == 1.0 and res["monotone_m_now_rate"] == 1.0
+    assert res["sigma_rem_le_sigma0_rate"] == 1.0 and res["dead_bin_zero_rate"] == 1.0
     assert res["sealed_morphology_passed"] is True

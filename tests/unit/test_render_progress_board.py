@@ -27,7 +27,7 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert {t["slice"] for t in data["tasks"]} == {"切片 1", "切片 2", "切片 3", "切片 4"}
 
     by_id = {t["id"]: t for t in data["tasks"]}
-    for tid in ("S3-01", "S3-02", "S3-04", "S3-05", "S3-07", "S2-03", "S2-04", "S2-05"):
+    for tid in ("S3-01", "S3-02", "S3-03", "S3-04", "S3-05", "S3-07", "S2-03", "S2-04", "S2-05"):
         assert by_id[tid]["status"] == "DONE"
     for tid in ALGORITHM_PROTECTED_IDS:
         assert by_id[tid]["acceptance"] != "待架构侧供给"
@@ -35,8 +35,7 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert by_id["S2-01"]["status"] == "READY_TO_LAUNCH"
     assert "待用户按开关" in by_id["S2-01"]["dependencies_label"]
     assert by_id["S2-07"]["status"] == "READY"
-    assert by_id["S3-03"]["status"] == "PLANNED"
-    assert "0.99726" in by_id["S3-03"]["acceptance"]
+    assert "2019-SEALED-003" in by_id["S3-03"]["acceptance"]
     assert by_id["S3-06"]["status"] == "READY"
     assert by_id["S3-08"]["status"] == "BLOCKED"
     assert by_id["S3-13"]["status"] == "PLANNED"

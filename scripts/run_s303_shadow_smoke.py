@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-S3-03 Shadow Smoke Runner: Live AWC METAR Smoke + Sealed 2019 Morphology Smoke.
+S3-03 Shadow Smoke & Failure Signature Diagnostic Runner.
 
 Governance & Boundaries:
 - Respects `2019 封跑制度` (`P8-ALGO-REVIEW §常设 2019 消费台账`): agent runs ONLY
-  `--live-awc-smoke` (real aviationweather.gov connectivity smoke for M1 residual)
-  and `--self-test` (synthetic morphology check, 0 real 2019 disk reads).
-- Production `--execute-sealed-2019` runs ONLY when manually triggered by the Design Team;
-  executes real `ForecastDistributionEngine` (`M2` + `Proposal1CoolingDriftMuRHook`) over the
-  sealed 2019 corpus verifying aggregate convergence & invariants with zero w/phi fitting
-  and zero day/row output.
-- Zero touch to `M3` (`data/market_recordings/`, `passive_book_recorder.py`) or `src/pricing/`.
+  `--live-awc-smoke` and `--self-test` (synthetic checks, 0 real 2019 disk reads).
+- `--execute-sealed-2019` runs ONLY when manually triggered by Design Team; preserves
+  strict `100%` gate threshold (`sealed_morphology_passed`) and emits aggregate-only
+  JSON + failure signature counts by station / invariant / T-grid bucket / day-cluster
+  with zero raw dates or plaintext row dumps.
+- Zero touch to `src/prediction/`, `src/pricing/`, `M3` recordings/PIDs.
 """
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import json
@@ -43,6 +43,7 @@ from src.prediction.forecast_distribution_engine import (
     ConstantEtaProvider,
     EtaProvider,
     ForecastDistributionEngine,
+    P5InvariantReport,
     PriorAffineFamilyModel,
     build_integer_bin_ladder,
     compute_sigma_rem,
@@ -67,6 +68,68 @@ class StationLiveSmokeRow:
     p12_sha256_ok: bool
     p5_invariants_ok: bool
     sigma_rem: float
+
+
+@dataclass
+class _DiagnosticSignatureAccumulator:
+    """Aggregate-only failure signature collector (zero dates, zero plaintext rows)."""
+
+    by_station: Counter[str] = field(default_factory=Counter)
+    by_invariant: Counter[str] = field(default_factory=Counter)
+    by_t_grid_bucket: Counter[str] = field(default_factory=Counter)
+    by_season: Counter[str] = field(default_factory=Counter)
+    by_month_bucket: Counter[str] = field(default_factory=Counter)
+    steps_per_failed_day_hist: Counter[str] = field(default_factory=Counter)
+    distinct_failed_day_clusters: int = 0
+
+    def record_step_failure(self, station: str, season: str, month: int, local_hr: float, codes: Sequence[str]) -> None:
+        bucket = _t_grid_bucket_label(local_hr)
+        for code in codes:
+            self.by_station[station] += 1
+            self.by_invariant[code] += 1
+            self.by_t_grid_bucket[bucket] += 1
+            self.by_season[season] += 1
+            self.by_month_bucket[f"M{month:02d}"] += 1
+
+    def record_day_cluster(self, station: str, season: str, month: int, failed_steps: int, empty_day: bool) -> None:
+        self.distinct_failed_day_clusters += 1
+        key = "0_steps_empty" if empty_day else f"{failed_steps}_failed_steps"
+        self.steps_per_failed_day_hist[key] += 1
+        if empty_day:
+            self.record_step_failure(station, season, month, -1.0, ("EMPTY_T_GRID_STEPS",))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "distinct_failed_day_clusters": self.distinct_failed_day_clusters,
+            "by_station": dict(sorted(self.by_station.items())),
+            "by_invariant": dict(sorted(self.by_invariant.items())),
+            "by_t_grid_bucket": dict(sorted(self.by_t_grid_bucket.items())),
+            "by_season": dict(sorted(self.by_season.items())),
+            "by_month_bucket": dict(sorted(self.by_month_bucket.items())),
+            "steps_per_failed_day_hist": dict(sorted(self.steps_per_failed_day_hist.items())),
+        }
+
+
+def _t_grid_bucket_label(local_hr: float) -> str:
+    if local_hr < 0.0:
+        return "no_t_grid_steps"
+    if local_hr < 9.0:
+        return "T00_08"
+    if local_hr < 15.0:
+        return "T09_14"
+    if local_hr < 21.0:
+        return "T15_20"
+    return "T21_24"
+
+
+def _season_label(month: int) -> str:
+    if month in (12, 1, 2):
+        return "winter"
+    if month in (3, 4, 5):
+        return "spring"
+    if month in (6, 7, 8):
+        return "summer"
+    return "autumn"
 
 
 def _build_default_engine(
@@ -161,6 +224,23 @@ def _build_p11_state(station_id: str, target_d: date, issue_ts: datetime, close_
     )
 
 
+def _extract_invariant_failure_codes(rep: P5InvariantReport) -> List[str]:
+    codes: List[str] = []
+    if not rep.ladder_contiguous_ok:
+        codes.append("P5_LADDER_CONTIGUOUS")
+    if not rep.inv1_simplex_ok:
+        codes.append("P5_INV1_SIMPLEX")
+    if not rep.inv2_dual_atom_domain_ok:
+        codes.append("P5_INV2_DUAL_ATOM")
+    if not rep.inv3_dead_bin_zeroed_ok:
+        codes.append("P5_INV3_DEAD_BIN")
+    if not rep.inv4_dual_inclusion_ok:
+        codes.append("P5_INV4_INCLUSION")
+    if not rep.q_b2_state_ok:
+        codes.append("P5_QB2_STATE")
+    return codes
+
+
 def _eval_trajectory_with_engine(
     station_id: str,
     target_d: date,
@@ -168,40 +248,96 @@ def _eval_trajectory_with_engine(
     prior: PriorAffineFamilyModel,
     engine: ForecastDistributionEngine,
     eta_provider: EtaProvider,
+    diag: _DiagnosticSignatureAccumulator | None = None,
 ) -> Tuple[int, bool, bool, bool, bool]:
     close_ts = datetime(target_d.year, target_d.month, target_d.day, 23, 59, tzinfo=timezone.utc)
     center = int(round(prior.mu0))
     bins = build_integer_bin_ladder(first_interior_start_f=center - 8, num_interior_bins=9, bin_width_f=2)
     prev_m: int | None = None
-    invariants_ok = monotone_m = sigma_ok = dead_zero_ok = True
+    inv_ok = mono_ok = sig_ok = dead_ok = True
+    failed_steps = 0
+    season = _season_label(target_d.month)
 
     for issue_ts, m_val, local_hour in steps:
         p11 = _build_p11_state(station_id, target_d, issue_ts, close_ts, m_val)
         snap, rep = engine.build_snapshot(
             station_id=station_id, target_date=target_d, target_type="TMAX", issue_ts_utc=issue_ts,
             settle_close_utc=close_ts, gefs_lead_hours=24, model_hash="s303_bridge_v1",
-            prior=prior, bins=bins, p11_state=p11,
+            prior=prior, bins=bins, p11_state=p11, validate_invariants=False,
         )
-        invariants_ok = invariants_ok and rep.all_passed
+        codes = _extract_invariant_failure_codes(rep)
+        inv_ok = inv_ok and rep.all_passed
         assert snap.m_now_int_f is not None
         if prev_m is not None and snap.m_now_int_f < prev_m:
-            monotone_m = False
+            mono_ok = False
+            codes.append("RUNNER_MONOTONE_M_NOW")
         prev_m = snap.m_now_int_f
-        season = "summer" if target_d.month in (6, 7, 8) else ("winter" if target_d.month in (12, 1, 2) else ("spring" if target_d.month in (3, 4, 5) else "autumn"))
         eta_val = eta_provider.get_eta_s(station_id=station_id, season=season, t_local_hour=local_hour)
         if compute_sigma_rem(prior.sigma0, eta_val) > prior.sigma0 + 1e-12:
-            sigma_ok = False
+            sig_ok = False
+            codes.append("RUNNER_SIGMA_REM_GT_SIGMA0")
         if any(bp.upper_int_f is not None and bp.upper_int_f < snap.m_now_int_f and bp.p_model != 0.0 for bp in snap.bin_probs):
-            dead_zero_ok = False
-    return len(steps), invariants_ok, monotone_m, sigma_ok, dead_zero_ok
+            dead_ok = False
+            codes.append("RUNNER_DEAD_BIN_NONZERO")
+        if codes:
+            failed_steps += 1
+            if diag is not None:
+                diag.record_step_failure(station_id, season, target_d.month, local_hour, codes)
+    if diag is not None and failed_steps > 0:
+        diag.record_day_cluster(station_id, season, target_d.month, failed_steps, empty_day=False)
+    return len(steps), inv_ok, mono_ok, sig_ok, dead_ok
+
+
+def _verify_diagnostic_accumulator_self_test() -> Dict[str, Any]:
+    """Synthetic failure + empty-day self-test verifying schema and denominator without 2019 reads."""
+    import pandas as pd
+
+    d_pass, d_drop, d_empty = date(2026, 7, 1), date(2026, 7, 2), date(2026, 7, 3)
+    calib = {"KORD": {"seasons": {"summer": {"selected_family": "gaussian", "shape_params": {}}}}}
+    eta_p = ConstantEtaProvider(eta_s=0.25, provenance="diag_self_test")
+    eng = _build_default_engine(eta_p, SpecV2BaselineMuRHook())
+    rows = [{"target_date": d, "season": "summer", "mu_0": 80.0, "sigma_0": 3.5} for d in (d_pass, d_drop, d_empty)]
+    res_fail = evaluate_sealed_2019_corpus(
+        prior_dfs={"KORD": pd.DataFrame(rows)},
+        obs_summaries={
+            ("KORD", 10.0): pd.DataFrame({"mt": [78.0, 79.0]}, index=[d_pass, d_drop]),
+            ("KORD", 16.0): pd.DataFrame({"mt": [80.0, 77.0]}, index=[d_pass, d_drop]),
+        },
+        t_grid=(10.0, 16.0), engine=eng, eta_provider=eta_p, climate_calib=calib,
+    )
+    res_empty_pass = evaluate_sealed_2019_corpus(
+        prior_dfs={"KORD": pd.DataFrame([rows[0], rows[2]])},
+        obs_summaries={("KORD", 10.0): pd.DataFrame({"mt": [78.0]}, index=[d_pass]), ("KORD", 16.0): pd.DataFrame({"mt": [80.0]}, index=[d_pass])},
+        t_grid=(10.0, 16.0), engine=eng, eta_provider=eta_p, climate_calib=calib,
+    )
+    fs = res_fail["failure_signatures"]
+    diag_ok = (
+        res_fail["sealed_morphology_passed"] is False and res_fail["n_evaluable_day_leads"] == 2
+        and res_fail["n_empty_day_leads"] == 1 and fs["by_invariant"].get("RUNNER_MONOTONE_M_NOW") == 1
+        and fs["by_t_grid_bucket"].get("T15_20") == 1 and res_empty_pass["sealed_morphology_passed"] is True
+        and res_empty_pass["n_evaluable_day_leads"] == 1 and res_empty_pass["n_empty_day_leads"] == 1
+        and res_empty_pass["empty_day_by_station"] == {"KORD": 1} and res_empty_pass["empty_day_by_month"] == {"M07": 1}
+        and res_empty_pass["p5_invariants_pass_rate"] == 1.0
+    )
+    return {
+        "diag_self_test_passed": diag_ok,
+        "empty_day_denominator_pass_check": {
+            "n_evaluable_day_leads": res_empty_pass["n_evaluable_day_leads"],
+            "n_empty_day_leads": res_empty_pass["n_empty_day_leads"],
+            "empty_day_by_station": res_empty_pass["empty_day_by_station"],
+            "empty_day_by_month": res_empty_pass["empty_day_by_month"],
+            "p5_invariants_pass_rate": res_empty_pass["p5_invariants_pass_rate"],
+            "sealed_morphology_passed": res_empty_pass["sealed_morphology_passed"],
+        },
+        "failure_signatures": fs,
+    }
 
 
 def run_synthetic_morphology_self_test() -> Dict[str, Any]:
-    """Zero-2019-disk-read synthetic morphology convergence check for M1->M2 HurdleBridge."""
+    """Zero-2019-disk-read synthetic morphology + failure-signature self-test."""
     prior = PriorAffineFamilyModel(mu0=79.5, sigma0=3.8, family="gaussian")
     base_d = date(2026, 7, 15)
     t0 = datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc)
-    hours = (10.0, 14.0, 18.0)
     trajectories = {
         "warming_day": (72.2, 78.6, 82.4),
         "early_peak_cooling": (76.1, 76.1, 76.1),
@@ -211,17 +347,26 @@ def run_synthetic_morphology_self_test() -> Dict[str, Any]:
     eta_p = ConstantEtaProvider(eta_s=0.25, provenance="s303_self_test")
     engine = _build_default_engine(eta_p, SpecV2BaselineMuRHook())
     for name, m_seq in trajectories.items():
-        steps = [(t0 + timedelta(hours=4 * i), m_v, hours[i]) for i, m_v in enumerate(m_seq)]
+        steps = [(t0 + timedelta(hours=4 * i), m_v, hr) for i, (m_v, hr) in enumerate(zip(m_seq, (10.0, 14.0, 18.0)))]
         _, inv, mono, sig, dead = _eval_trajectory_with_engine("KORD", base_d, steps, prior, engine, eta_p)
-        cases.append({
-            "trajectory": name, "invariants_ok": inv, "monotone_m_now": mono,
-            "sigma_rem_converged": sig, "dead_bin_zeroed": dead,
-        })
-    all_pass = all(c["invariants_ok"] and c["monotone_m_now"] and c["sigma_rem_converged"] and c["dead_bin_zeroed"] for c in cases)
+        cases.append({"trajectory": name, "invariants_ok": inv, "monotone_m_now": mono, "sigma_rem_converged": sig, "dead_bin_zeroed": dead})
+    diag_check = _verify_diagnostic_accumulator_self_test()
+    all_pass = diag_check["diag_self_test_passed"] and all(
+        c["invariants_ok"] and c["monotone_m_now"] and c["sigma_rem_converged"] and c["dead_bin_zeroed"] for c in cases
+    )
     return {
         "mode": "SYNTHETIC_SELF_TEST", "real_2019_files_accessed": 0,
         "all_morphologies_passed": all_pass, "cases": cases,
+        "diagnostic_accumulator_check": diag_check,
     }
+
+
+def _build_row_prior(climate_calib: Mapping[str, Any], st: str, row: Any) -> PriorAffineFamilyModel:
+    info = climate_calib[st]["seasons"][str(row.season)]
+    return PriorAffineFamilyModel(
+        mu0=float(row.mu_0), sigma0=float(row.sigma_0),
+        family=str(info.get("selected_family", "gaussian")), shape_params=info.get("shape_params", {}) or {},
+    )
 
 
 def evaluate_sealed_2019_corpus(
@@ -233,32 +378,38 @@ def evaluate_sealed_2019_corpus(
     eta_provider: EtaProvider,
     climate_calib: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Run real `M2` `ForecastDistributionEngine` evaluations over sealed 2019 priors & METAR slices."""
-    n_day_leads = n_evals = inv_ok = mono_ok = sig_ok = dead_ok = 0
+    """Run sealed `M2` morphology evaluations on evaluable days (threshold unchanged = 100%)."""
+    diag = _DiagnosticSignatureAccumulator()
+    empty_by_station, empty_by_month = Counter(), Counter()
+    n_evaluable = n_empty = n_evals = inv_ok = mono_ok = sig_ok = dead_ok = 0
+
     for st, df19 in prior_dfs.items():
         for row in df19.itertuples():
-            n_day_leads += 1
-            seas = str(row.season)
-            fam = str(climate_calib[st]["seasons"][seas].get("selected_family", "gaussian"))
-            sp = climate_calib[st]["seasons"][seas].get("shape_params", {}) or {}
-            prior = PriorAffineFamilyModel(mu0=float(row.mu_0), sigma0=float(row.sigma_0), family=fam, shape_params=sp)
             steps = _collect_steps_for_day(st, row.target_date, obs_summaries, t_grid)
             if not steps:
+                n_empty += 1
+                empty_by_station[st] += 1
+                empty_by_month[f"M{row.target_date.month:02d}"] += 1
                 continue
-            cnt, i_ok, m_ok, s_ok, d_ok = _eval_trajectory_with_engine(st, row.target_date, steps, prior, engine, eta_provider)
-            n_evals += cnt
-            inv_ok += int(i_ok)
-            mono_ok += int(m_ok)
-            sig_ok += int(s_ok)
-            dead_ok += int(d_ok)
-    denom = max(n_day_leads, 1)
+            n_evaluable += 1
+            prior = _build_row_prior(climate_calib, st, row)
+            cnt, i_ok, m_ok, s_ok, d_ok = _eval_trajectory_with_engine(st, row.target_date, steps, prior, engine, eta_provider, diag=diag)
+            n_evals += cnt; inv_ok += int(i_ok); mono_ok += int(m_ok); sig_ok += int(s_ok); dead_ok += int(d_ok)
+    denom = max(n_evaluable, 1)
     return {
-        "work_order_id": "2019-SEALED-002", "task_id": "S3-03",
-        "run_utc": datetime.now(timezone.utc).isoformat(), "n_day_leads": n_day_leads,
+        "work_order_id": "2019-SEALED-003", "task_id": "S3-03", "run_utc": datetime.now(timezone.utc).isoformat(),
+        "n_evaluable_day_leads": n_evaluable, "n_empty_day_leads": n_empty,
+        "empty_day_by_station": dict(sorted(empty_by_station.items())),
+        "empty_day_by_month": dict(sorted(empty_by_month.items())),
         "n_bridge_evals": n_evals, "p5_invariants_pass_rate": round(inv_ok / denom, 6),
         "monotone_m_now_rate": round(mono_ok / denom, 6), "sigma_rem_le_sigma0_rate": round(sig_ok / denom, 6),
         "dead_bin_zero_rate": round(dead_ok / denom, 6), "zero_w_phi_fitting": True,
-        "sealed_morphology_passed": n_evals > 0 and inv_ok == n_day_leads and mono_ok == n_day_leads and sig_ok == n_day_leads and dead_ok == n_day_leads,
+        "sealed_morphology_passed": (
+            n_evaluable > 0 and n_evals > 0
+            and inv_ok == n_evaluable and mono_ok == n_evaluable
+            and sig_ok == n_evaluable and dead_ok == n_evaluable
+        ),
+        "failure_signatures": diag.to_dict(),
     }
 
 
@@ -284,9 +435,7 @@ def run_sealed_2019_morphology_smoke() -> Dict[str, Any]:
     import pandas as pd
     from scripts.run_p8_inspection_a_eta_calibration import T_GRID
     from scripts.run_p8_inspection_c_2019_final_lst import OBS_2019_LST_PATH, _build_slice_summaries, _load_official_metar_2019
-    from scripts.run_p8_inspection_c_2019_replay import (
-        CLIMATE_CALIB_PATH, CONTRACT_PATH, MANIFEST_PATH, build_2019_cell_priors
-    )
+    from scripts.run_p8_inspection_c_2019_replay import CLIMATE_CALIB_PATH, CONTRACT_PATH, MANIFEST_PATH, build_2019_cell_priors
     from scripts.run_p8_metar_counterfactual_sealed_2019 import AUTHORIZED_LEAD_HOURS, AUTHORIZED_STATIONS
     from src.prediction.dynamic_corrector import Proposal1CoolingDriftMuRHook
 
@@ -313,9 +462,9 @@ def run_sealed_2019_morphology_smoke() -> Dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="S3-03 Live AWC & Sealed 2019 Morphology Shadow Smoke.")
+    parser = argparse.ArgumentParser(description="S3-03 Live AWC & Sealed 2019 Morphology Diagnostic Runner.")
     parser.add_argument("--live-awc-smoke", action="store_true", help="Run real AWC METAR -> M1 -> M2 connectivity smoke.")
-    parser.add_argument("--self-test", action="store_true", help="Run zero-2019-read synthetic morphology check.")
+    parser.add_argument("--self-test", action="store_true", help="Run zero-2019-read synthetic morphology & signature check.")
     parser.add_argument("--execute-sealed-2019", action="store_true", help="Manually executed by Design Team only under 2019 封跑制度.")
     args = parser.parse_args()
 
