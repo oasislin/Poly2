@@ -126,7 +126,7 @@ class RiskGatePolicy:
     m_floor: float
     station_cap_usd: float = 500.0
     concurrent_days: int = 2
-    yellow_multiplier: float = 1.0
+    yellow_multiplier: float = 1.0  # D-6 closure: lambda(YELLOW)=0.5 in G = B * w(tau) * [s(edge) * lambda(L)]
     yellow_multiplier_note: str = "待 D-6 作用点"
     allow_provisional_none_friction: bool = False
 
@@ -692,6 +692,7 @@ class DeterministicDecider:
         best_ask_edge: float,
     ) -> ScanDecisionEvent:
         s_edge = float(self.scaler.scale(best_ask_edge=best_ask_edge, m_threshold=ctx.m_threshold))
+        # Target gate equation (D-6 S2-03): G = B * w(tau) * [s(edge) * lambda(L)] (S3-06 wires light multiplier).
         g_cap_usd = ctx.b_budget * ctx.w_tau * s_edge
         q = ctx.quota
         if q.account_drawdown_brake_tripped or q.station_loss_gate_tripped:

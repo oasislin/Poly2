@@ -1,0 +1,82 @@
+{
+  "work_order_id": "P8-WO-20261122-S303-SMOKE",
+  "mode": "LIVE_AWC_CONNECTIVITY_SMOKE",
+  "run_utc": "2026-11-21T12:16:30.803936+00:00",
+  "endpoint": "https://aviationweather.gov/api/data/metar",
+  "stations_tested": 6,
+  "all_stations_passed": true,
+  "results": [
+    {
+      "station_id": "KORD",
+      "routine_reports": 6,
+      "total_archival_reports": 6,
+      "specis_seen": 0,
+      "oracle_compliant": true,
+      "m_now_tmax_f": 55.04,
+      "m_now_int_f": 55,
+      "p12_sha256_ok": true,
+      "p5_invariants_ok": true,
+      "sigma_rem": 1.75
+    },
+    {
+      "station_id": "KMIA",
+      "routine_reports": 7,
+      "total_archival_reports": 7,
+      "specis_seen": 0,
+      "oracle_compliant": true,
+      "m_now_tmax_f": 71.96,
+      "m_now_int_f": 72,
+      "p12_sha256_ok": true,
+      "p5_invariants_ok": true,
+      "sigma_rem": 1.75
+    },
+    {
+      "station_id": "KLGA",
+      "routine_reports": 7,
+      "total_archival_reports": 7,
+      "specis_seen": 0,
+      "oracle_compliant": true,
+      "m_now_tmax_f": 53.06,
+      "m_now_int_f": 53,
+      "p12_sha256_ok": true,
+      "p5_invariants_ok": true,
+      "sigma_rem": 1.75
+    },
+    {
+      "station_id": "KATL",
+      "routine_reports": 7,
+      "total_archival_reports": 9,
+      "specis_seen": 2,
+      "oracle_compliant": true,
+      "m_now_tmax_f": 62.06,
+      "m_now_int_f": 62,
+      "p12_sha256_ok": true,
+      "p5_invariants_ok": true,
+      "sigma_rem": 1.75
+    },
+    {
+      "station_id": "KDAL",
+      "routine_reports": 6,
+      "total_archival_reports": 6,
+      "specis_seen": 0,
+      "oracle_compliant": true,
+      "m_now_tmax_f": 64.94,
+      "m_now_int_f": 65,
+      "p12_sha256_ok": true,
+      "p5_invariants_ok": true,
+      "sigma_rem": 1.75
+    },
+    {
+      "station_id": "KSEA",
+      "routine_reports": 4,
+      "total_archival_reports": 7,
+      "specis_seen": 3,
+      "oracle_compliant": true,
+      "m_now_tmax_f": 37.94,
+      "m_now_int_f": 38,
+      "p12_sha256_ok": true,
+      "p5_invariants_ok": true,
+      "sigma_rem": 1.75
+    }
+  ]
+}
