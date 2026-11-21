@@ -1,9 +1,9 @@
-# P8-T2-M7-LOGGING：日志与审计模块（`M7`）协议本体及落盘规范（`v1.0` · `2026-11-18 当前决策`）
+# P8-T2-M7-LOGGING：日志与审计模块（`M7`）协议本体及落盘规范（`v1.1` · 已对齐 `S2-04 P10` 冻结）
 
-- **任务单与治理编号**：`S1-03`（`T2` · 切片 1 阶段 0 文档交付）｜归属模块：**`M7`（日志审计）**
+- **任务单与治理编号**：`S1-03`（`T2` 落盘规范）+ **`S2-04`（`P10` 正文冻结）**｜归属模块：**`M7`（日志审计）↔ `M10`（只读前台）**
 - **法定锚点**：[`P8-KERNEL-CONSENSUS v1.1 §六 E/F`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`项目方案 (v3.0) §8.1 / §8.2 / §8.3`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策)
 - **文件增殖判据核验（[`AGENTS.md`](../../AGENTS.md)）**：全仓此前不存在承载 `M7` JSONL 六条流完整字段字典、目录分片规范及 `P10` 只读渲染兼容约定的独立支撑文档；若强制塞入 [`P8-KERNEL-CONSENSUS`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) 或 [`P8-CAPITAL-CONFIG`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) 将导致战略共识/资金配置与数据工程 schema 职责混杂，故按判据合规新建本支撑文档。
-- **版本与表述纪律**：**`v1.0`（`2026-11-18` 当前决策 / 首期选择；月度复检可替换）**；本文件仅确立 `M7` 日志 schema、校验和与目录结构契约，不预先编写 `M10` 前台代码，不触碰 `src/pricing/` 锁定文件。
+- **版本与表述纪律**：**`v1.1`（已对齐 `S2-04 P10` 冻结 · `2026-11-21` 当前决策 / 首期选择；月度复检可替换）**；本文件确立 `M7` 日志 schema、校验和、目录结构及 `P10` 只读查询契约，不预先编写 `M10` 前台代码，不触碰 `src/pricing/` 锁定文件。
 
 ---
 
@@ -183,12 +183,22 @@ data/
                 └── p13_book_stream_<station_id>.jsonl
 ```
 
-### 3.2 `P10`（`M7 → M10` 前台只读视图）兼容约束
+### 3.2 `P10`（`M7 → M10` 前台只读视图）兼容约束与正式查询契约（`v1.1` · `S2-04` 正文冻结）
 
 1. **零独立数据库**：依据 [`项目方案 v3.0 §8.1`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策) 架构铁律，`M10` 不建立 SQLite/Postgres 业务状态库，所有视图（决策链路穿透、挂单/成交滑点审计、资金曲线、盘口回放检查）一律从 `data/audit_logs/` 与 `data/market_recordings/` 只读读取聚合；
-2. **统一联结键**：全部流共享 `(execution_mode, session_id, station_id, target_date)`；跨表钻取通过 `P1.decision_id == P3.decision_id`、`P1.forecast_id == P17.forecast_id`、`P1.book_frame_ref == P13.payload.frame_seq`（同 `(session_id, token_id)`）及 `P19.related_ref_id` 完成；
-3. **尾部并发读安全**：读取器按逐行扫描，若遇未以 `\n` 结尾的末尾未写完行直接跳过或忽略当行，并通过 `record_sha256` 标记损坏率面板；
-4. **结算视图延迟兼容**：在 `P9`（`M9 → M7/M8`）待 `ADR` 裁决后落盘之前，`M10` 结算对账面板显式降级为 `"PENDING_P9"` 状态，不影响决策/执行/资金视图渲染。
+2. **正式查询契约（`P10Query` / `P10SessionView`）**：
+   - **过滤参数**：支持按 `execution_mode: Literal["PAPER", "LIVE"]`（必填，严禁跨模式混查）、`date_range: tuple[date, date]`、`session_id: Optional[str]`、`station_id: Optional[str]`、`target_date: Optional[str]` 检索，底层只扫描对应分片目录下 `p1_scan_decisions.jsonl`、`p3_execution_attempts.jsonl`、`p12_weather_coverage.jsonl`、`p17_forecast_snapshots.jsonl`、`p19_capital_events.jsonl`；
+   - **统一联结键**：全部流共享 `(execution_mode, session_id, station_id, target_date)`；跨表钻取通过 `P1.decision_id == P3.decision_id`、`P1.forecast_id == P17.forecast_id`、`P1.book_frame_ref == P13.payload.frame_seq`（同 `(session_id, token_id)`）及 `P19.related_ref_id` 完成；
+   - **一致性与损坏率统计面板**：每条已完整换行记录必须调用 `verify_record_sha256_line` 验证 `record_sha256`，返回 `valid_lines`、`corrupt_lines`（逐行记录文件与行号）与 `partial_tail_skipped_lines`。
+3. **空/坏/未完日志降级渲染规则**：
+   - **目录或分片缺失**：目录或当日 JSONL 文件不存在时不抛异常，显式返回视图状态 `render_status = "NO_AUDIT_RECORDS"`（空记录集合，`0` 报错）；
+   - **尾部并发读安全**：读取器逐行扫描，若遇末尾**未以 `\n` 结尾**的在写未完成行，跳过当行并计入 `partial_tail_skipped_lines`（状态标注 `"CONCURRENT_TAIL_SKIPPED"`），绝不将其计为损坏行、绝不加任何文件写锁或阻塞正在写入的录盘/日志进程；
+   - **坏 JSON 或校验和失败**：遇无法 `json.loads` 的完整行（已以 `\n` 结尾）或 `record_sha256` 校验失败行，严禁静默丢弃或中断页面渲染，必须隔离计数入 `corrupt_lines` 并在 UI/摘要返回中亮起完整性警告（`render_status = "DEGRADED_CORRUPT_LINES"`）；
+   - **结算视图延迟兼容**：在 `P9`（`M9 → M7/M8`）待 `ADR` 裁决后落盘之前，`M10` 结算对账面板显式降级为 `settlement_status = "PENDING_P9"`，不影响决策/执行/资金视图渲染。
+4. **零写回强制校验清单（`M10 / S2-07` 防污染门禁）**：
+   - **只读文件句柄约束**：`P10` 读取器全路径仅允许以只读模式（`open(..., "r")`）打开 `data/audit_logs/` 与 `data/market_recordings/` 下文件，严禁在读路径调用 `.write()` / `truncate()` / `unlink()` / `mkdir()`；
+   - **运行态零扰动**：`P10` 查询严禁向运行中录盘进程发信号、修改 PID 文件或清理 `.jsonl`；
+   - **告警物理隔离（衔接 `S2-07`）**：只读监测脚本及未来 `M10` 产生的任何告警与摘要文件必须输出至独立告警目录（如 `data/alerts/`），绝对禁止回写 `data/market_recordings/` 与 `data/audit_logs/`。
 
 ---
 
