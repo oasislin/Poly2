@@ -4,6 +4,10 @@
 stations:
   - KORD
   - KMIA
+  - KLGA
+  - KATL
+  - KDAL
+  - KSEA
 
 endpoints:
   gamma_base_url: "https://gamma-api.polymarket.com"

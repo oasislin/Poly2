@@ -31,9 +31,9 @@
        progress = 1.0 - (tau_clamped / policy.tau_max_h)
        return policy.w0 + (1.0 - policy.w0) * (progress ** policy.p)
    ```
-3. **跨盘倒挂前置阻断（`D3`）**：若 `P4.best_bid is not None` 且 `P4.ask_book.best_price <= P4.best_bid`，强制阻断本次机会评估并写入 `P1`（`decision_outcome="BLOCKED_NO_BOOK_DEPTH"`），严禁带倒挂盘口进入 `edge_math` 或 `M5`。
+3. **空卖盘与跨盘倒挂前置阻断（`D3` + `P4 v1.1` 单侧盘口守卫）**：若 `P4.ask_book is None`（`P4.single_side == "bid_only"`，尾桶无卖单）或 `P4.best_bid is not None and P4.ask_book.levels[0][0] <= P4.best_bid`，强制阻断本次机会评估并写入 `P1`（`decision_outcome="BLOCKED_NO_BOOK_DEPTH"`，`best_ask_price=None`），严禁将 `None` 或倒挂盘口传入 `edge_math` 或 `M5`。
 4. **含费 `edge` 与相对门槛判定（裁定 `A2` + `B5`）**：
-   - 调用唯一事实源 [`src/pricing/edge_math.py`](../../src/pricing/edge_math.py) 之 `evaluate_book_edges(ask_book=P4.ask_book, p_model=bin_p, m=P6.risk_gate.m_threshold, fee_rate=P4.fee_rate)`；
+   - 仅当 `P4.ask_book is not None` 时调用唯一事实源 [`src/pricing/edge_math.py`](../../src/pricing/edge_math.py) 之 `evaluate_book_edges(ask_book=P4.ask_book, p_model=bin_p, m=P6.risk_gate.m_threshold, fee_rate=P4.fee_rate)`；
    - **量纲强一致性（`B5`）**：`edge = (p_model - q_eff) / q_eff`（相对无量纲比例，仅扣 taker fee、不含 extra spread）与派生只读 `m_threshold = max(k0_threshold_coef * sigma_delta_frozen.value + friction_median, m_floor)` 同属**无量纲相对收益率尺度**，由单测 [`test_edge_math.py`](../../tests/unit/pricing/test_edge_math.py) 强检验。
 5. **门限额 $G$ 与增仓差额 $D$**：
    - `g_cap_usd = P6.w_policy.b_budget_usd * w_tau * s_edge`（当 `best_ask_edge < m_threshold` 时 `s_edge = 0.0`）；
@@ -50,24 +50,25 @@
 - `M5` 消费 **`P2 plan_slice`** 与 `P4.tick_size / min_order_size_shares / min_notional_usd / neg_risk` 元数据，向 **`M6` 经 `P14`** 请求买侧 `C_freeze` 现金预冻结，向网关（`LIVE`）或 `P18` 延迟回放撮合器（`PAPER`）提交限价 `IOC_FAK` 单，并将结果经 **`P14`** 回环更新 `M6` 及经 **`P3 ExecutionAttemptLog`** 写入 `M7`。
 - **`w` 严禁进入 `M5`**；`M5` 只看见剩余可执行目标美元额 `D` 与 `PhiPolicy`。
 
-### 2.2 `P2 plan_slice` 正式协议签名与切片算法（`M4 → M5` · `v1.0`）
+### 2.2 `P2 plan_slice` 正式协议签名与切片算法（`M4 → M5` · `v1.1` · `2026-11-21` 对齐 `Decimal` 域）
 
 ```python
 @dataclass(frozen=True)
 class SlicePlan:
     should_submit: bool
-    target_usd: float
-    target_shares: float
-    limit_price: float
-    est_vwap: float
-    qual_depth_shares: float
+    target_usd: Decimal
+    target_shares: Decimal
+    limit_price: Decimal
+    est_vwap: Decimal
+    qual_depth_shares: Decimal
     order_type: Literal["IOC_FAK"]
-    abort_reason: Optional[str]
+    abort_reason: Optional[str] = None
+    leg_allocations: Tuple[PlannedLegSlice, ...] = ()
 
 
 def plan_slice(
-    d_headroom_usd: float,
-    ask_book_frame: MarketBookSnapshot,   # 同帧 P4 快照
+    d_headroom_usd: Decimal | float,
+    ask_book_frame: MarketBookSnapshot | MergedYesAskView,   # 同帧 P4 v1.1 或双侧合并视图
     p_model: float,
     m_threshold: float,
     phi_policy: PhiPolicy,
@@ -75,11 +76,12 @@ def plan_slice(
     ...
 ```
 
-- **算法流程（Edge 感知 POV，`φ = C`）**：
-  1. 调用 `edge_math.evaluate_book_edges(ask_book_frame.ask_book, p_model, m_threshold, fee_rate=ask_book_frame.fee_rate)`；
-  2. 对每档 `lvl` $\in \text{qualified\_levels}$ 计算参与率 $\rho(\text{edge}_j) = \text{clip}(\rho_0 + k_{\text{slope}} \cdot (\text{edge}_j - m_{\text{threshold}}),\; \rho_{\min},\; \rho_{\max})$，累计加权可执行深度上限 `pov_cap_usd = sum(rho_j * lvl.size * lvl.price)`；
-  3. 确定 `target_usd = min(d_headroom_usd, pov_cap_usd)`，保护限价 `limit_price` 取合格档位内覆盖 `target_usd` 所需最差档价按 `ask_book_frame.tick_size` 对齐，`target_shares = round_down(target_usd / limit_price, decimals=2)`；
-  4. **双约束校验**：核验 `target_shares >= ask_book_frame.min_order_size_shares`（`5.0 shares`）及（若非空）`target_usd >= ask_book_frame.min_notional_usd`，不达标则返回 `should_submit=False, abort_reason="BELOW_MIN_ORDER"`。
+- **算法流程（Edge 感知 POV，`φ = C`，`v1.1 Decimal` 精确域）**：
+  0. **单侧无卖盘与倒挂前置守卫（`P4 v1.1` 对齐）**：若目标视图 `inverted_cross` 或 `ask_book is None`（`single_side == "bid_only"` 且无配对 `Bid(NO)` 互补深度），立即返回 `should_submit=False, abort_reason="INVERTED_BOOK" | "NO_ASK_DEPTH"`，不得向 `edge_math` 传 `None`；
+  1. 调用 `edge_math.evaluate_book_edges(ask_book, p_model, m_threshold, fee_rate=...)`；
+  2. 对每档 `lvl` $\in \text{qualified\_levels}$ 在 `Decimal` 精确上下文中计算参与率 $\rho(\text{edge}_j) = \text{clip}(\rho_0 + k_{\text{slope}} \cdot (\text{edge}_j - m_{\text{threshold}}),\; \rho_{\min},\; \rho_{\max})$，累计加权可执行深度上限 `pov_cap_usd = sum(rho_j * lvl.size * lvl.price)`（同步记录 `YES_ASK` / `NO_BID_SPLIT_SELL` 分腿配置）；
+  3. 确定 `target_usd = min(d_headroom_usd, pov_cap_usd)`，保护限价 `limit_price` 取合格档位最差档价按 `tick_size` 向下整数倍对齐（`Decimal` 整除对齐消除浮点漂移），`target_shares = (target_usd / limit_price).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)`，`effective_target_usd = target_shares * limit_price`；
+  4. **双约束校验**：在 `Decimal` 域核验 `target_shares >= min_order_size_shares`（`5.0 shares`）及（若非空）`effective_target_usd >= min_notional_usd`，不达标则返回 `should_submit=False, abort_reason="BELOW_MIN_ORDER"`。
 
 ### 2.3 `LIVE` 与 `PAPER`（`P18` 延迟撮合）双轨路由规则
 
@@ -87,12 +89,22 @@ def plan_slice(
 - **`PAPER` 延迟撮合（`P18` · `M7 → M5`）**：
   - 记录下单发出时间 `submit_ts_utc`，注入延迟 `latency_ms`（占位延迟参数随假盘会话配置，基于 `T3` / 实测网关时延分布）；
   - 向 `M7` 只读查询 `(token_id=ask_book_frame.token_id, after_ts=submit_ts_utc + latency_ms)` 对应的 **`P13` 录制流下一真实帧**；
-  - 若命中帧 `gap_detected == True` 或缺失可匹配帧：**立即终止本笔模拟撮合**，回传 **`PAPER_MATCH_ABORTED_GAP`** 写入 `P3` 并通知 `P14` 解冻预冻结额；**严禁回退使用决策瞬间快照零延迟成交，严禁旁路直读 `live WS` 流**。
+  - 若命中帧 `gap_detected == True` 或缺失可匹配帧：**立即终止本笔模拟撮合**，回传 **`PAPER_MATCH_ABORTED_GAP`** 写入 `P3` 并通知 `P14` 解冻预冻结额；**严禁回退使用决策瞬间快照零延迟成交，严禁旁路直读 `live WS` 流**；
+  - 若命中帧 `gap_detected == False` 但 `ask_book is None`（`single_side == "bid_only"`）：诚实判正常无卖盘深度未成交，置 **`terminal_status = "CANCELLED_UNFILLED"`**、**`reject_or_abort_reason = "NO_ASK_DEPTH"`** 并经 `P14` 解冻 `C_freeze`（不得误报 `PAPER_MATCH_ABORTED_GAP`；双侧 `No` 跨视图撮合扩展设计见 [`P8-RECORDER-NO-SIDE-DESIGN v0.1 §3`](P8-RECORDER-NO-SIDE-DESIGN_尾桶单侧与No侧双视角升级设计书_v0.1.md#3-工单-5-纯设计m4--m5-no-侧解析split--merge-跨视图撮合与-d-6-合并视图输入不下代码)，待回签后落代码）。
 
 ### 2.4 `S1-06` 费率消费与回放口径隔离规则（`P4 / P18` · `2026-11-19` 当前决策）
 
 - **回放 / 离线评估 / 假盘录盘撮合路径（消费 `P13 / P18` 录盘数据）**：凡消费录盘帧的路径（含 `P18` 假盘撮合、`M4/M5` 历史盘口回放、`T3` 走簿分析及 `P3` 滑点归因），计算含费 `edge` 与模拟撮合手续费时，**`fee_rate` 一律严格取所消费帧自带的 `P4.fee_rate`（即录盘时点之真实历史费率）**，严禁跨越 `2026-11-20T23:59Z` 变费断点用今日实时费率去覆写历史录盘帧；并按 [`P8-FACTS-LEDGER v0.3 §2.1`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#21-2026-11-19-s1-06-变费复核与-费率时代标记规则当前决策) 标注 `fee_era`（跨断点不混采）。
 - **实盘实时下单路径（`LIVE`）**：取运行时 **Gamma `/markets` `feeSchedule.rate`**（`D1` 权威源，`API_RUNTIME`；字段缺失时退回 `FACT-001` 并如实标注 `fee_rate_provenance="FACT-001"`）。
+
+### 2.5 编码批精度与跨侧容差补充规格（`2026-11-21` · `P8-WO-20261121-M4M5-RECTIFY §1.4` 补录）
+
+1. **`cross_arb_eps` 跨视图套利容差（[`orderbook_views.py`](../../src/execution/orderbook_views.py)）**：
+   - **默认值与选择依据**：`build_merged_yes_ask_view(..., cross_arb_eps=Decimal("0.0001"))` 将跨侧负价差判定阈值设为 `1e-4`（即 `raw_all[0].implied_yes_price < best_bid_eff - Decimal("0.0001")` 始判 `CROSS_VIEW_INVERTED_SPREAD`）。Polymarket 活跃温度盘最小行情 `tick_size` 为 `0.01` 或 `0.001`；当市场恰好处于 `ask_YES + ask_NO == 1.0` 无套利零和平衡点时（例如 `ask_YES = 0.40`, `ask_NO = 0.60 → 1 - ask_NO = 0.40`），原无容差 `<=` 判别会将其误杀为跨视图倒挂。选取小于最小 `0.001` 跳价十倍的 `0.0001`，既彻底消除等价平衡点及 `float → Decimal` 边界量化误差导致的误报，又不放松真实跨盘套利穿越（≥ `0.001` 一跳即时触发拦截）。
+   - **单边内盘零容差区分**：单腿内部盘口倒挂校验（`YES_INTRA_BOOK_INVERTED`: `yes_ask <= yes_best_bid`；`NO_INTRA_BOOK_INVERTED`: `no_ask <= no_best_bid`）**严格维持 `<=` 零容差**，绝不引入 `cross_arb_eps`，保持对 `D3` 单侧盘口完整性的硬阻断。
+2. **`_to_exec_decimal` 数值转换规则与下游 12 位守卫（[`executor.py`](../../src/execution/executor.py)）**：
+   - **转换规则**：`_to_exec_decimal(value, *, name)` 委托 [`to_guarded_decimal`](../../src/utils/decimal_guard.py) 执行十进制语义转换——底层使用 Python **`str(value)` 十进制序列化** 构造 `Decimal`（运行于 `EXACT_DECIMAL_CONTEXT_PREC=64` 上下文，绝不直接调用带二进制 IEEE-754 尾数噪声的 `Decimal(float)`）；针对上层 Python 浮点算术不可避免产生的 15–17 位尾数伪影（如 `0.1 + 0.2 -> 0.30000000000000004`，17 位有效数字），仅对 `isinstance(value, float)` 入口操作数放宽 `max_sig_digits=18`。
+   - **下游 12 位结构守卫不变性**：对一切显式 `Decimal` 或 `str` 输入，`_to_exec_decimal` 继续强制 `max_sig_digits=12`；且所有下游核算/收费/对齐函数（`to_guarded_decimal`、`compute_taker_fee_usd_raw`、`align_price_down_to_tick`、`build_merged_yes_ask_view` 等）继续严格执行 `DEFAULT_MAX_OPERAND_SIG_DIGITS = 12` 抛出 `DecimalOperandBoundsError`。
 
 ---
 

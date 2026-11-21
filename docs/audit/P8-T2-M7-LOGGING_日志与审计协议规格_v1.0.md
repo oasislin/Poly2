@@ -62,6 +62,12 @@
 | `headroom_d` | `float` | ✓ | 可用增仓差额 `D`（受 `g_cap_usd - held_usd` 及 `M6` `B_eff` 兜底制约） |
 | `decision_outcome` | 枚举（见下） | ✓ | **互斥五枚举** |
 | `target_slice_usd` | `float` | ✓ | 当 `ORDERED` 时为 `P2` 计划切片额（`> 0`）；否则恒 `0.0` |
+| `scaler_policy_id` | `str` | ✓ | 当前 `s(edge)` 策略 ID（`D-6` 前强制 `"provisional_identity_v0"`） |
+| `scaler_provisional` | `bool` | ✓ | `D-6` 前恒 `True` |
+| `scaler_provenance` | `str` | ✓ | `D-6` 前恒 `"PROVISIONAL_UNTIL_D6"` |
+| `light_status` | `Optional[Literal["GREEN", "YELLOW", "RED"]]` | ✗ | 来自 `P16SubscriptionSlot` 的系统灯级标签 |
+| `p16_event_id` | `Optional[str]` | ✗ | 关联 `P16` 事件外键（无灯级事件时 `None`） |
+| `degradation_reason` | `Optional[str]` | ✗ | 单侧无卖盘 / 预报或盘口超龄 / 风控阻断原因码 |
 | `record_sha256` | `str` | ✓ | 整行完整性摘要 |
 
 - **`decision_outcome` 互斥五枚举与空转率计算式**：
@@ -109,7 +115,10 @@
 | `fill_rate` | `float` | ✓ | `filled_shares / target_shares`（`∈ [0.0, 1.0]`） |
 | **`slippage_vs_best_ask`** | `Optional[float]` | ✗ | **相对无量纲比例（`N3`）**：`(actual_avg_fill_price - decision_best_ask) / decision_best_ask`（未成交 `None`）；**直接作为 `RiskGatePolicy.friction_median` 校准输入** |
 | **`slippage_vs_est_vwap`** | `Optional[float]` | ✗ | **相对无量纲比例**：`(actual_avg_fill_price - decision_est_vwap) / decision_est_vwap` |
+| `execution_legs` | `List[Dict]` | ✓ | `P4 v1.1` 跨视图分腿成交明细（`leg_source`, `source_token_id`, `implied_yes_price`, `raw_source_price`, `filled_shares`） |
 | `record_sha256` | `str` | ✓ | 整行完整性摘要 |
+
+> **精度落盘注记（已对齐 `P8-T8-ALGO4-DESIGN v0.3 §4`）**：`P3 ExecutionAttemptLog` 内所有 `Decimal` 金额/价格/份额/比率字段（`decision_best_ask`, `decision_est_vwap`, `decision_qual_depth_shares`, `limit_price`, `target_shares`, `target_usd`, `filled_shares`, `filled_usd`, `actual_avg_fill_price`, `fee_paid_usd`, `fill_rate`, `slippage_vs_*`, `execution_legs[*].*_price/filled_shares`）在 JSONL 落盘时统一序列化为十进制字符串（`str(Decimal)`），保证消费端还原精确 `Decimal` 值且 `record_sha256` 跨平台逐字节一致。
 
 ---
 
@@ -148,7 +157,7 @@
   - `gap_detected: bool`（心跳超时、WS 断连重连期间或 REST 补拉探测到缺失窗口时置 `True`）
   - `gap_reason: Optional[str]`（如 `"WS_HEARTBEAT_TIMEOUT"`, `"WS_RECONNECT"`, `"REST_POLL_ERROR"`；无缺口时 `None`）
   - `recorded_ts_utc: str` (ISO-8601 UTC)
-  - **`payload: dict`**（严格映射 [`P4 MarketBookSnapshot v1.0-rc`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#a1-p4-marketbooksnapshot-v10-rcm3--m4--m5--m7)：`token_id`, `market_id`, `condition_id`, `snapshot_ts_utc`, `recv_ts_utc`, `frame_seq`, `data_source`, `tick_size`, `min_order_size_shares`, `min_notional_usd`, `fee_rate`, `fee_rate_provenance`, `neg_risk`, `best_bid`, `asks`, `bids`, `bid_top10`，外层可附带 `station_id` / `target_date` / `bin_label` 只读路由标签）
+  - **`payload: dict`**（严格映射 [`P4 MarketBookSnapshot v1.1`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#a1-p4-marketbooksnapshot-v11m3--m4--m5--m7--2026-11-21-对齐单侧盘口与-yesno)：`token_id`, `market_id`, `condition_id`, `outcome`, `snapshot_ts_utc`, `recv_ts_utc`, `frame_seq`, `data_source`, `single_side`, `tick_size`, `min_order_size_shares`, `min_notional_usd`, `fee_rate`, `fee_rate_provenance`, `neg_risk`, `best_bid`, `asks`, `bids`, `bid_top10`，外层可附带 `station_id` / `target_date` / `bin_label` 只读路由标签）
   - `record_sha256: str`
 
 ---
@@ -187,3 +196,4 @@ data/
 
 本文件已确立 `P13` 信封（`§2.6`）与 `M7` 审计目录约定；后续任何对 `P4 MarketBookSnapshot` 字段集或语义的升版，必须同步核查本文档 **`§2.6 payload` 映射**、`M3` 序列化器及 `M5` **`P18` 回放撮合解析器**。
 - **`2026-11-19 S1-06` 同提交复核确认**：新增 `P18` 帧时点费率回放规则（消费录盘数据时 `fee_rate` 一律取帧自带 `P4.fee_rate`，不覆写为当前实时值）经核实已由 `§2.6 payload` 完整持久化之 `fee_rate` 与 `fee_rate_provenance` 原生承载，无需改动 `P13 v1.0` 结构。
+- **`2026-11-21 S2-01` (`P4 v1.1`) 同提交 `C3` 复核确认**：`P4 MarketBookSnapshot` 新增 `outcome: Literal["YES", "NO"]` 与 `single_side: Optional[Literal["bid_only", "ask_only"]]` 且放宽 `ask_book: Optional[AskBook]`；`P13` 信封维持 `schema_version="p13.v1"` 语义清晰（`gap_detected/gap_reason` 严禁用于单侧无卖盘），并已同步更新 [`P8-T4-M4M5-INTERFACE §2.2–§2.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) 与 [`P8-RECORDER-NO-SIDE-DESIGN v0.1`](P8-RECORDER-NO-SIDE-DESIGN_尾桶单侧与No侧双视角升级设计书_v0.1.md) 明确 `M5 / P18` 遇 `single_side=="bid_only"` 归因为 `CANCELLED_UNFILLED (NO_ASK_DEPTH)` 而非 `PAPER_MATCH_ABORTED_GAP`。

@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 CaptureMode = Literal["PASSIVE_RECORD", "LIVE_STREAM", "PAPER_SHADOW"]
 DataSource = Literal["CLOB_WS", "CLOB_REST"]
 FeeRateProvenance = Literal["API_RUNTIME", "FACT-001"]
+OutcomeSide = Literal["YES", "NO"]
+SingleSide = Literal["bid_only", "ask_only"]
 
 CITY_BY_STATION: Dict[str, str] = {
     "KORD": "Chicago",
@@ -119,6 +121,20 @@ class MarketSubscriptionMeta:
     fee_rate: float
     fee_rate_provenance: FeeRateProvenance
     neg_risk: Optional[bool]
+    outcome: OutcomeSide = "YES"
+
+
+def partition_token_shards(token_ids: Sequence[str], max_tokens_per_ws: int) -> Tuple[Tuple[str, ...], ...]:
+    """Deterministically partition token_ids into WS connection shards capped at max_tokens_per_ws."""
+    if max_tokens_per_ws < 1:
+        raise ValueError(f"max_tokens_per_ws must be >= 1, got {max_tokens_per_ws}")
+    ordered = tuple(token_ids)
+    if not ordered:
+        return ()
+    return tuple(
+        ordered[i : i + max_tokens_per_ws]
+        for i in range(0, len(ordered), max_tokens_per_ws)
+    )
 
 
 @dataclass(frozen=True)
@@ -136,6 +152,7 @@ class RecorderConfig:
     heartbeat_timeout_sec: float = 25.0
     rest_fallback_interval_sec: float = 5.0
     reconnect_backoff_sec: Tuple[float, ...] = (1.0, 2.0, 5.0, 10.0)
+    max_tokens_per_ws: int = 200
     field_mapping: FieldMappingConfig = field(default_factory=FieldMappingConfig)
 
     @classmethod
@@ -156,20 +173,21 @@ class RecorderConfig:
             heartbeat_timeout_sec=float(rec.get("heartbeat_timeout_sec", 25.0)),
             rest_fallback_interval_sec=float(rec.get("rest_fallback_interval_sec", 5.0)),
             reconnect_backoff_sec=tuple(float(x) for x in rec.get("reconnect_backoff_sec", (1.0, 2.0, 5.0, 10.0))),
+            max_tokens_per_ws=max(1, int(rec.get("max_tokens_per_ws", 200))),
             field_mapping=fm,
         )
 
 
 @dataclass(frozen=True)
 class MarketBookSnapshot:
-    """P4 MarketBookSnapshot carrying locked AskBook wrapper, optional BidBook, and metadata."""
+    """P4 MarketBookSnapshot v1.1 carrying optional AskBook/BidBook, outcome, and single_side."""
 
     token_id: str
     market_id: str
     condition_id: str
     snapshot_ts_utc: Optional[datetime]
     recv_ts_utc: datetime
-    ask_book: AskBook
+    ask_book: Optional[AskBook]
     bid_book: Optional[BidBook]
     best_bid: Optional[float]
     bid_top10: Tuple[Tuple[float, float], ...]
@@ -181,18 +199,22 @@ class MarketBookSnapshot:
     neg_risk: Optional[bool]
     data_source: DataSource
     frame_seq: int
+    outcome: OutcomeSide = "YES"
+    single_side: Optional[SingleSide] = None
 
     def to_serializable_dict(self) -> Dict[str, Any]:
         return {
             "token_id": self.token_id,
             "market_id": self.market_id,
             "condition_id": self.condition_id,
+            "outcome": self.outcome,
             "snapshot_ts_utc": (
                 self.snapshot_ts_utc.isoformat() if self.snapshot_ts_utc is not None else None
             ),
             "recv_ts_utc": self.recv_ts_utc.isoformat(),
             "frame_seq": self.frame_seq,
             "data_source": self.data_source,
+            "single_side": self.single_side,
             "tick_size": self.tick_size,
             "min_order_size_shares": self.min_order_size_shares,
             "min_notional_usd": self.min_notional_usd,
@@ -200,7 +222,7 @@ class MarketBookSnapshot:
             "fee_rate_provenance": self.fee_rate_provenance,
             "neg_risk": self.neg_risk,
             "best_bid": self.best_bid,
-            "asks": [[p, s] for p, s in self.ask_book.levels],
+            "asks": [[p, s] for p, s in self.ask_book.levels] if self.ask_book is not None else [],
             "bids": [[p, s] for p, s in self.bid_book.levels] if self.bid_book is not None else [],
             "bid_top10": [[p, s] for p, s in self.bid_top10],
         }
@@ -307,6 +329,29 @@ def extract_fee_rate(
     return float(mapping.default_fee_rate_fallback), "FACT-001"
 
 
+def _resolve_one_sided_books(
+    raw_asks: Iterable[Any],
+    raw_bids: Iterable[Any],
+    token_id: str,
+) -> Tuple[Optional[AskBook], Optional[BidBook], Optional[float], Tuple[Tuple[float, float], ...], Optional[SingleSide]]:
+    """Build validated optional AskBook/BidBook and explicit single_side tag without losing one-sided frames."""
+    asks_sorted = _normalize_levels(raw_asks, reverse=False)
+    bids_sorted = _normalize_levels(raw_bids, reverse=True)
+    if not asks_sorted and not bids_sorted:
+        raise ValueError(f"Empty orderbook (both ask and bid sides empty) for token {token_id}")
+    ask_book = AskBook(levels=tuple(asks_sorted)) if asks_sorted else None
+    bid_book = BidBook(levels=tuple(bids_sorted)) if bids_sorted else None
+    best_bid = bid_book.best_price if bid_book is not None else None
+    bid_top10 = tuple(bids_sorted[:10])
+    if ask_book is None and bid_book is not None:
+        single_side: Optional[SingleSide] = "bid_only"
+    elif bid_book is None and ask_book is not None:
+        single_side = "ask_only"
+    else:
+        single_side = None
+    return ask_book, bid_book, best_bid, bid_top10, single_side
+
+
 def build_p4_snapshot_from_raw(
     raw_frame: Mapping[str, Any],
     meta: MarketSubscriptionMeta,
@@ -318,30 +363,14 @@ def build_p4_snapshot_from_raw(
     """Build validated P4 MarketBookSnapshot from a raw CLOB REST `/book` or WS `book` frame."""
     recv_ts = recv_ts_utc or datetime.now(timezone.utc)
     snapshot_ts = _parse_exchange_timestamp(raw_frame.get("timestamp"))
-
-    raw_asks = raw_frame.get("asks") or []
-    asks_sorted = _normalize_levels(raw_asks, reverse=False)
-    if not asks_sorted:
-        raise ValueError(f"Empty or invalid ask side for token {meta.token_id}")
-    ask_book = AskBook(levels=tuple(asks_sorted))
-
-    raw_bids = raw_frame.get("bids") or []
-    bids_sorted = _normalize_levels(raw_bids, reverse=True)
-    bid_book = BidBook(levels=tuple(bids_sorted)) if bids_sorted else None
-    best_bid = bid_book.best_price if bid_book is not None else None
-    bid_top10 = tuple(bids_sorted[:10])
-
-    tick_raw = raw_frame.get(mapping.tick_size_key)
-    tick_size = float(tick_raw) if tick_raw is not None else meta.tick_size
-
-    min_sz_raw = raw_frame.get(mapping.min_order_size_key)
-    min_order_size_shares = (
-        float(min_sz_raw) if min_sz_raw is not None else meta.min_order_size_shares
+    ask_book, bid_book, best_bid, bid_top10, single_side = _resolve_one_sided_books(
+        raw_frame.get("asks") or [],
+        raw_frame.get("bids") or [],
+        meta.token_id,
     )
-
+    tick_raw = raw_frame.get(mapping.tick_size_key)
+    min_sz_raw = raw_frame.get(mapping.min_order_size_key)
     neg_risk_raw = raw_frame.get(mapping.neg_risk_key)
-    neg_risk = bool(neg_risk_raw) if neg_risk_raw is not None else meta.neg_risk
-
     return MarketBookSnapshot(
         token_id=meta.token_id,
         market_id=meta.market_id,
@@ -352,14 +381,18 @@ def build_p4_snapshot_from_raw(
         bid_book=bid_book,
         best_bid=best_bid,
         bid_top10=bid_top10,
-        tick_size=tick_size,
-        min_order_size_shares=min_order_size_shares,
+        tick_size=float(tick_raw) if tick_raw is not None else meta.tick_size,
+        min_order_size_shares=(
+            float(min_sz_raw) if min_sz_raw is not None else meta.min_order_size_shares
+        ),
         min_notional_usd=meta.min_notional_usd,
         fee_rate=meta.fee_rate,
         fee_rate_provenance=meta.fee_rate_provenance,
-        neg_risk=neg_risk,
+        neg_risk=bool(neg_risk_raw) if neg_risk_raw is not None else meta.neg_risk,
         data_source=data_source,
         frame_seq=frame_seq,
+        outcome=meta.outcome,
+        single_side=single_side,
     )
 
 
@@ -434,6 +467,26 @@ class AsyncJsonlSink:
                     pass
 
 
+_STOP_SIGNAL = object()
+
+
+def _parse_outcome_labels(raw_outcomes: Any) -> Tuple[OutcomeSide, ...]:
+    """Normalize Gamma `outcomes` field to uppercase YES/NO pairs with standard binary fallback."""
+    if not raw_outcomes:
+        return ("YES", "NO")
+    parsed = json.loads(raw_outcomes) if isinstance(raw_outcomes, str) else raw_outcomes
+    if not isinstance(parsed, Sequence) or isinstance(parsed, (str, bytes)):
+        return ("YES", "NO")
+    labels: List[OutcomeSide] = []
+    for idx, val in enumerate(parsed[:2]):
+        norm = str(val).strip().upper()
+        if norm in ("YES", "NO"):
+            labels.append(norm)  # type: ignore[arg-type]
+        else:
+            labels.append("YES" if idx == 0 else "NO")
+    return tuple(labels) if labels else ("YES", "NO")
+
+
 class PassiveBookRecorder:
     """Read-only M3 collector orchestrating WS book/tick updates, gap tracking, REST fallback, and P13 sink."""
 
@@ -449,6 +502,8 @@ class PassiveBookRecorder:
         self._frame_seq = 0
         self._seq_id = 0
         self._pending_gap_reason: Optional[str] = None
+        self._pending_gap_tokens: Dict[str, str] = {}
+        self._token_shard: Dict[str, int] = {}
         self._meta_by_token: Dict[str, MarketSubscriptionMeta] = {}
         self._sink = AsyncJsonlSink(
             output_root=Path(config.output_root),
@@ -464,61 +519,97 @@ class PassiveBookRecorder:
         for meta in metas:
             self._meta_by_token[meta.token_id] = meta
 
-    def discover_active_temperature_markets(self, max_events_per_station: int = 3) -> List[MarketSubscriptionMeta]:
-        """Discover active temperature markets from Gamma public-search using centralized mapping."""
+    def _fetch_station_events(self, station: str, city: str, max_events: int) -> List[Mapping[str, Any]]:
+        city_slug = city.lower().replace(" ", "-")
+        expected_prefix = f"highest-temperature-in-{city_slug}-on-"
+        resp = self._http.get(
+            f"{self.config.gamma_base_url}/public-search",
+            params={"q": f"Highest temperature in {city}", "limit_per_type": 8},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        events = [
+            ev
+            for ev in (resp.json().get("events") or [])
+            if not ev.get("closed")
+            and (not str(ev.get("slug") or "") or str(ev.get("slug")).startswith(expected_prefix))
+        ]
+        events.sort(key=lambda e: e.get("endDate") or "")
+        return events[:max_events]
+
+    def _register_market_tokens(
+        self, station: str, mkt: Mapping[str, Any]
+    ) -> List[MarketSubscriptionMeta]:
+        token_raw = mkt.get("clobTokenIds")
+        if not token_raw:
+            return []
+        token_ids = json.loads(token_raw) if isinstance(token_raw, str) else token_raw
+        if not token_ids:
+            return []
         fm = self.config.field_mapping
+        outcome_labels = _parse_outcome_labels(mkt.get("outcomes"))
+        fee_rate, fee_prov = extract_fee_rate(mkt, fm)
+        tick_val = mkt.get(fm.gamma_tick_size_key)
+        min_sz_val = mkt.get(fm.gamma_min_order_size_key)
+        neg_val = mkt.get(fm.gamma_neg_risk_key)
+        registered: List[MarketSubscriptionMeta] = []
+        seen: set[str] = set()
+        for idx, raw_tok in enumerate(token_ids[:2]):
+            tok_id = str(raw_tok)
+            if not tok_id or tok_id in seen:
+                continue
+            seen.add(tok_id)
+            outcome: OutcomeSide = (
+                outcome_labels[idx] if idx < len(outcome_labels) else ("YES" if idx == 0 else "NO")
+            )
+            meta = MarketSubscriptionMeta(
+                token_id=tok_id,
+                market_id=str(mkt.get("id", "")),
+                condition_id=str(mkt.get("conditionId", "")),
+                station_id=station,
+                target_date=str(mkt.get("endDateIso") or (mkt.get("endDate") or "")[:10]),
+                bin_label=str(mkt.get("groupItemTitle") or ""),
+                tick_size=float(tick_val) if tick_val is not None else 0.01,
+                min_order_size_shares=(
+                    float(min_sz_val) if min_sz_val is not None else fm.default_min_order_size_shares
+                ),
+                min_notional_usd=fm.min_notional_usd_default,
+                fee_rate=fee_rate,
+                fee_rate_provenance=fee_prov,
+                neg_risk=bool(neg_val) if neg_val is not None else None,
+                outcome=outcome,
+            )
+            self._meta_by_token[tok_id] = meta
+            registered.append(meta)
+        return registered
+
+    def discover_active_temperature_markets(self, max_events_per_station: int = 3) -> List[MarketSubscriptionMeta]:
+        """Discover active temperature markets (YES + NO tokens) from Gamma using centralized mapping."""
         discovered: List[MarketSubscriptionMeta] = []
         for station in self.config.stations:
             city = CITY_BY_STATION.get(station)
             if not city:
                 logger.warning("Skipping unknown station %s not in CITY_BY_STATION", station)
                 continue
-            resp = self._http.get(
-                f"{self.config.gamma_base_url}/public-search",
-                params={"q": f"Highest temperature in {city}", "limit_per_type": 8},
-                timeout=15,
-            )
-            resp.raise_for_status()
-            events = [e for e in (resp.json().get("events") or []) if not e.get("closed")]
-            events.sort(key=lambda e: e.get("endDate") or "")
-            for ev in events[:max_events_per_station]:
+            for ev in self._fetch_station_events(station, city, max_events_per_station):
                 for mkt in ev.get("markets") or []:
-                    token_raw = mkt.get("clobTokenIds")
-                    if not token_raw:
-                        continue
-                    token_ids = json.loads(token_raw) if isinstance(token_raw, str) else token_raw
-                    if not token_ids:
-                        continue
-                    yes_token = str(token_ids[0])
-                    fee_rate, fee_prov = extract_fee_rate(mkt, fm)
-                    tick_val = mkt.get(fm.gamma_tick_size_key)
-                    min_sz_val = mkt.get(fm.gamma_min_order_size_key)
-                    neg_val = mkt.get(fm.gamma_neg_risk_key)
-                    meta = MarketSubscriptionMeta(
-                        token_id=yes_token,
-                        market_id=str(mkt.get("id", "")),
-                        condition_id=str(mkt.get("conditionId", "")),
-                        station_id=station,
-                        target_date=str(mkt.get("endDateIso") or (mkt.get("endDate") or "")[:10]),
-                        bin_label=str(mkt.get("groupItemTitle") or ""),
-                        tick_size=float(tick_val) if tick_val is not None else 0.01,
-                        min_order_size_shares=(
-                            float(min_sz_val)
-                            if min_sz_val is not None
-                            else fm.default_min_order_size_shares
-                        ),
-                        min_notional_usd=fm.min_notional_usd_default,
-                        fee_rate=fee_rate,
-                        fee_rate_provenance=fee_prov,
-                        neg_risk=bool(neg_val) if neg_val is not None else None,
-                    )
-                    self._meta_by_token[yes_token] = meta
-                    discovered.append(meta)
+                    discovered.extend(self._register_market_tokens(station, mkt))
         return discovered
 
-    def mark_gap(self, reason: str) -> None:
-        """Mark an explicit transport/heartbeat gap to be stamped on the next P13 envelope."""
-        self._pending_gap_reason = reason
+    def mark_gap(self, reason: str, shard_index: Optional[int] = None) -> None:
+        """Mark an explicit transport/heartbeat gap for all affected shard tokens or globally."""
+        if shard_index is None:
+            self._pending_gap_reason = reason
+            return
+        for tok, idx in self._token_shard.items():
+            if idx == shard_index:
+                self._pending_gap_tokens[tok] = reason
+
+    def _has_pending_shard_gap(self, shard_index: int) -> bool:
+        return any(
+            idx == shard_index and tok in self._pending_gap_tokens
+            for tok, idx in self._token_shard.items()
+        )
 
     def handle_ws_message(
         self,
@@ -545,6 +636,7 @@ class PassiveBookRecorder:
                     fee_rate=old.fee_rate,
                     fee_rate_provenance=old.fee_rate_provenance,
                     neg_risk=old.neg_risk,
+                    outcome=old.outcome,
                 )
             return None
 
@@ -563,28 +655,82 @@ class PassiveBookRecorder:
             recv_ts_utc=recv_ts_utc,
         )
 
-    def poll_rest_fallback_once(self) -> List[MarketBookRecordEnvelope]:
+    def _fetch_rest_book_payload(self, token_id: str) -> Mapping[str, Any]:
+        resp = self._http.get(
+            f"{self.config.clob_rest_base_url}/book",
+            params={"token_id": token_id},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def _selected_items(
+        self, token_ids: Optional[Sequence[str]]
+    ) -> List[Tuple[str, MarketSubscriptionMeta]]:
+        if token_ids is None:
+            return list(self._meta_by_token.items())
+        return [(tid, self._meta_by_token[tid]) for tid in token_ids if tid in self._meta_by_token]
+
+    def poll_rest_fallback_once(
+        self,
+        token_ids: Optional[Sequence[str]] = None,
+        shard_index: Optional[int] = None,
+    ) -> List[MarketBookRecordEnvelope]:
         """Fetch CLOB REST `/book` for registered tokens (honestly labeled `CLOB_REST`)."""
         envelopes: List[MarketBookRecordEnvelope] = []
-        for token_id, meta in self._meta_by_token.items():
+        for token_id, meta in self._selected_items(token_ids):
             try:
-                resp = self._http.get(
-                    f"{self.config.clob_rest_base_url}/book",
-                    params={"token_id": token_id},
-                    timeout=10,
-                )
-                resp.raise_for_status()
                 env = self.record_raw_book_frame(
-                    raw_frame=resp.json(),
+                    raw_frame=self._fetch_rest_book_payload(token_id),
                     meta=meta,
                     data_source="CLOB_REST",
                 )
                 if env is not None:
                     envelopes.append(env)
             except Exception as exc:
-                self.mark_gap(f"REST_POLL_ERROR:{type(exc).__name__}")
+                self.mark_gap(f"REST_POLL_ERROR:{type(exc).__name__}", shard_index=shard_index)
                 logger.warning("REST fallback failed for token=%s: %s", token_id, exc)
         return envelopes
+
+    async def poll_rest_fallback_async(
+        self,
+        token_ids: Optional[Sequence[str]] = None,
+        shard_index: Optional[int] = None,
+    ) -> List[MarketBookRecordEnvelope]:
+        """Non-blocking REST fallback running HTTP GETs in worker thread without starving sibling shards."""
+        items = self._selected_items(token_ids)
+
+        def _fetch_all() -> List[Tuple[MarketSubscriptionMeta, Optional[Mapping[str, Any]], Optional[Exception]]]:
+            fetched: List[Tuple[MarketSubscriptionMeta, Optional[Mapping[str, Any]], Optional[Exception]]] = []
+            for tid, meta in items:
+                try:
+                    fetched.append((meta, self._fetch_rest_book_payload(tid), None))
+                except Exception as exc:
+                    fetched.append((meta, None, exc))
+            return fetched
+
+        results = await asyncio.to_thread(_fetch_all)
+        envelopes: List[MarketBookRecordEnvelope] = []
+        for meta, payload, err in results:
+            if err is not None:
+                self.mark_gap(f"REST_POLL_ERROR:{type(err).__name__}", shard_index=shard_index)
+                logger.warning("REST fallback failed for token=%s: %s", meta.token_id, err)
+            elif payload is not None:
+                env = self.record_raw_book_frame(
+                    raw_frame=payload,
+                    meta=meta,
+                    data_source="CLOB_REST",
+                )
+                if env is not None:
+                    envelopes.append(env)
+        return envelopes
+
+    def _consume_gap_reason(self, token_id: str) -> Optional[str]:
+        if token_id in self._pending_gap_tokens:
+            return self._pending_gap_tokens.pop(token_id)
+        reason = self._pending_gap_reason
+        self._pending_gap_reason = None
+        return reason
 
     def record_raw_book_frame(
         self,
@@ -605,12 +751,14 @@ class PassiveBookRecorder:
                 recv_ts_utc=now,
             )
         except ValueError as exc:
-            self.mark_gap(f"INVALID_OR_EMPTY_BOOK:{exc}")
+            self.mark_gap(
+                f"INVALID_OR_EMPTY_BOOK:{exc}",
+                shard_index=self._token_shard.get(meta.token_id),
+            )
             return None
 
         self._seq_id += 1
-        gap_reason = self._pending_gap_reason
-        self._pending_gap_reason = None
+        gap_reason = self._consume_gap_reason(meta.token_id)
         envelope = MarketBookRecordEnvelope(
             schema_version="p13.v1",
             seq_id=self._seq_id,
@@ -627,57 +775,139 @@ class PassiveBookRecorder:
         self._sink.submit(envelope)
         return envelope
 
-    async def run_ws_loop(self, stop_event: Optional[asyncio.Event] = None) -> None:
-        """Connect to CLOB Market WS with heartbeat timeout detection, reconnect, and REST fallback."""
+    @staticmethod
+    async def _recv_or_stop(
+        ws: Any,
+        timeout_sec: float,
+        stop_event: Optional[asyncio.Event],
+    ) -> Any:
+        if stop_event is None:
+            return await asyncio.wait_for(ws.recv(), timeout=timeout_sec)
+        if stop_event.is_set():
+            return _STOP_SIGNAL
+        recv_task = asyncio.create_task(ws.recv())
+        stop_task = asyncio.create_task(stop_event.wait())
+        try:
+            done, pending = await asyncio.wait(
+                {recv_task, stop_task},
+                timeout=timeout_sec,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            if not done:
+                raise asyncio.TimeoutError()
+            if stop_task in done or stop_event.is_set():
+                return _STOP_SIGNAL
+            return recv_task.result()
+        finally:
+            for task in (recv_task, stop_task):
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except BaseException:
+                        pass
+
+    @staticmethod
+    async def _sleep_or_stop(delay: float, stop_event: Optional[asyncio.Event]) -> None:
+        if stop_event is None:
+            await asyncio.sleep(delay)
+            return
+        if stop_event.is_set():
+            return
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=delay)
+        except asyncio.TimeoutError:
+            return
+
+    async def _ws_session_once(
+        self,
+        ws: Any,
+        shard_index: int,
+        shard_token_ids: Tuple[str, ...],
+        stop_event: Optional[asyncio.Event],
+    ) -> None:
+        await ws.send(json.dumps({"assets_ids": list(shard_token_ids), "type": "market"}))
+        last_ping = time.monotonic()
+        while stop_event is None or not stop_event.is_set():
+            now_mono = time.monotonic()
+            if now_mono - last_ping >= self.config.heartbeat_interval_sec:
+                await ws.send("PING")
+                last_ping = now_mono
+            try:
+                raw = await self._recv_or_stop(ws, self.config.heartbeat_timeout_sec, stop_event)
+            except asyncio.TimeoutError:
+                if stop_event is not None and stop_event.is_set():
+                    break
+                self.mark_gap("WS_HEARTBEAT_TIMEOUT", shard_index=shard_index)
+                await self.poll_rest_fallback_async(token_ids=shard_token_ids, shard_index=shard_index)
+                raise ConnectionError("WebSocket heartbeat timeout triggered REST fallback")
+            if raw is _STOP_SIGNAL:
+                break
+            if raw == "PONG":
+                continue
+            decoded = json.loads(raw)
+            for frame in decoded if isinstance(decoded, list) else [decoded]:
+                if isinstance(frame, Mapping):
+                    self.handle_ws_message(frame)
+
+    async def _run_ws_shard(
+        self,
+        shard_index: int,
+        shard_token_ids: Tuple[str, ...],
+        stop_event: Optional[asyncio.Event],
+    ) -> None:
         import websockets
 
-        token_ids = list(self._meta_by_token.keys())
-        if not token_ids:
-            raise ValueError("No markets registered before run_ws_loop")
-
         backoff_idx = 0
+        connect_kwargs: Dict[str, Any] = {"open_timeout": 10, "close_timeout": 5}
+        if self.config.ws_disable_system_proxy:
+            connect_kwargs["proxy"] = None
         while stop_event is None or not stop_event.is_set():
             try:
-                connect_kwargs: Dict[str, Any] = {"open_timeout": 10, "close_timeout": 5}
-                if self.config.ws_disable_system_proxy:
-                    connect_kwargs["proxy"] = None
                 async with websockets.connect(self.config.clob_ws_url, **connect_kwargs) as ws:
-                    await ws.send(json.dumps({"assets_ids": token_ids, "type": "market"}))
                     backoff_idx = 0
-                    last_ping = time.monotonic()
-                    while stop_event is None or not stop_event.is_set():
-                        now_mono = time.monotonic()
-                        if now_mono - last_ping >= self.config.heartbeat_interval_sec:
-                            await ws.send("PING")
-                            last_ping = now_mono
-                        try:
-                            raw = await asyncio.wait_for(
-                                ws.recv(),
-                                timeout=self.config.heartbeat_timeout_sec,
-                            )
-                        except asyncio.TimeoutError:
-                            self.mark_gap("WS_HEARTBEAT_TIMEOUT")
-                            self.poll_rest_fallback_once()
-                            raise ConnectionError("WebSocket heartbeat timeout triggered REST fallback")
-
-                        if raw == "PONG":
-                            continue
-                        decoded = json.loads(raw)
-                        frames = decoded if isinstance(decoded, list) else [decoded]
-                        for frame in frames:
-                            if isinstance(frame, Mapping):
-                                self.handle_ws_message(frame)
+                    await self._ws_session_once(ws, shard_index, shard_token_ids, stop_event)
             except Exception as exc:
                 if stop_event is not None and stop_event.is_set():
                     break
-                if self._pending_gap_reason is None:
-                    self.mark_gap(f"WS_RECONNECT:{type(exc).__name__}")
-                self.poll_rest_fallback_once()
+                if not self._has_pending_shard_gap(shard_index) and self._pending_gap_reason is None:
+                    self.mark_gap(f"WS_RECONNECT:{type(exc).__name__}", shard_index=shard_index)
+                await self.poll_rest_fallback_async(token_ids=shard_token_ids, shard_index=shard_index)
                 delay = self.config.reconnect_backoff_sec[
                     min(backoff_idx, len(self.config.reconnect_backoff_sec) - 1)
                 ]
                 backoff_idx += 1
-                await asyncio.sleep(delay)
+                await self._sleep_or_stop(delay, stop_event)
+
+    async def run_ws_loop(self, stop_event: Optional[asyncio.Event] = None) -> None:
+        """Connect to CLOB Market WS (auto-sharded across <=max_tokens_per_ws connections)."""
+        token_ids = list(self._meta_by_token.keys())
+        if not token_ids:
+            raise ValueError("No markets registered before run_ws_loop")
+
+        shards = partition_token_shards(token_ids, self.config.max_tokens_per_ws)
+        self._token_shard = {
+            tok: idx for idx, shard in enumerate(shards) for tok in shard
+        }
+        if len(shards) == 1:
+            await self._run_ws_shard(0, shards[0], stop_event)
+            return
+        logger.info(
+            "Sharding %d tokens across %d concurrent CLOB WS connections (max_tokens_per_ws=%d)",
+            len(token_ids),
+            len(shards),
+            self.config.max_tokens_per_ws,
+        )
+        await asyncio.gather(
+            *(
+                self._run_ws_shard(idx, shard, stop_event)
+                for idx, shard in enumerate(shards)
+            )
+        )
 
     def flush_and_close(self) -> None:
         self._sink.flush()
@@ -696,9 +926,12 @@ __all__ = [
     "MarketBookRecordEnvelope",
     "MarketBookSnapshot",
     "MarketSubscriptionMeta",
+    "OutcomeSide",
     "PassiveBookRecorder",
     "RecorderConfig",
+    "SingleSide",
     "build_p4_snapshot_from_raw",
     "compute_record_sha256",
     "extract_fee_rate",
+    "partition_token_shards",
 ]

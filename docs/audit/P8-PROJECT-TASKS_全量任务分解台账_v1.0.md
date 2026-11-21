@@ -2,13 +2,13 @@
 
 > **坐标声明**：管控基础设施批·第二步落盘（`2026-11-19 当前决策`）；**本账定位** = 全仓**唯一实时任务明细与状态权威源**（`S1–S4` 全切片 × `M1–M10` 全模块 × 待成文协议 `P9/P10` × 关键治理门）；**离实钱步数** = `3` 步（切片 2 录盘与 `D-6` $\to$ 切片 3 `T8` 与带延迟假盘/`GATE-LIVE` $\to$ 切片 4 实盘与月度复检）。  
 > **维护与联动铁律（见 `AGENTS.md §项目管理纪律`）**：  
-> 1. 任何任务状态变更（`READY / DESIGNING / CODING / BLOCKED / PENDING_APPROVAL / PLANNED / DONE`）必须在**唯一权威源（本文件）**及**相关提交的同一 Git Commit** 中同步闭合；  
+> 1. 任何任务状态变更（`READY / READY_TO_LAUNCH / DESIGNING / CODING / BLOCKED / PENDING_APPROVAL / PLANNED / DONE`）必须在**唯一权威源（本文件）**及**相关提交的同一 Git Commit** 中同步闭合；  
 > 2. 提交前必须运行 [`scripts/render_progress_board.py`](../../scripts/render_progress_board.py) 重新生成并执行 `--check` 校验，确保 [`progress_board.html`](progress_board.html) 零手工状态、零断链、零解析告警；  
 > 3. **算法四单保护红线**：`S3-01` 已于 `2026-11-21` 验收转 `DONE`（`64339fd` + `6094dd1`，尾项 **「`LiveAwcMetarAdapter` 真实端点连通冒烟」** 挂 `S3-03` 前置，不回开 `CODING`、不阻塞 `M2`）；`S3-02`、`S3-04`、`S3-05` 处于 **`CODING`（编码中）** 阶段（按依赖序模块级独立提交、逐模块回签验收，当前 **`M2 (S3-02)` 即刻开工**；`S3-05` 内含 `P2 §2.2 SlicePlan` 对齐 `Decimal` 升版；严禁改动 `F-2` 锁定区、不启动录盘、不预判 `D-6`、`TMIN` 钩子维持现状至 W3）。
 
 - **治理编号**：`P8-PROJECT-TASKS`（依据 [`P8-CONTROL-INFRA-PROPOSAL v0.1`](P8-CONTROL-INFRA-PROPOSAL_全量任务分解与可视化管控方案_v0.1.md) 批复建账）
-- **版本号与日期**：`v1.0`（`2026-11-19` 首建；`2026-11-20` `v0.3` 复核通过转 `CODING`；`2026-11-21` `M1 (S3-01)` 验收转 `DONE` 并即刻开工 `M2 (S3-02)`，已对齐 [`项目方案 (v3.0) §8`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`docs/ROADMAP.md v1.4.2`](../ROADMAP.md)）
-- **全局状态枚举**：`DONE`（已闭合）｜ `CODING`（编码中，按模块回签）｜ `DESIGNING`（设计中，提交审核）｜ `PENDING_APPROVAL`（待用户批准）｜ `READY`（前序就绪可开工）｜ `BLOCKED`（受前置阻塞）｜ `PLANNED`（后序切片排期中）
+- **版本号与日期**：`v1.0`（`2026-11-19` 首建；`2026-11-20` `v0.3` 复核通过转 `CODING`；`2026-11-21` `M1 (S3-01)` 验收转 `DONE` 并即刻开工 `M2 (S3-02)`，同日 `S2-01` 完成 6 站 `Yes+No` / `single_side` / `00:05Z` 轮转升级转 `READY_TO_LAUNCH`，已对齐 [`项目方案 (v3.0) §8`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`docs/ROADMAP.md v1.4.2`](../ROADMAP.md)）
+- **全局状态枚举**：`DONE`（已闭合）｜ `CODING`（编码中，按模块回签）｜ `DESIGNING`（设计中，提交审核）｜ `PENDING_APPROVAL`（待用户批准）｜ `READY_TO_LAUNCH`（配置/升级就绪待开闸）｜ `READY`（前序就绪可开工）｜ `BLOCKED`（受前置阻塞）｜ `PLANNED`（后序切片排期中）
 
 ---
 
@@ -18,7 +18,7 @@
 | :---: | :--- | :---: | :--- | :--- | :--- |
 | **`M1`** | 气象数据管道 | `已就绪` | `S3-03（前置冒烟）` | `S3-01` 已验收 **`DONE`**（`64339fd` + `6094dd1`）；尾项 **`LiveAwcMetarAdapter` 真实端点连通冒烟** 挂 `T8` 影子验证（`S3-03`）前置，不回开 `CODING`、不阻塞 `M2` | [`P8-KERNEL-CONSENSUS v1.1 §七`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#七-s1-06-g-15-裁决事实增补max-恒等式定义域论证与-t8-m1-规格输入2026-11-19-当前决策) |
 | **`M2`** | 预测引擎 | `待改造` | `S3-02, S3-03` | `P5` 已升版 `v1.1` 且 `S3-01` 已 `DONE`；**`S3-02` 即刻开工（`CODING`，依 [`P8-T8-ALGO4-DESIGN v0.3 §2`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#2-s3-02--m2-预测引擎点质量双字段拆分档梯守卫与-p5-v11) 实施并验 `P5` 四不变量；`TMIN` 维持现状）** | [`P8-T4-M4M5-INTERFACE v1.0 §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) |
-| **`M3`** | 盘口数据 | `已就绪` | `S2-01` | `S1-01` + `S1-05` 被动采集器（77 单测 + 66 tokens 干跑）全绿就绪；**待用户批准启动多日录盘（默认推荐档 B 5 站）** | [`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) |
+| **`M3`** | 盘口数据 | `已就绪` | `S2-01` | `S1-05` 升级就位（6 站 `KORD+KMIA+KLGA+KATL+KDAL+KSEA`、`Yes+No` 双侧、`single_side` 落盘、`max_tokens_per_ws=200` 分片与 `00:05Z` 每日轮转 CLI）；**`READY_TO_LAUNCH` 等用户于 `2026-11-21T08:00+08` 后按开关** | [`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) |
 | **`M4`** | 决策引擎 | `待修复` | `S3-04` | `edge_math.py` `p(1-p)` 只读核验无缺陷且 `IdentityScaler` 三条件已补全；**`S3-04` 处于 `CODING`（待 `M2` 回签后实施并强制落盘 `policy_id="provisional_identity_v0"`）** | [`P8-T4-M4M5-INTERFACE v1.0 §2.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#21-m4-决策引擎运行主流程契约) |
 | **`M5`** | 执行器 | `待实现` | `S3-05` | `P2` + `fee = shares×feeRate×p(1-p)` 定案；**`S3-05` 处于 `CODING`（`M5` 编码批内按 `§8.3` 同步升版 [`P2 §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) `SlicePlan` 对齐 `Decimal` 域，friction 实测仍挂 `S2-01` 录盘前置）** | [`P8-T4-M4M5-INTERFACE v1.0 §2.2–2.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) |
 | **`M6`** | 资金风控 | `待实现` | `S2-03, S3-06, S3-12` | 三层资金池与本地 `25%/$500` 硬闸设计已立，`src/bankroll/` 未建成；待 `D-6` 细则（`S2-03`）闭合后开发 | [`P8-CAPITAL-CONFIG v1.0`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) |
@@ -46,7 +46,7 @@
 
 | 单号 | 切片 | 模块归属 | 任务名称 | 法定文档锚点 | 前置依赖 | 验收标准 | 当前状态 |
 | :--- | :---: | :---: | :--- | :--- | :--- | :--- | :---: |
-| **`S2-01`** | 切片 2 | `M3` | **多日被动录盘建盘口基线**（**待用户批准**；默认建议档 B：5 站） | [`ROADMAP §3.4`](../ROADMAP.md#34-已对齐-2026-11-17-p8-kernel-consensus-v11-改版四阶段路线真盘切换门与四切片顺序v120--v130)、[`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) | `S1-05, 待用户批准` | 按 §3 默认建议档 B（`KORD+KMIA+KLGA+KATL+KLAX`）或用户指定站表连续录盘 >=3–5 天，重点沉淀 `2026-11-20T23:59Z` 后 `0.01` 时代 `P13` JSONL，无未解释长缺口 | `PENDING_APPROVAL` |
+| **`S2-01`** | 切片 2 | `M3` | **多日被动录盘建盘口基线**（6 站 `Yes+No` 双侧 + `00:05Z` 轮转 + `single_side`；待用户按开关） | [`ROADMAP §3.4`](../ROADMAP.md#34-已对齐-2026-11-17-p8-kernel-consensus-v11-改版四阶段路线真盘切换门与四切片顺序v120--v130)、[`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py)、[`run_passive_book_recorder_daily.py`](../../scripts/run_passive_book_recorder_daily.py)、[`P8-RECORDER-NO-SIDE-DESIGN v0.1`](P8-RECORDER-NO-SIDE-DESIGN_尾桶单侧与No侧双视角升级设计书_v0.1.md) | `S1-05, 待用户按开关 (≥2026-11-21T08:00+08)` | 按 6 站（`KORD+KMIA+KLGA+KATL+KDAL+KSEA`、`Yes+No` 双 token + `single_side` 标记 + 每日 `00:05Z` 轮转重启）连续录盘 >=3–5 天，重点沉淀 `2026-11-20T23:59Z` 后 `0.01` 时代 `P13` JSONL，无未解释长缺口 | `READY_TO_LAUNCH` |
 | **`S2-02`** | 切片 2 | `M8, M3` | `D-A1` 走簿滑点拟合与 `friction_median` 填实 | [`P8-T4-M4M5-INTERFACE §3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#34-p6-executionpolicybundle-v10m8--m4--m5--m7--由-rc-正式成文)、[`P8-CAPITAL-CONFIG §7`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#7-参数账本全案占位参数统一登记表--2026-11-17) | `S2-01` | 以 `0.01` 时代 `P13` 录盘走簿模拟计算 `median(slippage_vs_best_ask)`（不含 spread），签入账本与 `P6` 解除 `None` 上线阻塞 | `BLOCKED` |
 | **`S2-03`** | 切片 2 | `M6, M8` | **`D-6` 制度合龙会议与规则成文**（`T6 / T7` 核心制度） | [`P8-KERNEL-CONSENSUS §六 G`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#g下一桌-d-6-制度合龙议程登记只登记不开桌--2026-11-17) | `S1-06` | 九项全闭合成文：抽检/亮灯/灯→钱映射（含分叉 3 三检）、月度三层防遗忘、真盘切换门三条件定量阈值、`ECE` 临界锚、黄灯分型与 `yellow_multiplier` 作用点、破冻/`A`类扩充/首期全额确认 | `READY` |
 | **`S2-04`** | 切片 2 | `M7, M10` | **待成文协议 `P10` 正文成文**（`M7 → M10` 日志读取与渲染约定） | [`项目方案 v3.0 §8.2 P10`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策)、[`P8-T2-M7-LOGGING §3.2`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#32-p10m7--m10-前台只读视图兼容约束) | `S1-03` | 固化日志查询契约、空/坏日志降级渲染与零写回校验清单，同步刷新 `§8.2` | `READY` |
@@ -58,10 +58,10 @@
 | 单号 | 切片 | 模块归属 | 任务名称 | 法定文档锚点 | 前置依赖 | 验收标准 | 当前状态 |
 | :--- | :---: | :---: | :--- | :--- | :--- | :--- | :---: |
 | **`S3-01`** | 切片 3 | `M1` | **【算法改造单 · `T8 M1`】气象数据抽象层、结算同构流与双流并行落盘**（**编码第 1 优先**） | [`P8-T8-ALGO4-DESIGN v0.3 §1`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#1-s3-01--m1-气象数据管道结算同构流与抽象层设计编码第-1-优先)、[`P8-KERNEL-CONSENSUS §七 C`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#c模型-m1-与协议字段联动输入)、[`P8-T2-M7-LOGGING §2.5`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#25-p12-气象-coverageledgerlogm1--m7) | `S1-06` | 假盘 `M_now` 与结算口径逐帧一致 | `DONE` |
-| **`S3-02`** | 切片 3 | `M2` | **【算法改造单 · `T8 M2`】`TruncatedDistribution` 点质量修复与整数格点刻度统一** | [`P8-T8-ALGO4-DESIGN v0.3 §2`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#2-s3-02--m2-预测引擎点质量双字段拆分档梯守卫与-p5-v11)、[`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) | `S1-06, S3-01, 编码中（M2 即刻开工）` | `P5 v1.1` 不变量组全过 | `CODING` |
+| **`S3-02`** | 切片 3 | `M2` | **【算法改造单 · `T8 M2`】`TruncatedDistribution` 点质量修复与整数格点刻度统一** | [`P8-T8-ALGO4-DESIGN v0.3 §2`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#2-s3-02--m2-预测引擎点质量双字段拆分档梯守卫与-p5-v11)、[`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) | `S1-06, S3-01, 开放未验收（P8-WO-20261121-M4M5-RECTIFY §0/§1.3 待并行复审，不转 DONE）` | `P5 v1.1` 不变量组全过 | `CODING` |
 | **`S3-03`** | 切片 3 | `M2, M7, M9` | **`T8` 并入之 `2019` 最小形态影子冒烟**（替代独立 `T5`） | [`P8-KERNEL-CONSENSUS §六 A.1`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#a分叉决议更新2026-11-17)、[`ROADMAP §3.4`](../ROADMAP.md#34-已对齐-2026-11-17-p8-kernel-consensus-v11-改版四阶段路线真盘切换门与四切片顺序v120--v130) | `S3-01, S3-02, LiveAwcMetarAdapter 真实端点连通冒烟` | 严格遵循 `2019 封跑制度` 并登记《2019 消费台账》；前置完成 `LiveAwcMetarAdapter` 真实端点连通冒烟；零资金影子运行只验气象形态收敛方向，严禁用于 `w/φ` 参数拟合或刷榜 | `PLANNED` |
-| **`S3-04`** | 切片 3 | `M4` | **【算法改造单 · `T8 M4`】双钟决策引擎、`w(τ)` 额制、`edge_math` 门槛链路与 `P16` 消费** | [`P8-T8-ALGO4-DESIGN v0.3 §3`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#3-s3-04--m4-决策引擎p5-消费规则双龄分段与-session_id-确定性重放)、[`P8-T4-M4M5-INTERFACE §2.1–2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#21-m4-决策引擎运行主流程契约) | `S1-04, S2-03, S3-02, 编码中（待 M2 回签后实施；IdentityScaler 强制落盘 provisional_identity_v0）` | 同一份扫描日志重放出同一决策序列 | `CODING` |
-| **`S3-05`** | 切片 3 | `M5` | **【算法改造单 · `T8 M5`】执行器 `φ` 逐档切片、CLOB `FAK` 网关与 `P18` 延迟撮合/滑点采样** | [`P8-T8-ALGO4-DESIGN v0.3 §4`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#4-s3-05--m5-执行器ρedge-引-p2全程-decimal-与-p18-保守撮合)、[`P8-T4-M4M5-INTERFACE §2.2–2.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) | `S1-04, S3-04, 编码中（批内按 §8.3 升版 P2 §2.2 SlicePlan 对齐 Decimal 域；friction 实测依赖 S2-01）` | 成交判定逐帧可复算（实测验收依赖 `S2-01` 录盘数据，设计本身不依赖，先行） | `CODING` |
+| **`S3-04`** | 切片 3 | `M4` | **【算法改造单 · `T8 M4`】双钟决策引擎、`w(τ)` 额制、`edge_math` 门槛链路与 `P16` 消费** | [`P8-T8-ALGO4-DESIGN v0.3 §3`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#3-s3-04--m4-决策引擎p5-消费规则双龄分段与-session_id-确定性重放)、[`P8-T4-M4M5-INTERFACE §2.1–2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#21-m4-决策引擎运行主流程契约) | `S1-04, S2-03, S3-02, 开放未验收（P8-WO-20261121-M4M5-RECTIFY 整改中；IdentityScaler 强制落盘 provisional_identity_v0）` | 同一份扫描日志重放出同一决策序列 | `CODING` |
+| **`S3-05`** | 切片 3 | `M5` | **【算法改造单 · `T8 M5`】执行器 `φ` 逐档切片、CLOB `FAK` 网关与 `P18` 延迟撮合/滑点采样** | [`P8-T8-ALGO4-DESIGN v0.3 §4`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#4-s3-05--m5-执行器ρedge-引-p2全程-decimal-与-p18-保守撮合)、[`P8-T4-M4M5-INTERFACE §2.2–2.5`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v11--2026-11-21-对齐-decimal-域) | `S1-04, S3-04, 开放未验收（P8-WO-20261121-M4M5-RECTIFY 整改中；friction 实测依赖 S2-01）` | 成交判定逐帧可复算（实测验收依赖 `S2-01` 录盘数据，设计本身不依赖，先行） | `CODING` |
 | **`S3-06`** | 切片 3 | `M6` | **`T8 M6` 三层资金风控机、本地硬刹车（`25% / $500`）与 `P7/P14/P15/P16/P19` 实现** | [`P8-CAPITAL-CONFIG v1.0`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)、[`项目方案 v3.0 §8.3.4`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#83-协议治理规则2026-11-18-当前决策) | `S2-03` | `P7` 超并发 `B_eff` 兜底（`N8`）、`P14` 冻结回环与本地 `25%/$500` 硬刹车不依赖外部 `P16` 推送全测通过，`P19` 写盘全绿 | `BLOCKED` |
 | **`S3-07`** | 切片 3 | `M7` | **`T8 M7` 四元组全链路异步写入器、`P12`、`P8` 校准流与 `P18` 帧回放检索器** | [`P8-T2-M7-LOGGING v1.0`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md)、[`P8-T4-M4M5-INTERFACE §3.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#32-p8-校准样本流协议m7--m8--v10) | `S1-03, S2-01` | 四元组（`P1/P3/P17/P19`）与 `P12` 同构落盘无丢帧，正确标识 `PAPER / LIVE`，`P18` gap 触发 `PAPER_MATCH_ABORTED_GAP` | `PLANNED` |
 | **`S3-08`** | 切片 3 | `M8` | **`T8 M8` 参数账本管理、`P6` 政策包工厂签发与 `P16` 广播器** | [`P8-T4-M4M5-INTERFACE §3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#34-p6-executionpolicybundle-v10m8--m4--m5--m7--由-rc-正式成文)、[`P8-CAPITAL-CONFIG §7`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#7-参数账本全案占位参数统一登记表--2026-11-17) | `S2-02, S2-03` | `config_hash` 签发、`friction_median is None` 时强制阻断上线包签发、`is_overdue=True` 保守续持不降级契约全测通过 | `BLOCKED` |
@@ -81,8 +81,8 @@
 
 ## §3 `S2-01` 被动录盘节点：默认建议站表（档 B · 5 站）与全站实测参照
 
-> **待批复状态**：当前 [`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) 保持只读停机待命；**未获用户明确批复前绝不擅自启动录盘**。  
-> **推荐档位（默认建议 = 档 B · 5 站）**：`KORD` + `KMIA` + `KLGA` + `KATL` + `KLAX`（兼顾前三高流动性深度站与全榜最高成交换手站 `KMIA` + `W2` 先锋站 `KORD`，约 165 tokens 单连接可稳承；若仅沿用现成 [`passive_book_recorder.example.yaml`](../../configs/passive_book_recorder.example.yaml) 则为档 A `KORD + KMIA` 2 站）。  
+> **待开闸状态（`READY_TO_LAUNCH`）**：当前 [`passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) 与 [`run_passive_book_recorder_daily.py`](../../scripts/run_passive_book_recorder_daily.py) 保持只读停机待命；**等用户于 `2026-11-21T08:00+08` 后明确按开关方启动录盘**。  
+> **核定站表（`N=6` · 主录 2 + 伴录 4 · `Yes+No` 双 token）**：[`passive_book_recorder.example.yaml`](../../configs/passive_book_recorder.example.yaml) 已锁定 `KORD` + `KMIA`（主录 2）+ `KLGA` + `KATL` + `KDAL`（顺延顶替无盘 `KPHX`）+ `KSEA`（伴录 4），单 `max_tokens_per_ws=200` 自动拆 2 条并发 WS（当前实时约 336–400 tokens）。  
 > **费率时代切换硬提示**：官方 Weather 降费为 **`2026-11-20T23:59:00Z`**（`0.05 → 0.01`）；按 [`P8-FACTS-LEDGER v0.3 §2.1`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#21-2026-11-19-s1-06-变费复核与-费率时代标记规则)，跨越该时点的录制样本必须分时代标定，**严禁将 `0.05` 时代与 `0.01` 时代样本混算 `D-A1 friction_median`**。
 
 | 站点 | 城市 | 2026-11-19T03:15Z 流动性 (USD) | 总成交量 (USD) | 并发在盘天数 | 档 A（最小先锋） | 档 B（默认建议） | 档 C（全采） | 选站说明 |
@@ -107,3 +107,13 @@
 | 日期 | 当轮优先级排序 | 依据 |
 | :---: | :--- | :--- |
 | `2026-11-19` | 算法四单设计（当轮唯一主线批） | 录盘维持待批、`M6/M7` 暂缓（单批专注原则，下轮审视再议） |
+
+---
+
+## §5 Agent 自主边界与偏差越线登记（不可因追认消除）
+
+> **治理规则（依 [`P8-WO-20261121-M4M5-RECTIFY`](P8-WO-20261121-M4M5-RECTIFY_整改整合回签_v1.0.md) 第 0 / 3 条建账）**：越线事实永久保留于台账，**不因后续是否追认而消除**；当前 `M4/M5` 编码批状态 = **开放未验收**（`S3-02` 不转 `DONE`，`S3-04 / S3-05` 维持 `CODING` 不关单）；自 `2026-11-21` 起生产系统改动与进程干预一律事前走独立请示批复程序。
+
+| 登记编号 | 发生时间（`+08:00`） | 越线事实 | 违反之既定边界 | 处置结论与程序纪律约束 |
+| :--- | :---: | :--- | :--- | :--- |
+| **`BND-20261121-01`** | `2026-11-21 17:32–17:46` | 违反批复范围内对 [`src/data_acquisition/passive_book_recorder.py`](../../src/data_acquisition/passive_book_recorder.py) 之零改动边界，实施了 `poll_rest_fallback_async`、`_pending_gap_tokens`、函数拆分三项修改，并波及 [`scripts/record_status.py`](../../scripts/record_status.py) 与 [`scripts/run_passive_book_recorder_daily.py`](../../scripts/run_passive_book_recorder_daily.py)；且未经独立请示工单对在产 `S2-01` 录盘进程执行停机与“选项 B”重启（`rec-20261121T082230Z-c5f487` → `rec-20261121T094543Z-002623`），首轮回签未作偏差申报 | `2026-11-21 16:54:59` 开工确认第 1 条硬边界（“录盘窗口内 `recorder` 主链零改动”）；范围隔离与生产进程干预事前审批纪律 | 代码不回滚（缺陷真实、修复有效、数据链未受损），**越线事实永久入册不因追认消除**；此后生产代码改动/进程干预须附证据与影响面事前独立请示，相邻缺陷只申报不混装，偏差须主动申报 |
