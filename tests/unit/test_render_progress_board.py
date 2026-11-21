@@ -36,6 +36,7 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert "待用户按开关" in by_id["S2-01"]["dependencies_label"]
     assert by_id["S2-07"]["status"] == "READY"
     assert "2019-SEALED-003" in by_id["S3-03"]["acceptance"]
+    assert "2019-12-30T23:55:00Z" in by_id["S3-03"]["acceptance"]
     assert by_id["S3-06"]["status"] == "READY"
     assert by_id["S3-08"]["status"] == "BLOCKED"
     assert by_id["S3-13"]["status"] == "PLANNED"
