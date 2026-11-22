@@ -35,7 +35,7 @@ ALGORITHM_PROTECTED_IDS = frozenset({"S3-01", "S3-02", "S3-04", "S3-05"})
 SLICE_ORDER = ("切片 1", "切片 2", "切片 3", "切片 4")
 
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(((?:[^()\\]|\\.)*(?:\([^()]*\)[^()]*)*)\)")
-_TASK_ID_RE = re.compile(r"\bS\d+-\d{2}\b")
+_TASK_ID_RE = re.compile(r"\bS\d+-\d{2}[a-z]?\b")
 _MODULE_ID_RE = re.compile(r"\bM(?:10|[1-9])\b")
 
 
