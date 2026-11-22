@@ -99,8 +99,8 @@ def test_run_block_cv_hooks_invocation_and_manifest(tmp_path):
             assert manifest_json["artifacts"][art_key]["sha256"] == hashes[art_key]
 
 
-def test_e2e_real_fold0_dry_run_artifacts():
-    """Task C: Execute 1 real statutory Block-CV fold (KORD) emitting formal evidence artifacts."""
+def test_e2e_real_fold0_dry_run_artifacts(tmp_path: Path):
+    """Task C: Execute 1 real statutory Block-CV fold (KORD) emitting isolated artifacts in tmp_path."""
     station = "KORD"
     df_ghcn, df_gefs = load_station_training_data(station)
 
@@ -165,7 +165,7 @@ def test_e2e_real_fold0_dry_run_artifacts():
         holdout_ratio=0.10,
         seed=DEFAULT_SEED,
         export_evidence=True,
-        evidence_dir=EVIDENCE_DIR,
+        evidence_dir=tmp_path,
     )
 
     assert len(cv_res["round_results"]) == 1
