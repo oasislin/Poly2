@@ -365,15 +365,17 @@ def test_p16_red_blocks_new_entries_and_yellow_held_over_cap_stops_adding() -> N
 
 def test_p16_none_default_bitwise_regression_equivalence_and_bounds() -> None:
     t0 = datetime(2026, 11, 21, 14, 0, 0, tzinfo=timezone.utc)
+    # 阶段二新基线起点（P8-WO-20261123-S306-STAGE2-EXEC：yellow_multiplier 纳入 _compute_policy_config_hash；
+    # 阶段一旧基线 config_hash="97885953b1ce2260" / record_sha256="ed9fd44e..." 随本批退役）
     expected_baseline_jsonl = (
         '{"b_budget_usd":250.0,"best_ask_edge":1.183622828784119,"best_ask_price":0.25,'
-        '"bin_id":"bin-58-59","book_frame_ref":1,"config_hash":"97885953b1ce2260",'
+        '"bin_id":"bin-58-59","book_frame_ref":1,"config_hash":"8173bc6e03015b22",'
         '"decision_id":"9b306f27-0fe1-5c37-be8c-a341de55173f","decision_outcome":"ORDERED",'
         '"degradation_reason":null,"execution_mode":"PAPER","forecast_id":"fc-20ae8269c7f54f31",'
         '"g_cap_usd":125.24384332715898,"headroom_d":125.24384332715898,"held_usd":0.0,'
         '"light_status":null,"m_threshold":0.05,"market_id":"mkt-1","model_hash":"stub-model-hash-v1",'
         '"p16_event_id":null,"policy_overdue":false,"policy_version":"p6.base.v1",'
-        '"record_sha256":"ed9fd44eb6daf835c88f9bf014ac8a520804f99bc919216b1e143919ce9981c0",'
+        '"record_sha256":"e9849fe52d605550f7c2f998e3f6ba5f28ab763ce25082895012fa1fd7feff96",'
         '"s_edge":1.0,"scaler_policy_id":"provisional_identity_v0",'
         '"scaler_provenance":"PROVISIONAL_UNTIL_D6","scaler_provisional":true,'
         '"scan_clock":"PRICE_CLOCK","scan_ts_utc":"2026-11-21T14:00:00+00:00",'

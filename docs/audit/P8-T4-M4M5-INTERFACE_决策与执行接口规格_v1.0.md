@@ -1,4 +1,6 @@
-# P8-T4-M4M5-INTERFACE：决策引擎（`M4`）与执行器（`M5`）接口规格及 `P2/P5/P6/P7/P8` 协议正文（`v1.0` · `2026-11-18 当前决策`）
+# P8-T4-M4M5-INTERFACE：决策引擎（`M4`）与执行器（`M5`）接口规格及 `P2/P5/P6/P7/P8/P14` 协议正文（`v1.1` · `2026-11-22 已对齐 S3-06 阶段二`）
+
+> **版本标注（`2026-11-22` `P8-WO-20261123-S306-STAGE2-EXEC` · 已对齐 `S3-06` 阶段二 / `D-6` 合龙）**：物理路径保持 `_v1.0.md` 引用不变；既有 `§1–§3.4` 历史正文保留不重写，新增 **`§3.5 P14 v1.0` 正式协议正文**，并同步注记 `§3.4` `_compute_policy_config_hash v2` 纳入 `yellow_multiplier`。
 
 - **任务单与治理编号**：`S1-04`（`T4` · 切片 1 阶段 0 接口规格与纯函数交付）｜归属模块：**`M4`（决策引擎）/ `M5`（执行器）**，联动 `M2 / M6 / M7 / M8`
 - **法定锚点**：
@@ -190,3 +192,58 @@ class QuotaSnapshot:
   - `station_cap_usd: float = 500.0`, `concurrent_days: int = 2`, `yellow_multiplier: float`（保留并标 `"待 D-6 作用点"`，按裁定 `A1`）；
   - **派生只读属性 `m_threshold`**（`B5`）：当 `friction_median` 已填入合法非负值时，`m_threshold = max(k0_threshold_coef * sigma_delta_frozen.value + friction_median, m_floor)`；`light_status` 已从 `P6` 移除（走 `P16`）。
 - **`is_overdue=True` 强制消费语义（`B6`）**：维持旧冻结参数继续运行、`M7`（`P1/P3/P19`）写入 `policy_overdue=True` 标、经参数账本通道催办；严禁降级、半额或停机。
+- **`config_hash v2` 升版注记（`2026-11-22` `S3-06` 阶段二）**：`_compute_policy_config_hash` 已按业主裁决正式纳入 `yellow_multiplier`；修改 `yellow_multiplier` 须换版 `policy_version` 并重算 `config_hash`。
+
+---
+
+### 3.5 `P14` 现金预冻结 / 成交回环协议（`M5 ↔ M6` · `v1.0` · `2026-11-22` `S3-06` 阶段二正式成文）
+
+- **归属与实操模块**：协议正文常驻本节（联动 [`src/bankroll/`](../../src/bankroll/) 与 `M5` 执行器）；同步刷新 [`项目方案 (v3.0) §8.2 P14`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策)（`§8.3` 同提交闭合）。
+- **核心契约数据结构（内部 `Decimal` 域，面向 `P7/P19` 边界转 `float`）**：
+
+```python
+@dataclass(frozen=True)
+class FreezeRequest:
+    decision_id: str
+    idempotency_key: str        # 幂等去重键（非空）
+    station_id: str
+    market_id: str
+    token_id: str
+    target_freeze_usd: Decimal  # 必须 > 0
+    requested_ts_utc: datetime
+
+
+@dataclass(frozen=True)
+class FreezeReceipt:
+    accepted: bool
+    decision_id: str
+    idempotency_key: str
+    frozen_usd: Decimal
+    blocked_reason: Optional[str]
+    recorded_ts_utc: datetime
+    deduplicated: bool = False
+
+
+@dataclass(frozen=True)
+class FillSettleLoopback:
+    decision_id: str
+    attempt_id: str             # 幂等回环键
+    station_id: str
+    market_id: str
+    filled_usd: Decimal         # >= 0 且 <= frozen_usd
+    terminal_status: Literal[
+        "FILLED", "PARTIAL", "CANCELLED_UNFILLED", "REJECTED", "PAPER_MATCH_ABORTED_GAP"
+    ]
+    settled_ts_utc: datetime
+    reject_or_abort_reason: Optional[str] = None
+```
+
+- **Fail-Closed 阻断与优先级规则**：
+  1. 幂等校验：`FreezeRequest.idempotency_key` 命中缓存时直接返回原 `FreezeReceipt(deduplicated=True)`，不重复扣款亦不重复写 `P19`；`FillSettleLoopback.attempt_id` 同样幂等去重；
+  2. 闸门优先级：**`ACCOUNT_DRAWDOWN_BRAKE_TRIPPED` > `STATION_LOSS_GATE_TRIPPED` > `P16_RED_LIGHT_BLOCKED` > `INSUFFICIENT_FREE_USD / STATION_CAP_EXCEEDED`**；任一触发即整体拒绝（`accepted=False, frozen_usd=Decimal("0")`），严禁部分冻结，且遵守 [`P8-CAPITAL-CONFIG §6.4`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#64-超门不自动平仓原则) 不主动平掉既已持仓（`held_by_market`）；
+  3. 仅作为 `M6` 本地风控数据源与预冻结通道，**`-$500/站` 亏损闸与 `25%` 账户回撤硬刹车仅消费 `P14/P15` 回报在 `M6` 本地触发并记入 `P19`，绝不向 `P16` 反向广播**。
+- **三桶严格资金守恒式与 `FILL_SETTLE_CONVERSION` 语义澄清（`修正 1`）**：
+  - `M6`（[`BankrollAccountManager`](../../src/bankroll/manager.py)）采用 `Decimal` 三桶记账：`free_usd`（自由现金）、`active_locked_usd`（`Σ frozen_by_decision`，待 IOC 回环冻结额）、`held_total_usd`（`Σ held_by_market`，`FILL_SETTLE_CONVERSION` 转化留存持仓成本基）；全程满足零漂移恒等式：
+    `free_usd + active_locked_usd + Σ held_by_market == tier_pool_usd + Σ realized_pnl_by_station`（`conservation_residual_usd == Decimal("0")`）；
+  - 与离线 `S3-05` 回放桩 [`replay_engine._ReplayAccountTracker`](../../src/audit/replay_engine.py#L88-L109) 之口径差异注记：离线回放追踪器未单设 `held_by_market` 桶，故其 `apply_settlement_conversion` 仅将未成交余款退回 `free_usd` 而把成交成本留置于 `active_locked_usd`；生产级 `M6` 显式拆分 `active_locked_usd` 与 `held_by_market`，使 `P7 QuotaSnapshot` 可精确分列 `station_active_locked_usd` 与 `market_held_usd` 并同步满足三桶守恒。
+- **`25%` 账户回撤激活双路径（`P8-CAPITAL-CONFIG §4 L40-45` · `修正 4`）**：`tier_pool_usd <= $2,000` 期 `drawdown_brake_enabled=False`（仅计算并可查回撤指标，不阻塞下单；`-$500/站` 亏损闸自始生效）；当 **首次触发 `TIER_STEP_UP`（`+$1,000`）之日** 或 **进入满部署（`$10,000`）之日**，自动激活 `drawdown_brake_enabled=True`。

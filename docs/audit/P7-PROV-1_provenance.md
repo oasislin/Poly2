@@ -66,6 +66,8 @@
 | **CLOB 采集** | `tests/unit/data_acquisition/test_polymarket_clob_collector.py` | `94eec7c`<br>(2026-10-11 22:26) | **近期新写**<br>（不到 24 小时前） | • Mock Gamma 与 CLOB 响应测试；<br>• 未对 `KNOWN_CITY_TO_STATION` 的 Active 10 合法性做防御断言（导致错配漏过）。 |
 | **纸面盘评估** | `tests/unit/pricing/test_paper_evaluation_engine.py` | `d7a114d`<br>(2026-10-11 22:34) | **近期新写**<br>（不到 24 小时前） | • 验证 `parse_bracket_bounds` 的连续性修正；<br>• 验证 `INPUT_SUSPECT` 8.0°F 门禁与正 EV 信号判定。 |
 
+> **归档路径注记（`2026-11-22` · `P8-WO-20261123-S306-STAGE2-EXEC`）**：上表所示历史提交记录中的 3 份旧集成测试路径（`tests/integration/test_scenario_b_ioc_execution.py`、`tests/integration/test_scenario_a_c_bankroll_kelly.py`、`tests/integration/test_scenario_e_arbiter_fail_closed.py`）连同同系列 `test_full_suite_scenarios_a_to_e.py`、`test_pricing_ev_pipeline.py` 已按 `规范 v1.1 §10.3` 物理归档至 `docs/archive/trading_modules/tests/integration/`；历史 commit provenance 表原文保留不改。
+
 ---
 
 ### 1.4 五个模块来源终审判定表

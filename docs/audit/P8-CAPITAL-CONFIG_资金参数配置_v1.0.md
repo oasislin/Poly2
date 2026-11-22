@@ -99,6 +99,7 @@
 | **`扫描间隔初始形状`** | 信息钟阶梯（`6h / 3h / 1h / 15–30min`）；价格钟独立 `30–60min` | 兼顾预报轮次/日内收敛节奏与盘口捕获频率 | `ScanDecisionEvent` 跨时段信息增量 vs 扫描频率效率样本 | 月度复检按信息价值-频率数据重估阶梯或连续曲线 | `2026-11-17` 并入账本占位 |
 | **`摩擦中位数`** | **`[欠 D-A1]`**（待首期盘口实测填充） | 决定 `D-1 edge` 安全垫与价差扣除基准 | 被动盘口价差/冲击日志（`T3`）与成交回执（`ExecutionAttemptLog`） | `D-A1` 完成数天被动录盘统计后填入首期数值，月度滚动更新 | `2026-11-17` 建账待填（欠 `D-A1`） |
 | **`平台最小单占位`** | 股数参考本地 `SPEC` `5 shares / gamma.minimum_order_size`；名义美元底 **`[欠 D-A2]`** | 直接制约 `w₀` 最小单下界与发单舍入拦截门槛 | Gamma `/markets` `minimum_order_size` 与 CLOB 网关核验（见 [`P8-FACTS-LEDGER`](P8-FACTS-LEDGER_静态事实档案_v0.1.md)） | `D-A2` 完成官方实测核验后转入静态事实档案并解除账本占位 | `2026-11-17` 建账占位（欠 `D-A2`） |
+| **`yellow_multiplier`**（`P16 YELLOW` 灯级乘子） | `0.5`（`D-6 v1` 预设，见 [`P6 RiskGatePolicy`](../../src/decision/engine.py#L129-L133)） | [`P8-D6-POLICY-CLOSURE §1.3 / §6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md#六-黄灯半额精确定义与-yellow_multiplier-作用点议程第-6-项)：$G = B \cdot w(\tau) \cdot [s(\text{edge}) \cdot \lambda(L)]$，`YELLOW → λ = yellow_multiplier`；已纳入 `_compute_policy_config_hash` | `P1 / P3 / P19`（黄灯期收益、滑点与空转率样本） | 月度复检按黄灯实测表现校准；**任何改动须换版 `policy_version` 并重算 `config_hash`** | `2026-11-22` 随 `S3-06` 阶段二（修正 3）增补入账 |
 
 ---
 

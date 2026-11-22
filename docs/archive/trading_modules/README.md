@@ -17,7 +17,7 @@
 
 ---
 
-## 二、归档内容清单（共 53 个文件）
+## 二、归档内容清单（共 58 个文件：57 个源码/测试/脚本 + 本 README）
 
 ### 1. `src/` 核心交易与仿真模块（27 个文件）
 - **`src/execution/`** (6 个): `clob_client.py`, `execution_engine.py`, `models.py`, `order_router.py`, `residual_risk.py`, `__init__.py`
@@ -27,12 +27,13 @@
 - **`src/pricing/`** (2 个): `ev_engine.py`, `__init__.py`
 - **`src/simulation/`** (8 个): `backtest_engine.py`, `clock.py`, `market_maker.py`, `metrics.py`, `models.py`, `paper_engine.py`, `settlement_sim.py`, `__init__.py`
 
-### 2. `tests/` 配套单元测试（20 个文件）
+### 2. `tests/` 配套测试（25 个文件：20 个单元测试 + 5 个集成测试）
 - **`tests/execution/`** (4 个): `test_clob_models_client.py`, `test_execution_engine.py`, `test_order_router.py`, `test_residual_risk.py`
 - **`tests/bankroll/`** (4 个): `test_bankroll_manager.py`, `test_multinomial_kelly.py`, `test_risk_limiter.py`, `test_zombie_evaluator.py`
 - **`tests/risk/`** (4 个): `test_central_arbiter.py`, `test_emergency_control.py`, `test_incident_protocol.py`, `test_pre_buy_gate.py`
 - **`tests/pricing/`** (2 个): `test_ev_engine.py`, `test_w2_asset_governance.py`
 - **`tests/simulation/`** (6 个): `test_historical_backtest.py`, `test_paper_engine.py`, `test_paper_runner.py`, `test_sim_metrics.py`, `test_sim_models_clock.py`, `test_synthetic_market_maker.py`
+- **`tests/integration/`** (5 个 · `P8-WO-20261123-S306-STAGE2-EXEC` / 裁决 ③ 追加归档): `test_full_suite_scenarios_a_to_e.py`, `test_pricing_ev_pipeline.py`, `test_scenario_a_c_bankroll_kelly.py`, `test_scenario_b_ioc_execution.py`, `test_scenario_e_arbiter_fail_closed.py`
 
 ### 3. `scripts/` 交易与仿真脚本（5 个文件）
 - **`scripts/`** (5 个):

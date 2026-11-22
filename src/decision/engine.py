@@ -129,7 +129,9 @@ class RiskGatePolicy:
     # P8-D6-POLICY-CLOSURE §1.3 & §6: G = B * w(tau) * [s(edge) * lambda(L)];
     # YELLOW reads RiskGatePolicy.yellow_multiplier (D-6 v1 preset = 0.5).
     yellow_multiplier: float = 1.0
-    yellow_multiplier_note: str = "待 D-6 作用点"
+    yellow_multiplier_note: str = (
+        "P8-D6-POLICY-CLOSURE §1.3 & §6: G = B * w(tau) * [s(edge) * lambda(L)]"
+    )
     allow_provisional_none_friction: bool = False
 
     def __post_init__(self) -> None:
@@ -178,6 +180,7 @@ def _compute_policy_config_hash(
     gate: RiskGatePolicy,
     scaler_policy_id: str,
 ) -> str:
+    """Compute canonical `P6` config digest (`Stage 2 v2`: includes `yellow_multiplier`; bump `policy_version` on changes)."""
     raw_hash_input = json.dumps(
         {
             "policy_version": policy_version,
@@ -187,6 +190,7 @@ def _compute_policy_config_hash(
             "m_threshold": gate.m_threshold,
             "sigma_cycle": gate.sigma_delta_frozen.freeze_cycle_id,
             "scaler_policy_id": scaler_policy_id,
+            "yellow_multiplier": float(gate.yellow_multiplier),
         },
         sort_keys=True,
     )
