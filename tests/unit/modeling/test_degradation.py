@@ -3,7 +3,7 @@
 Unit tests for Two-Level Degradation and Soft Warnings (Ticket 2.2-02 / Issue #15).
 
 Verifies:
-1. Level 1: Normal Gaussian EMOS + variance floor active.
+1. Level 1: Pure Gaussian EMOS (§3.2(a): climatological variance belongs strictly to Level 2).
 2. Hard Trigger: Unconverged optimizer, NaN/Inf parameters, or insufficient sample count forces Level 2 (Climatology).
 3. Soft Trigger: When EMOS CRPS is statistically significantly worse than Climatology (p < 0.05), forces Level 2.
 4. Soft Trigger: When EMOS CRPS is slightly worse but not statistically significant (p >= 0.05), remains Level 1.
@@ -192,7 +192,7 @@ class TestSoftWarningAndRouting:
         handler = DegradationHandler()
         emos_model = GaussianEMOS(a=0.5, b=0.9, c=0.2, d=1.0)
         
-        # 1. Route Level 1 (EMOS + variance floor)
+        # 1. Route Level 1 (Pure EMOS)
         dist_level_1 = handler.get_active_distribution(
             level=1,
             emos_model=emos_model,
@@ -202,9 +202,10 @@ class TestSoftWarningAndRouting:
             sigma_clim=3.0,
         )
         # Expected mu = 0.5 + 0.9 * 20.0 = 18.5
-        # Expected sigma^2 = 0.04 + 1.0 * 4.0 + 9.0 = 13.04 -> sigma = sqrt(13.04)
+        # P8-MODEL §3.2(a) & ADR-0015 §2.1: Level 1 is pure EMOS (no climatological variance floor);
+        # sigma_clim belongs strictly to Level 2. Thus sigma^2 = 0.04 + 1.0 * 4.0 = 4.04.
         assert np.isclose(dist_level_1.mu, 18.5)
-        assert np.isclose(dist_level_1.sigma, np.sqrt(13.04))
+        assert np.isclose(dist_level_1.sigma, np.sqrt(4.04))
 
         # 2. Route Level 2 (Climatology fallback)
         dist_level_2 = handler.get_active_distribution(

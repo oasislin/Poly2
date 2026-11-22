@@ -1,60 +1,66 @@
 {
   "round_id": 12,
-  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=18, seasonal_emos_params={'Winter': (4.650230362020622, 1.0, 3.460517200747807, 0.5), 'Spring': (4.437703485704006, 1.0, 3.910609975017641, 0.5), 'Summer': (2.5164908230810283, 1.0, 2.8815986481559364, 0.5), 'Autumn': (3.4126614568018425, 1.0, 2.8988232833065095, 0.5)}, seasonal_c_train={'Winter': 0.99351362153269, 'Spring': 0.9666667250614615, 'Summer': 0.9705444835508643, 'Autumn': 0.9841323385963203}, selected_family='johnsonsu', shape_params={'gamma': -0.5051023191539077, 'delta': 2.203985392771465, 'xi': -0.4862506614061216, 'lambda': 1.9178592606261977}, selection_audit={'n_samples': 6250, 'skewness': 0.4219096255737721, 'kurtosis_fisher': 1.4792555210551832, 'jsu_triggered': True, 'evt_triggered': True, 'bic_gaussian': 17705.205332358324, 'bic_jsu': 17490.898094145006, 'bic_evt': 17705.68943091958, 'delta_bic_winner': -214.30723821331776, 'selected_family': 'johnsonsu'})",
+  "model_str": "StatutoryFoldModel(station='KORD', variable='tmax', lead_hour=18, seasonal_emos_params={'Winter': (4.67305354709672, 0.9910426635891771, 3.0728474716190775, 0.943736131509057), 'Spring': (4.673914936738967, 0.9930649305602635, 3.281072157900223, 1.0012407829612713), 'Summer': (8.23070493047435, 0.9286820712672991, 2.3702771457576413, 0.9268972178619653), 'Autumn': (3.8482950519365215, 0.9911438580659705, 2.4447518698080044, 0.9478018145930736)}, seasonal_c_train={'Winter': 1.0771976050869159, 'Spring': 1.0609053843277296, 'Summer': 1.030619595933521, 'Autumn': 1.0786741098910066}, selected_family='evt_hybrid', shape_params={'u_left': -1.5580216784930514, 'u_right': 1.6599586583128894, 'gpd_left': {'shape_xi': 0.010487011965309267, 'scale_beta': 0.4249897835410045}, 'gpd_right': {'shape_xi': 0.019807486693665017, 'scale_beta': 0.6613259149127754}}, selection_audit={'n_samples': 6250, 'skewness': 0.3904807319042877, 'kurtosis_fisher': 1.3699861112097285, 'jsu_triggered': False, 'evt_triggered': True, 'bic_gaussian': 17773.070752468717, 'bic_jsu': None, 'bic_evt': 17734.739946560705, 'delta_bic_winner': -38.330805908011826, 'selected_family': 'evt_hybrid'})",
   "model": {
     "station": "KORD",
     "variable": "tmax",
     "lead_hour": 18,
     "seasonal_emos_params": {
       "Winter": [
-        4.650230362020622,
-        1.0,
-        3.460517200747807,
-        0.5
+        4.67305354709672,
+        0.9910426635891771,
+        3.0728474716190775,
+        0.943736131509057
       ],
       "Spring": [
-        4.437703485704006,
-        1.0,
-        3.910609975017641,
-        0.5
+        4.673914936738967,
+        0.9930649305602635,
+        3.281072157900223,
+        1.0012407829612713
       ],
       "Summer": [
-        2.5164908230810283,
-        1.0,
-        2.8815986481559364,
-        0.5
+        8.23070493047435,
+        0.9286820712672991,
+        2.3702771457576413,
+        0.9268972178619653
       ],
       "Autumn": [
-        3.4126614568018425,
-        1.0,
-        2.8988232833065095,
-        0.5
+        3.8482950519365215,
+        0.9911438580659705,
+        2.4447518698080044,
+        0.9478018145930736
       ]
     },
     "seasonal_c_train": {
-      "Winter": 0.99351362153269,
-      "Spring": 0.9666667250614615,
-      "Summer": 0.9705444835508643,
-      "Autumn": 0.9841323385963203
+      "Winter": 1.0771976050869159,
+      "Spring": 1.0609053843277296,
+      "Summer": 1.030619595933521,
+      "Autumn": 1.0786741098910066
     },
-    "selected_family": "johnsonsu",
+    "selected_family": "evt_hybrid",
     "shape_params": {
-      "gamma": -0.5051023191539077,
-      "delta": 2.203985392771465,
-      "xi": -0.4862506614061216,
-      "lambda": 1.9178592606261977
+      "u_left": -1.5580216784930514,
+      "u_right": 1.6599586583128894,
+      "gpd_left": {
+        "shape_xi": 0.010487011965309267,
+        "scale_beta": 0.4249897835410045
+      },
+      "gpd_right": {
+        "shape_xi": 0.019807486693665017,
+        "scale_beta": 0.6613259149127754
+      }
     },
     "selection_audit": {
       "n_samples": 6250,
-      "skewness": 0.4219096255737721,
-      "kurtosis_fisher": 1.4792555210551832,
-      "jsu_triggered": true,
+      "skewness": 0.3904807319042877,
+      "kurtosis_fisher": 1.3699861112097285,
+      "jsu_triggered": false,
       "evt_triggered": true,
-      "bic_gaussian": 17705.205332358324,
-      "bic_jsu": 17490.898094145006,
-      "bic_evt": 17705.68943091958,
-      "delta_bic_winner": -214.30723821331776,
-      "selected_family": "johnsonsu"
+      "bic_gaussian": 17773.070752468717,
+      "bic_jsu": null,
+      "bic_evt": 17734.739946560705,
+      "delta_bic_winner": -38.330805908011826,
+      "selected_family": "evt_hybrid"
     }
   }
 }

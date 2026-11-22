@@ -58,11 +58,11 @@ def test_gate_input_validation_defense():
     assert rep_invalid.passed is False
     assert "Input validation failure" in str(rep_invalid.error_message)
 
-    # 3. Physics noise floor violation (sigma < 0.90°F)
+    # 3. ASOS 1088 PRT sensor accuracy redline alarm (sigma < 0.90°F -> noise-fitting alert)
     df_phys = pd.DataFrame({
         "obs": [70.0, 71.0],
         "mu": [70.0, 71.0],
-        "sigma": [0.80, 0.70],  # Below 0.90 PRT sensor noise floor
+        "sigma": [0.80, 0.70],  # Below 0.90°F ASOS 1088 PRT sensor accuracy redline
     })
     rep_phys = run_reliability_gate(df_phys)
     assert rep_phys.passed is False

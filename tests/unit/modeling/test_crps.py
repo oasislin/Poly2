@@ -163,3 +163,27 @@ class TestEMOSCRPSLoss:
         )
         assert np.isfinite(loss)
         assert loss > 0.0
+
+    def test_sigma_clim_squared_not_consumed_per_adr0015(self):
+        """ADR-0015 §2.1 & P8-MODEL: sigma_clim_squared must NOT enter emos_crps_loss."""
+        ens_mean = np.array([75.0, 82.0, 88.0])
+        ens_var = np.array([1.5, 2.0, 0.5])
+        obs = np.array([76.0, 80.5, 89.0])
+
+        loss_zero_clim = emos_crps_loss(
+            params=(0.5, 1.0, 1.2, 0.8),
+            ensemble_mean=ens_mean,
+            ensemble_variance=ens_var,
+            sigma_clim_squared=np.zeros(3),
+            observed_temp=obs,
+            l2_lambda_d=0.0,
+        )
+        loss_large_clim = emos_crps_loss(
+            params=(0.5, 1.0, 1.2, 0.8),
+            ensemble_mean=ens_mean,
+            ensemble_variance=ens_var,
+            sigma_clim_squared=np.full(3, 25.0),
+            observed_temp=obs,
+            l2_lambda_d=0.0,
+        )
+        assert loss_large_clim == loss_zero_clim

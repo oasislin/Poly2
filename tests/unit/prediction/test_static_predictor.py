@@ -8,10 +8,10 @@ Verifies:
 3. Minimum temperature short-lead (< 24h) physical variance shrinkage:
    sigma_L = sigma_24h * sqrt(L / 24).
 4. Square parameterization mathematical exactness:
-   mu = a + b * ens_mean, sigma^2 = c^2 + d^2 * ens_var + sigma_clim^2.
+   mu = a + b * ens_mean, sigma^2 = c^2 + d^2 * ens_var (ADR-0015 §2.1, no climatological addend).
 5. Confidence & prediction intervals:
    90% CI = mu +/- 1.64485 * sigma, 95% CI = mu +/- 1.95996 * sigma.
-6. Automatic ClimatologyCalculator integration for sigma_clim^2 lookup.
+6. Automatic ClimatologyCalculator integration for sigma_clim^2 lookup (value no longer enters sigma).
 7. Batch inference over pandas DataFrame with vectorized outputs.
 8. Error handling and boundary validation for invalid inputs.
 """
@@ -121,8 +121,8 @@ class TestStaticPredictorAlgorithms:
         # Anchor (ZSPD, Jja, max, 30): a=1.0, b=0.95, c=0.4, d=0.8
         # ens_mean=30.0, ens_var=2.0, sigma_clim_sq=4.0
         # Expected mu = 1.0 + 0.95 * 30.0 = 29.5
-        # Expected sigma^2 = 0.4^2 + 0.8^2 * 2.0 + 4.0 = 0.16 + 1.28 + 4.0 = 5.44
-        # Expected sigma = sqrt(5.44) ≈ 2.33238
+        # ADR-0015 §2.1: sigma^2 = 0.4^2 + 0.8^2 * 2.0 = 0.16 + 1.28 = 1.44 (clim addend abolished)
+        # Expected sigma = sqrt(1.44) = 1.2
         res = predictor.predict_single(
             station_id="ZSPD",
             target_date="2019-07-15",
@@ -135,7 +135,7 @@ class TestStaticPredictorAlgorithms:
 
         assert isinstance(res, StaticPredictionResult)
         assert np.isclose(res.mu, 29.5, atol=1e-5)
-        assert np.isclose(res.sigma, np.sqrt(5.44), atol=1e-5)
+        assert np.isclose(res.sigma, np.sqrt(1.44), atol=1e-5)
         assert res.is_interpolated is False
         assert res.is_short_lead_decay is False
         assert res.season == "Summer"
@@ -198,9 +198,9 @@ class TestStaticPredictorAlgorithms:
             lead_time_hours=30,
             ensemble_mean=30.0,
             ensemble_variance=2.0,
-            sigma_clim_squared=None,  # Should use MockClimatology -> 4.0
+            sigma_clim_squared=None,  # Should use MockClimatology -> 4.0 (lookup only, not added to variance)
         )
-        assert np.isclose(res.sigma, np.sqrt(5.44), atol=1e-5)
+        assert np.isclose(res.sigma, np.sqrt(1.44), atol=1e-5)
 
     def test_confidence_and_prediction_intervals(self, predictor):
         """Verify 90% and 95% confidence interval formulas: mu +/- z * sigma."""
@@ -265,7 +265,7 @@ class TestStaticPredictorAlgorithms:
 
         # Verify row 0 matches single predict
         assert np.isclose(pred_df.iloc[0]["predicted_mu"], 29.5, atol=1e-5)
-        assert np.isclose(pred_df.iloc[0]["predicted_sigma"], np.sqrt(5.44), atol=1e-5)
+        assert np.isclose(pred_df.iloc[0]["predicted_sigma"], np.sqrt(1.44), atol=1e-5)
 
     def test_invalid_target_type_raises_error(self, predictor):
         """Invalid target_type should raise ValueError."""

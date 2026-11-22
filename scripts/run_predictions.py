@@ -18,6 +18,11 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.data_processing.constants import ACTIVE_10_STATIONS, STATION_METADATA
 from src.modeling.climatology import ClimatologyCalculator
 from src.modeling.registry import ModelRegistry
 from src.prediction.prediction_pipeline import PredictionPipeline, PredictionRecord
@@ -29,8 +34,9 @@ logging.basicConfig(
 logger = logging.getLogger("run_predictions")
 
 STATION_NAMES = {
-    "ZSPD": "Shanghai Pudong International Airport",
-    "KDEN": "Denver International Airport",
+    k: v["name"]
+    for k, v in STATION_METADATA.items()
+    if "name" in v
 }
 
 
@@ -41,16 +47,16 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("--station", type=str, default="ZSPD", help="Weather station ID (e.g., ZSPD, KDEN)")
+    parser.add_argument("--station", type=str, default="ZSPD", help="Weather station ID (e.g., KMIA, KORD, ZSPD, KDEN)")
     parser.add_argument("--date", type=str, default=datetime.now(timezone.utc).strftime("%Y-%m-%d"), help="Target prediction date (YYYY-MM-DD)")
     parser.add_argument("--type", type=str, choices=["max", "min"], default="max", help="Target temperature type")
     parser.add_argument("--lead-time", type=float, default=None, help="Forecast lead time in hours (default: 30 for max, 24 for min)")
-    parser.add_argument("--ens-mean", type=float, required=False, help="GEFS ensemble mean temperature (°C)")
-    parser.add_argument("--ens-var", type=float, default=2.0, help="GEFS ensemble variance (°C²)")
-    parser.add_argument("--current-temp", type=float, default=None, help="Real-time temperature observation (°C or °F depending on unit)")
+    parser.add_argument("--ens-mean", type=float, required=False, help="GEFS ensemble mean temperature (°F for Active 10 US stations, °C for ZSPD/KDEN)")
+    parser.add_argument("--ens-var", type=float, default=2.0, help="GEFS ensemble variance (°F² for Active 10 US stations, °C² for ZSPD/KDEN)")
+    parser.add_argument("--current-temp", type=float, default=None, help="Real-time temperature observation (°F for Active 10 US stations, °C for ZSPD/KDEN)")
     parser.add_argument("--obs-time", type=str, default=None, help="Observation time (e.g., 12:00 or HH:MM)")
     parser.add_argument("--delta-hours", type=float, default=None, help="Remaining hours until diurnal peak/valley")
-    parser.add_argument("--models-dir", type=str, default="models/emos", help="Directory containing trained EMOS models")
+    parser.add_argument("--models-dir", type=str, default="data/models", help="Directory containing trained EMOS models")
     parser.add_argument("--db-path", type=str, default="data/db/predictions.db", help="SQLite database path for persistence")
     parser.add_argument("--save-db", dest="save_db", action="store_true", default=True, help="Save prediction record to SQLite database")
     parser.add_argument("--no-save-db", dest="save_db", action="store_false", help="Do not persist prediction to database")
@@ -80,9 +86,9 @@ def _format_emos_and_bounds(record: PredictionRecord, unit: str) -> List[str]:
     ci_90_low, ci_90_high = record.static_distribution.confidence_interval(0.90)
     lines = [
         "🌡️  Base Gaussian EMOS Forecast:",
-        f"    μ (Mean):     {record.predicted_mu:.2f}°C",
-        f"    σ (Std Dev):  {record.predicted_sigma:.2f}°C",
-        f"    90% CI:       [{ci_90_low:.2f}°C, {ci_90_high:.2f}°C]",
+        f"    μ (Mean):     {record.predicted_mu:.2f}°{unit}",
+        f"    σ (Std Dev):  {record.predicted_sigma:.2f}°{unit}",
+        f"    90% CI:       [{ci_90_low:.2f}°{unit}, {ci_90_high:.2f}°{unit}]",
         "-" * 80,
         "⏱️  Real-time Dynamic Truncation:",
     ]
@@ -99,7 +105,7 @@ def _format_emos_and_bounds(record: PredictionRecord, unit: str) -> List[str]:
     if record.constrained_distribution.is_constrained:
         t_min = record.constrained_distribution.t_min_possible
         t_max = record.constrained_distribution.t_max_possible
-        lines.append(f"    Reachable:    [{t_min:.2f}°C, {t_max:.2f}°C]")
+        lines.append(f"    Reachable:    [{t_min:.2f}°{unit}, {t_max:.2f}°{unit}]")
         lines.append("    Status:       Hard Thermodynamic Envelope Enforced")
     else:
         lines.append("    Status:       Unconstrained")
@@ -119,7 +125,9 @@ def _format_bins_table(record: PredictionRecord) -> List[str]:
         pct = b.probability * 100.0
         bar_len = int(round(b.probability * 20))
         bar = "█" * bar_len + " " * (20 - bar_len)
-        lines.append(f"| {b.bin_id:<6} | {b.bin_type:<10} | {b.label:<13} | {pct:>7.2f}%  [{bar}] |")
+        # MarketBin exposes bin_id; statutory DiscreteBin carries only a 0-based bin_index.
+        bin_id = b.bin_id if hasattr(b, "bin_id") else str(b.bin_index)
+        lines.append(f"| {bin_id:<6} | {b.bin_type:<10} | {b.label:<13} | {pct:>7.2f}%  [{bar}] |")
 
     lines.append("+--------+------------+---------------+--------------------------------+")
     total_p = sum(b.probability for b in record.market_bins) * 100.0
@@ -130,9 +138,10 @@ def _format_bins_table(record: PredictionRecord) -> List[str]:
 
 def format_prediction_report(record: PredictionRecord) -> str:
     """Format rich terminal summary report for the prediction record."""
-    unit = record.market_bins[0].unit if record.market_bins else "C"
+    # Active 10 EMOS & physical bounds operate natively in °F; ZSPD and Phase-1 KDEN EMOS operate in °C.
+    emos_unit = "F" if record.station_id.upper() in ACTIVE_10_STATIONS else "C"
     lines = _format_header(record)
-    lines.extend(_format_emos_and_bounds(record, unit))
+    lines.extend(_format_emos_and_bounds(record, emos_unit))
     lines.extend(_format_bins_table(record))
     return "\n".join(lines)
 
@@ -143,7 +152,15 @@ def run_cli(args: Optional[List[str]] = None) -> int:
     parsed = parser.parse_args(args)
 
     lead_time = parsed.lead_time if parsed.lead_time is not None else (30.0 if parsed.type.lower() == "max" else 24.0)
-    ens_mean = parsed.ens_mean if parsed.ens_mean is not None else (25.0 if parsed.station.upper() == "ZSPD" else 15.0)
+    station_upper = parsed.station.upper()
+    if parsed.ens_mean is not None:
+        ens_mean = parsed.ens_mean
+    elif station_upper in ACTIVE_10_STATIONS:
+        ens_mean = 75.0
+    elif station_upper == "ZSPD":
+        ens_mean = 25.0
+    else:
+        ens_mean = 15.0
 
     registry = ModelRegistry(base_dir=parsed.models_dir)
     pipeline = PredictionPipeline(

@@ -3,7 +3,7 @@
 Meteorological Boundary Risk-Control Stress Tests (风控防熔断测试套件).
 
 Core Focus:
-1. Scenario 1 (Spread Collapse): Zero ensemble variance (S²_ens = 0) must be 100% supported by variance floor.
+1. Scenario 1 (Spread Collapse): Zero ensemble variance (S²_ens = 0) must still yield realistic residual uncertainty via pure EMOS base scale c² without consuming climatology (§3.2(a) & ADR-0015 §2.1).
 2. Scenario 2 (Extreme Tails): Black swan temperature values (-45°C, +45°C) must not produce NaN/Inf/overflow.
 3. Scenario 3 (Forecast Bust): Inverted forecast signals must preserve non-negative physical slope (b >= 0).
 4. Scenario 4 (Hyper-dispersion): Huge ensemble spread (S²_ens > 100) must be tamed by L2 regularization.
@@ -23,29 +23,37 @@ class TestRiskControlBoundaryScenarios:
     """Quantitative risk control and safety boundary test suite."""
 
     def test_scenario_1_spread_collapse_variance_floor_protection(self):
-        """[风控核心] 集合方差完全归零 (S²_ens=0) 时，方差底 100% 承托，防止输出虚假 100% 胜率."""
+        """[风控核心] 集合方差完全归零 (S²_ens=0) 时，纯 EMOS 基础尺度参数 c² 承托残差不确定性，防止方差塌缩至 0 (§3.2(a) & ADR-0015 §2.1)."""
+        np.random.seed(42)
         n = 200
         # 5 members all predict identical values -> ensemble variance is exact 0.0
         ens_mean = np.full(n, 22.0)
         ens_var = np.zeros(n)
-        clim_var = np.full(n, 9.0)  # Climatology std = 3.0°C
+        clim_var = np.full(n, 9.0)  # Retained for signature compatibility only; Level 1 does not consume σ_clim²
         obs = ens_mean + np.random.normal(0, 3.0, n)
 
-        optimizer = EMOSOptimizer(l2_lambda_d=1e-3, random_seed=42)
-        model, diag = optimizer.fit(
+        model, diag = EMOSOptimizer(l2_lambda_d=1e-3, random_seed=42).fit(
             ensemble_mean=ens_mean,
             ensemble_variance=ens_var,
             sigma_clim_squared=clim_var,
             observed_temp=obs,
         )
+        model_zero_clim, _ = EMOSOptimizer(l2_lambda_d=1e-3, random_seed=42).fit(
+            ensemble_mean=ens_mean,
+            ensemble_variance=ens_var,
+            sigma_clim_squared=np.zeros(n),
+            observed_temp=obs,
+        )
 
-        # Compute output variance
+        # Compute output spread under Level 1 pure EMOS (σ² = c² + d² · S²_ens)
         _, pred_sigma = model.compute_params(ens_mean, ens_var, clim_var)
-        pred_variance = pred_sigma ** 2
+        _, pred_sigma_zero_clim = model_zero_clim.compute_params(ens_mean, ens_var, np.zeros(n))
+        emp_resid_std = float(np.std(obs - ens_mean))
 
-        # Assert variance floor is never breached
-        assert np.all(pred_variance >= clim_var)
-        assert np.all(pred_sigma >= 3.0)
+        # Assert spread does not collapse and sigma_clim_squared has zero effect in Level 1
+        assert np.allclose(pred_sigma, abs(model.c))
+        assert np.allclose(pred_sigma, pred_sigma_zero_clim)
+        assert np.all(pred_sigma > 0.8 * emp_resid_std)
         assert diag.health_grade in ["HEALTHY", "WARNING"]
 
     def test_scenario_2_extreme_tails_numerical_stability(self):

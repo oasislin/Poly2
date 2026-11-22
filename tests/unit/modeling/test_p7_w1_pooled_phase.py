@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from src.data_processing.constants import STATION_METADATA
+from src.metrics.calibration_audit import ASOS_PRT_ACCURACY_REDLINE_F
 from scripts.train_p7_w1_pooled_phase import get_cluster
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -71,7 +72,7 @@ def test_pooled_phase_asset_metadata_compliance():
         assert meta.get("lead_hours") == 6
         p = meta.get("params", {})
         assert all(k in p for k in ["a", "b", "c", "d"])
-        assert p["c"] >= 0.90  # ASOS floor
+        assert abs(p["c"]) >= ASOS_PRT_ACCURACY_REDLINE_F  # Post-hoc ASOS 1088 PRT sensor accuracy redline check
 
 
 def test_240_models_inventory_completeness():

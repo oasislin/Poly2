@@ -166,9 +166,9 @@ class TestModelRegistryQueryFacade:
 
         assert isinstance(pred_dist, GaussianEMOS)
         # mu = 0.5 + 0.9 * 10 = 9.5
-        # sigma^2 = 0.04 + 1.0 * 1.0 + 4.0 = 5.04 -> sigma = sqrt(5.04)
+        # ADR-0015 §2.1: sigma^2 = 0.04 + 1.0 * 1.0 = 1.04 -> sigma = sqrt(1.04)
         assert np.isclose(pred_dist.mu, 9.5)
-        assert np.isclose(pred_dist.sigma, np.sqrt(5.04))
+        assert np.isclose(pred_dist.sigma, np.sqrt(1.04))
 
 
 class TestModelRegistryJSONAndManifest:
@@ -403,6 +403,29 @@ class TestModelRegistryJSONAndManifest:
         assert set(df_inv["format"].values) == {"pkl", "json"}
         assert "KORD" in df_inv["station_id"].values
         assert "ZSPD" in df_inv["station_id"].values
+
+    def test_load_model_prefers_pkl_over_json_when_both_exist(self, temp_registry_dir):
+        """Ensure manifest-tracked .pkl takes precedence over stale .json files in load_model()."""
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+        pkl_model = GaussianEMOS(a=10.0, b=0.9, c=1.5, d=0.9)
+        json_model = GaussianEMOS(a=9.5, b=0.9, c=1e-5, d=1e-5)
+
+        registry.save_model(pkl_model, "KMIA", "Summer", "max", 18)
+        registry.save_model_json(json_model, "KMIA", "Summer", "max", 18)
+
+        # Clear in-memory cache so resolution is verified from disk
+        fresh_registry = ModelRegistry(base_dir=temp_registry_dir)
+        loaded_model, meta = fresh_registry.load_model("KMIA", "Summer", "max", 18)
+        assert np.isclose(loaded_model.a, 10.0)
+        assert np.isclose(loaded_model.c, 1.5)
+        assert np.isclose(loaded_model.d, 0.9)
+        assert meta.get("station_id") == "KMIA"
+
+        # Without PKL, load_model still falls back cleanly to JSON
+        fresh_registry.save_model_json(json_model, "KMIA", "Summer", "max", 42)
+        fallback_model, _ = fresh_registry.load_model("KMIA", "Summer", "max", 42)
+        assert np.isclose(fallback_model.a, 9.5)
+        assert np.isclose(fallback_model.c, 1e-5)
 
     def test_pipeline_cli_dry_run(self):
         from src.modeling.pipeline import main

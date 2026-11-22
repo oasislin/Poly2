@@ -105,13 +105,14 @@ class TruncatedProbabilityEngine:
                 if idx not in self._locked_dead_indices:
                     b.probability = float(b.probability / surviving_sum)
         else:
-            # Extreme blowout protection: all exact bins dead -> assign 1.0 to tail
-            if t_type == "max" and len(evaluated_bins) > 0:
-                evaluated_bins[-1].probability = 1.0
-                self._locked_dead_indices.discard(len(evaluated_bins) - 1)
-            elif t_type == "min" and len(evaluated_bins) > 0:
-                evaluated_bins[0].probability = 1.0
-                self._locked_dead_indices.discard(0)
+            # No manual patching: with open-end bins ((-inf, U] and [L, +inf)) the surviving set always
+            # retains a positively-measured open-end bin, so sum(p) == 1 holds by construction after the
+            # conditional re-normalization above. A zero surviving mass therefore means the input bins or
+            # probabilities are inconsistent -> fail closed instead of fabricating mass on a tail bin.
+            raise ValueError(
+                "Truncation left zero surviving probability mass; "
+                "sum(p) == 1 must follow from the open-end bin definition, not from a manual 1.0 patch."
+            )
 
         return TruncationResult(
             bins=evaluated_bins,

@@ -160,20 +160,29 @@ class EMOSOptimizer:
         best_loss = float("inf")
         restarts_used = 0
 
-        # Multi-start loop: Attempt 0 = standard warm start (0,1,0,1) + O(1e-3)
-        # Attempt 1..max_restarts = random perturbations
+        # Multi-start loop: Attempt 0 = residual-scale warm start (avoids c=0 saddle point)
+        # Attempt 1..max_restarts = random perturbations around data residual dispersion
+        resid = obs - ens_mean
+        resid_mean = float(np.mean(resid))
+        resid_std = float(np.std(resid))
+        if resid_std > 0.0:
+            init_c_base = resid_std
+        else:
+            obs_std = float(np.std(obs))
+            init_c_base = obs_std if obs_std > 0.0 else float(np.sqrt(max(float(np.mean(ens_var)), 1e-6)))
+
         total_attempts = 1 + self.max_restarts
         for attempt in range(total_attempts):
             if attempt == 0:
-                # Physics warm start with tiny 1e-3 perturbation
-                init_p = np.array([0.0, 1.0, 0.0, 1.0]) + self._rng.normal(0, 1e-3, 4)
+                # Data-driven warm start (zero hardcoded thresholds; avoids c=0 gradient saddle)
+                init_p = np.array([resid_mean, 1.0, init_c_base, 1.0]) + self._rng.normal(0, 1e-3, 4)
             else:
-                # Restart with slightly larger perturbation
+                # Restart with scale-aware random perturbations
                 restarts_used += 1
                 init_p = np.array([
-                    self._rng.uniform(-1.0, 1.0),
+                    resid_mean + self._rng.uniform(-1.0, 1.0),
                     self._rng.uniform(0.8, 1.2),
-                    self._rng.uniform(-0.5, 0.5),
+                    self._rng.uniform(0.5 * init_c_base, 1.5 * init_c_base),
                     self._rng.uniform(0.5, 1.5),
                 ])
 

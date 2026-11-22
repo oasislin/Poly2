@@ -12,7 +12,7 @@ Statutory Principles (Pre-Registration Spec b607cc60...e9247):
    - 800 STATUTORY_TRADING_MASTER nodes (independently fit or pooled if N < 100)
    - 160 AUXILIARY_POOLED_FALLBACK nodes (auxiliary for continuity & CV diagnosis)
 3. Granularity Architecture:
-   - EMOS: Station x Season x Lead Time (c >= 0.90°F floor, d >= 0)
+   - EMOS: Station x Season x Lead Time (c unconstrained via c^2 parameterization, d >= 0; data-driven residual std init)
    - Causal Trailing Bias: Station x Daily (shift(1).rolling(30))
    - Variance Factor c_train: Station x Season (~1,735 days per season)
    - Shape Layer: Station x Season (Fisher excess kurtosis, Delta_BIC < -10, EVT tie-breaker)
@@ -32,7 +32,7 @@ import math
 from pathlib import Path
 import pickle
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -41,8 +41,9 @@ from scipy import integrate, optimize, stats
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.modeling.crps import emos_crps_loss
 from src.modeling.gaussian_emos import GaussianEMOS
-from src.utils.airgap import verify_year_whitelist
+from src.utils.airgap import enforce_training_dataframe_seal, enforce_training_year_seal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("p4_retrain")
@@ -57,7 +58,6 @@ GHCN_DIR = PROJECT_ROOT / "data" / "processed" / "truth_ghcn_daily"
 MODELS_DIR = PROJECT_ROOT / "data" / "models"
 ARCHIVE_DIR = MODELS_DIR / "archive_legacy_20260920"
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
-SIGMA_INST_PHYSICAL_FLOOR = 0.90  # NOAA ASOS PRT floor
 
 
 def compute_sha256(file_path: Path) -> str:
@@ -92,9 +92,12 @@ def identify_statutory_master_keys() -> set:
     return statutory_keys
 
 
-def load_station_training_data(station: str, years: range = range(2000, 2019)) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Load 2000-2018 GHCN observations and GEFS forecast factors."""
-    verify_year_whitelist(years, f"load_station_training_data({station})")
+def load_station_training_data(
+    station: str,
+    years: Iterable[int] = range(2000, 2019),
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Load 2000-2018 GHCN observations and GEFS forecast factors (2019+ unconditionally sealed)."""
+    validated_years = enforce_training_year_seal(years, f"retrain_p4_active10_matrix.load_station_training_data({station})")
 
     # Load GHCN truth
     ghcn_file = GHCN_DIR / f"{station}.parquet"
@@ -103,20 +106,33 @@ def load_station_training_data(station: str, years: range = range(2000, 2019)) -
 
     df_ghcn = pd.read_parquet(ghcn_file)
     df_ghcn["target_date"] = pd.to_datetime(df_ghcn["target_date"]).dt.date
-    df_ghcn = df_ghcn[df_ghcn["year"].isin(years)].copy()
+    df_ghcn = df_ghcn[df_ghcn["year"].isin(validated_years)].copy()
+    enforce_training_dataframe_seal(
+        df_ghcn,
+        year_col="year",
+        date_col="target_date",
+        source_description=f"retrain_p4_active10_matrix.GHCN({station})",
+    )
     df_ghcn["station"] = station
     df_ghcn["month"] = pd.to_datetime(df_ghcn["target_date"]).apply(lambda d: d.month)
     df_ghcn["season"] = df_ghcn["month"].apply(get_season)
 
     # Load GEFS factors
     gefs_frames = []
-    for y in years:
+    for y in validated_years:
         gefs_file = DATA_DIR / "gefs_factors" / station / f"{y}.parquet"
         if not gefs_file.exists():
             continue
         gefs_frames.append(pd.read_parquet(gefs_file))
 
     df_gefs = pd.concat(gefs_frames, ignore_index=True)
+    if "init_date" in df_gefs.columns:
+        enforce_training_dataframe_seal(
+            df_gefs,
+            year_col=None,
+            date_col="init_date",
+            source_description=f"retrain_p4_active10_matrix.GEFS_init({station})",
+        )
     df_gefs["target_date"] = pd.to_datetime(df_gefs["target_date"]).dt.date
     df_gefs["temp_f"] = (df_gefs["value_K"] - 273.15) * 1.8 + 32.0
 
@@ -149,20 +165,26 @@ def extract_cell_dataset(
     ).reset_index()
 
     merged = pd.merge(obs_sub, ens_stats, on="target_date", how="inner").dropna()
+    enforce_training_dataframe_seal(
+        merged,
+        year_col=None,
+        date_col="target_date",
+        source_description=f"retrain_p4_active10_matrix.extract_cell_dataset({season},{variable},{lead_hour})",
+    )
     return merged.sort_values("target_date").reset_index(drop=True)
 
 
 def fit_emos_cell(
     cell_df: pd.DataFrame,
     adjacent_df: Optional[pd.DataFrame] = None,
-    sigma_floor: float = SIGMA_INST_PHYSICAL_FLOOR,
 ) -> Tuple[Tuple[float, float, float, float], str, int]:
     """
-    Fits EMOS (a, b, c, d) with c >= sigma_floor and d >= 0.
+    Fits EMOS (a, b, c, d) with squared-scale parameterization (c >= 0, d >= 0) and
+    residual-std initialization (zero hardcoded parameter floor).
     Applies cascade fallback:
     - Level 0: Independent fit (N >= 100)
     - Level 1: Adjacent lead pooling (N < 100)
-    - Level 3: Prior physical baseline fallback
+    - Level 3: Data-driven residual fallback
     """
     n_samples = len(cell_df)
     training_data = cell_df
@@ -175,35 +197,46 @@ def fit_emos_cell(
             fallback_status = "POOLED-FALLBACK"
             fallback_level = 1
         else:
-            # Level 3 prior baseline
-            return (0.0, 1.0, sigma_floor, 0.1), "POOLED-FALLBACK-L3", 3
+            # Level 3 data-driven residual baseline (zero hardcoded threshold)
+            if n_samples > 0:
+                fb_resid = cell_df["obs_temp_f"].to_numpy(dtype=np.float64) - cell_df["ens_mean"].to_numpy(dtype=np.float64)
+                fb_a = float(np.mean(fb_resid))
+                fb_c = float(np.std(fb_resid))
+                if fb_c <= 0.0:
+                    fb_c = float(np.sqrt(max(float(np.mean(cell_df["ens_var"])), 1e-6)))
+                return (fb_a, 1.0, fb_c, 0.1), "POOLED-FALLBACK-L3", 3
+            return (0.0, 1.0, 1.0, 0.1), "POOLED-FALLBACK-L3", 3
 
     ens_m = training_data["ens_mean"].to_numpy(dtype=np.float64)
     ens_v = training_data["ens_var"].to_numpy(dtype=np.float64)
     y_true = training_data["obs_temp_f"].to_numpy(dtype=np.float64)
+    zero_clim = np.zeros_like(ens_m)
 
     def crps_loss(params):
-        a, b, c, d = params
-        mu = a + b * ens_m
-        var = (c ** 2) + (d ** 2) * ens_v
-        sig = np.maximum(1e-6, np.sqrt(var))
-        z = (y_true - mu) / sig
-        crps = sig * (z * (2 * stats.norm.cdf(z) - 1) + 2 * stats.norm.pdf(z) - 1.0 / np.sqrt(np.pi))
-        return float(np.mean(crps))
+        return emos_crps_loss(
+            params=params,
+            ensemble_mean=ens_m,
+            ensemble_variance=ens_v,
+            sigma_clim_squared=zero_clim,
+            observed_temp=y_true,
+            l2_lambda_d=0.0,
+        )
 
-    init_a = float(np.mean(y_true) - np.mean(ens_m))
+    resid = y_true - ens_m
+    init_a = float(np.mean(resid))
     init_b = 1.0
-    init_c = float(max(sigma_floor, np.std(y_true - ens_m)))
+    resid_std = float(np.std(resid))
+    init_c = resid_std if resid_std > 0.0 else float(np.sqrt(max(float(np.mean(ens_v)), 1e-6)))
     init_d = 0.5
-    bounds = [(-50.0, 50.0), (0.0, 3.0), (sigma_floor, 20.0), (0.0, 3.0)]
+    bounds = [(-50.0, 50.0), (0.0, 3.0), (0.0, 20.0), (0.0, 3.0)]
 
-    # Statutory 5-Guess Multi-Start Grid (Patch 8, Zero Random Sources)
+    # Statutory 5-Guess Multi-Start Grid (Data-Driven c Init, Zero Hardcoded 0.90 Floor)
     guesses = [
         [init_a, init_b, init_c, init_d],
         [0.0, 1.0, 2.0, 0.5],
         [-2.0, 1.05, 3.0, 0.8],
         [2.0, 0.95, 1.5, 0.3],
-        [init_a * 0.5, 1.0, sigma_floor, 0.2],
+        [init_a * 0.5, 1.0, max(0.5 * init_c, 1e-3), 0.2],
     ]
 
     best_res = None
@@ -228,17 +261,17 @@ def fit_emos_cell(
         params = tuple(float(x) for x in best_res.x)
         return params, fallback_status, fallback_level
 
-    return (0.0, 1.0, sigma_floor, 0.1), "POOLED-FALLBACK-L3", 3
+    return (init_a, 1.0, init_c, 0.1), "POOLED-FALLBACK-L3", 3
 
 
-def main() -> int:
+def main(years: Iterable[int] = range(2000, 2019)) -> int:
     logger.info("================================================================================")
     logger.info("  STARTING P4 ACTIVE 10 960-MODEL MATRIX STATUTORY MULTI-START RETRAINING       ")
     logger.info("  Spec SHA-256: a3cb995498df538f641f07d3dacbf56ad5b7f2d7b9070e047baab47b2b8a4fb3")
     logger.info("================================================================================")
 
-    # 1. Enforce Airgap
-    verify_year_whitelist(range(2000, 2019), "P4 Retraining Script Main Entry")
+    # 1. Enforce Training-Only Airgap (bypasses OOS authorization flag unconditionally)
+    validated_years = enforce_training_year_seal(years, "P4 Retraining Script Main Entry")
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     statutory_master_keys = identify_statutory_master_keys()
@@ -258,8 +291,8 @@ def main() -> int:
 
     # Process Station by Station
     for st_idx, station in enumerate(STATIONS, 1):
-        logger.info("\n[%d/10] Processing Station: %s (2000-2018 Training Window)...", st_idx, station)
-        df_ghcn, df_gefs = load_station_training_data(station)
+        logger.info("\n[%d/10] Processing Station: %s (%d-%d Training Window)...", st_idx, station, validated_years[0], validated_years[-1])
+        df_ghcn, df_gefs = load_station_training_data(station, years=validated_years)
 
         st_seasonal_c_train: Dict[str, float] = {}
         st_shape_calibrations: Dict[str, Any] = {}
@@ -279,7 +312,7 @@ def main() -> int:
             a, b, c, d = ref_params
 
             cell_18h["mu_raw"] = a + b * cell_18h["ens_mean"]
-            cell_18h["sig_raw"] = np.sqrt(np.maximum(SIGMA_INST_PHYSICAL_FLOOR ** 2, (c ** 2) + (d ** 2) * cell_18h["ens_var"]))
+            cell_18h["sig_raw"] = np.sqrt(np.maximum(1e-8, (c ** 2) + (d ** 2) * cell_18h["ens_var"]))
             cell_18h["resid_raw"] = cell_18h["obs_temp_f"] - cell_18h["mu_raw"]
 
             # Causal trailing bias
@@ -572,6 +605,7 @@ def main() -> int:
     # -------------------------------------------------------------------------
     # Step D: Produce Anchor Reconciliation Report (P4 vs Round 3)
     # -------------------------------------------------------------------------
+    min_c_natural = min(abs(m["params"]["c"]) for m in retrained_manifest_models.values())
     reconciliation_report = f"""# P4 Active 10 960 格模型重训与历史锚点三维对账报告
 
 - **执行脚本**: `scripts/retrain_p4_active10_matrix.py`
@@ -586,7 +620,7 @@ def main() -> int:
 - **重训模型总数**: **`960`**
 - **法定交易主节点 (STATUTORY_TRADING_MASTER)**: **`800`** (独立拟合: {independent_count}, 级联池化: {pooled_fallback_count})
 - **补全辅助节点 (AUXILIARY_POOLED_FALLBACK)**: **`160`**
-- **物理底座约束**: $c \\ge 0.90^\\circ\\text{{F}}$ 100% 满足，无方差坍缩
+- **自然收敛参数 $\\min |c|$**: `{min_c_natural:.4f}°F`（训练期无 $c$ 下界硬约束；事后对照 ASOS 1088 PRT 传感器精度红线 $0.90^\\circ\\text{{F}}$ 核验噪声拟合风险）
 
 ---
 
@@ -628,4 +662,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import argparse
+
+    parser = argparse.ArgumentParser(description="P4 Active 10 960-Model Matrix Retraining (2000-2018 sealed).")
+    parser.add_argument("--train-start-year", type=int, default=2000)
+    parser.add_argument("--train-end-year", type=int, default=2018)
+    cli_args = parser.parse_args()
+    sys.exit(main(years=range(cli_args.train_start_year, cli_args.train_end_year + 1)))

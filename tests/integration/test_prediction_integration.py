@@ -65,6 +65,14 @@ def setup_models_and_db(tmp_path):
         target_type="min",
         lead_hours=24,
     )
+    # 5. KMIA Summer Max 30h (Active 10 native °F)
+    registry.save_model(
+        model=GaussianEMOS(a=2.89, b=1.0, c=1.5, d=0.7),
+        station_id="KMIA",
+        season="Summer",
+        target_type="max",
+        lead_hours=30,
+    )
 
     return {
         "models_dir": models_dir,
@@ -140,6 +148,36 @@ class TestPredictionCLIIntegration:
         assert any("°F" in lbl for lbl in labels)
         total_p = sum(json_output["bin_probabilities"].values())
         assert np.isclose(total_p, 1.0, atol=1e-5)
+
+    def test_cli_active10_kmia_native_fahrenheit_run(self, setup_models_and_db, capsys):
+        """Run CLI prediction for Active 10 station KMIA in native °F (no double °C->°F conversion)."""
+        args = [
+            "--station", "KMIA",
+            "--date", "2019-07-15",
+            "--type", "max",
+            "--lead-time", "30",
+            "--ens-mean", "85.0",
+            "--ens-var", "2.0",
+            "--current-temp", "86.0",
+            "--obs-time", "12:00",
+            "--models-dir", str(setup_models_and_db["models_dir"]),
+            "--db-path", str(setup_models_and_db["db_path"]),
+            "--no-save-db",
+        ]
+
+        exit_code = run_cli(args)
+        assert exit_code == 0
+
+        captured = capsys.readouterr()
+        assert "KMIA (Miami International Airport)" in captured.out
+        assert "87.89°F" in captured.out  # mu = 2.89 + 1.0 * 85.0 = 87.89°F
+        assert "T_now:        86.00°F" in captured.out
+        assert "Reachable:    [86.00°F, 104.90°F]" in captured.out  # irreversible max: [T_now, T_now + 6.3*3.0]
+        assert "86-88°F" in captured.out
+        assert "88-90°F" in captured.out
+        assert "188-" not in captured.out
+        assert "190-" not in captured.out
+        assert "Total Probability Sum: 100.0000%" in captured.out
 
     def test_multi_station_batch_integration(self, setup_models_and_db):
         """Test multi-station batch inference through PredictionPipeline."""

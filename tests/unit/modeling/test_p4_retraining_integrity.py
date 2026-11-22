@@ -24,8 +24,8 @@ from scripts.retrain_p4_active10_matrix import (
     EVIDENCE_DIR,
     STATIONS,
     SEASONS,
-    SIGMA_INST_PHYSICAL_FLOOR,
 )
+from src.metrics.calibration_audit import ASOS_PRT_ACCURACY_REDLINE_F
 
 # Round 3 Historical Baseline Anchors (18h TMAX OOS)
 ROUND3_ANCHORS = {
@@ -74,7 +74,14 @@ def test_p4_universe_960_node_completeness():
 
 
 def test_p4_per_cell_physical_floors_and_no_interpolation():
-    """断言 2: 逐格 c_train >= 0.90, 逐格 EMOS c >= 0.90 与逐格 is_interpolated = False 断言."""
+    """断言 2: 逐格 c_train >= 0.90°F 事后 ASOS 精度红线核验，params.c 非负无训练下限约束 (SPEC v2.0#L184)，与逐格 is_interpolated = False.
+
+    Note (`P8-WO-20261122-S206-CODE-CLOSE-R2`): Legacy optimization-floor assertions required
+    |params.c| >= 0.90°F and global min(|params.c|) >= 1.20. Per `P8-ALGO-DEF-SPEC v2.0#L184`,
+    EMOS variance intercept `c` is unconstrained (c >= 0.0) during training so spread `d*s^2` can
+    carry predictive uncertainty naturally, while the post-hoc ASOS 1088 PRT accuracy redline
+    (0.90°F) is enforced strictly on `c_train`.
+    """
     manifest_path = MODELS_DIR / "manifest.json"
     with open(manifest_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -93,13 +100,19 @@ def test_p4_per_cell_physical_floors_and_no_interpolation():
             obj = pickle.load(f)
         meta = obj["metadata"]
         interpolated_flags.append(meta.get("is_interpolated", False))
-        assert meta["params"]["c"] >= SIGMA_INST_PHYSICAL_FLOOR, f"EMOS c floor violation: {rel_path}"
-        assert meta["c_train"] >= SIGMA_INST_PHYSICAL_FLOOR, f"c_train floor violation: {rel_path}"
+        assert meta["params"]["c"] >= 0.0, (
+            f"EMOS variance intercept c became negative under unconstrained spec: {rel_path}"
+        )
+        assert meta["c_train"] >= ASOS_PRT_ACCURACY_REDLINE_F, (
+            f"c_train below ASOS 1088 PRT accuracy redline {ASOS_PRT_ACCURACY_REDLINE_F}: {rel_path}"
+        )
 
     min_c_train = min(c_train_vals)
     min_emos_c = min(emos_c_vals)
-    assert min_c_train >= 0.90, f"Global min c_train {min_c_train} < 0.90"
-    assert min_emos_c >= 0.90, f"Global min EMOS c {min_emos_c} < 0.90"
+    assert min_c_train >= ASOS_PRT_ACCURACY_REDLINE_F, (
+        f"Global min c_train {min_c_train} < {ASOS_PRT_ACCURACY_REDLINE_F}"
+    )
+    assert min_emos_c >= 0.0, f"Global min EMOS c {min_emos_c} < 0.0"
     assert not any(interpolated_flags), "Found interpolated model in 960 matrix!"
 
 
@@ -180,22 +193,28 @@ def test_p4_anchor_three_stations_mean_layer_invariance():
 
 
 def test_p4_no_optimizer_boundary_stall():
-    """断言 6: 优化器边界死锁全网格哨兵 (零触碰 1.35 截断上限，零趴死 0.90 底座)."""
+    """断言 6: 优化器边界与噪声拟合哨兵 (零触碰 1.35 截断上限，c_train 事后 ASOS 精度红线 >= 0.90°F，EMOS c 无下限约束 >= 0.0).
+
+    Note (`P8-WO-20261122-S206-CODE-CLOSE-R2`): Legacy `min(|params.c|) >= 1.20` guarded an
+    obsolete optimizer floor removed by `P8-ALGO-DEF-SPEC v2.0#L184` (`c` unconstrained in
+    training). Post-hoc ASOS 1088 PRT accuracy redline (>= 0.90°F) applies to `c_train`.
+    """
     manifest_path = MODELS_DIR / "manifest.json"
     with open(manifest_path, "r", encoding="utf-8") as f:
         mf = json.load(f)
 
     c_trains = [m["c_train"] for m in mf["models"].values()]
-    emos_c_vals = [m["params"]["c"] for m in mf["models"].values()]
+    emos_c_vals = [abs(m["params"]["c"]) for m in mf["models"].values()]
 
-    # 1. Assert all 960 cells are strictly below 1.35 (distance > 0.01)
+    # 1. Assert all cells are strictly below 1.35 (distance > 0.01)
     boundary_touches = sum(c >= 1.34 for c in c_trains)
     assert boundary_touches == 0, f"Found {boundary_touches} models stalled at 1.35 ceiling!"
 
-    # 2. Assert all 960 cells have EMOS c strictly above 0.90 (distance > 0.05)
-    floor_stalls = sum(c <= 0.95 for c in emos_c_vals)
-    assert floor_stalls == 0, f"Found {floor_stalls} models stalled at 0.90 floor!"
-    assert min(emos_c_vals) >= 1.20, f"Global min EMOS c {min(emos_c_vals)} is unexpectedly low"
+    # 2. Post-hoc ASOS 1088 PRT accuracy redline audit: zero noise-fitting alarms on c_train below 0.90°F
+    redline_alarms = sum(c < ASOS_PRT_ACCURACY_REDLINE_F for c in c_trains)
+    assert redline_alarms == 0, f"Found {redline_alarms} models with c_train below {ASOS_PRT_ACCURACY_REDLINE_F}°F ASOS PRT accuracy redline!"
+    assert min(c_trains) >= ASOS_PRT_ACCURACY_REDLINE_F, f"Global min c_train {min(c_trains)} < {ASOS_PRT_ACCURACY_REDLINE_F}"
+    assert min(emos_c_vals) >= 0.0, f"Global min EMOS c {min(emos_c_vals)} < 0.0"
 
 
 def test_p4_multistart_determinism():

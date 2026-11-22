@@ -361,29 +361,29 @@ class ModelRegistry:
         target_type: str,
         lead_hours: int,
     ) -> Tuple[GaussianEMOS, Dict[str, Any]]:
-        """Load a persisted model and its metadata from disk/cache (JSON-first with PKL fallback)."""
-        # 1. Try loading JSON format first
-        try:
-            return self.load_model_json(station_id, season, target_type, lead_hours)
-        except FileNotFoundError:
-            pass
-
-        # 2. Fallback to legacy PKL format
+        """Load a persisted model and its metadata from disk/cache (PKL-first with JSON fallback)."""
+        # 1. Try loading PKL format first (manifest-tracked production track)
         filename = self.format_model_filename(station_id, season, target_type, lead_hours)
         if filename in self._cache:
             return self._cache[filename]
 
         file_path = self.base_dir / filename
-        if not file_path.exists():
-            raise FileNotFoundError(f"Model file not found (tried JSON and PKL): {filename}")
+        if file_path.exists():
+            with open(file_path, "rb") as f:
+                payload = pickle.load(f)
 
-        with open(file_path, "rb") as f:
-            payload = pickle.load(f)
+            model: GaussianEMOS = payload["model"]
+            metadata: Dict[str, Any] = payload.get("metadata", {})
+            self._cache[filename] = (model, metadata)
+            return model, metadata
 
-        model: GaussianEMOS = payload["model"]
-        metadata: Dict[str, Any] = payload.get("metadata", {})
-        self._cache[filename] = (model, metadata)
-        return model, metadata
+        # 2. Fallback to legacy JSON format if PKL is absent
+        try:
+            return self.load_model_json(station_id, season, target_type, lead_hours)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"Model file not found (tried PKL and JSON): {filename}"
+            ) from exc
 
     def save_scorecard(
         self,

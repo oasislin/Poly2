@@ -11,6 +11,8 @@ from src.utils.airgap import (
     AUTHORIZATION_FLAG_FILE,
     REQUIRED_GATE_FIELDS,
     AirgapViolationError,
+    enforce_training_dataframe_seal,
+    enforce_training_year_seal,
     filter_safe_years,
     get_sanitization_audit_log,
     is_2019_authorized,
@@ -151,3 +153,82 @@ def test_airgap_requires_embedded_gate_thresholds_in_flag(tmp_path, monkeypatch)
     # Now allowed
     verify_year_whitelist(2019)
     verify_file_path("data/processed/calib-dataset-v2.0/gefs_factors/KORD/2019.parquet")
+
+
+def test_training_seal_blocks_2019_even_when_oos_flag_authorized(tmp_path, monkeypatch):
+    """Verify training seal unconditionally rejects 2019+ even when flag STATUS=AUTHORIZED."""
+    valid_flag = {
+        "preregistration_id": "PR-2026-001",
+        "authorized_by": "Review Committee",
+        "allowed_scope": ["KORD", "KMIA"],
+        "frozen_gate_thresholds": {
+            "ks_p_value_min": 0.05,
+            "weighted_ece_7bin_max": 0.05,
+            "variance_ratio_s_oos_bounds": [0.85, 1.15],
+            "pit_mean_bounds": [0.46, 0.54],
+            "coverage_90_bounds": [0.83, 0.95],
+        },
+        "status": "AUTHORIZED",
+    }
+    test_auth_path = tmp_path / "preregistered_2019_authorization.flag"
+    test_auth_path.write_text(json.dumps(valid_flag), encoding="utf-8")
+    monkeypatch.setattr("src.utils.airgap.AUTHORIZATION_FLAG_FILE", test_auth_path)
+
+    # OOS path permits 2019 under authorized flag (invariant preserved)
+    assert is_2019_authorized() is True
+    verify_year_whitelist(2019, source_description="oos_readonly_check")
+
+    # Training seal MUST reject 2019+ and out-of-window years unconditionally
+    assert enforce_training_year_seal(range(2000, 2019), "valid_train") == list(range(2000, 2019))
+    for bad_years in ([2019], range(2000, 2020), 2019, [2020], [1999], []):
+        with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+            enforce_training_year_seal(bad_years, source_description="unit_test")
+
+    df_bad_year = pd.DataFrame({"year": [2018, 2019], "target_date": ["2018-12-31", "2019-01-01"]})
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        enforce_training_dataframe_seal(df_bad_year, source_description="df_bad_year")
+
+    df_bad_date = pd.DataFrame({"target_date": ["2018-12-31", "2019-01-01"], "val": [1.0, 2.0]})
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        enforce_training_dataframe_seal(df_bad_date, year_col=None, date_col="target_date")
+
+
+def test_retraining_entrypoints_reject_2019_under_live_authorized_flag():
+    """Verify all training entrypoints and loaders reject 2019 under active AUTHORIZED flag."""
+    from scripts import fit_training_variance_factors, retrain_p4_active10_matrix, train_p7_w1_pooled_phase
+    from src.modeling.matrix_trainer import MatrixTrainer
+
+    if AUTHORIZATION_FLAG_FILE.exists():
+        assert is_2019_authorized() is True
+
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        retrain_p4_active10_matrix.load_station_training_data("KORD", years=[2019])
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        retrain_p4_active10_matrix.main(years=range(2000, 2020))
+
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        train_p7_w1_pooled_phase.load_station_training_data("KORD", years=[2019])
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        train_p7_w1_pooled_phase.retrain_phase_matrix(years=range(2000, 2020))
+
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        fit_training_variance_factors.load_station_training_data("KORD", years=[2019])
+
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        MatrixTrainer(stations=["KORD"], train_start_year=2000, train_end_year=2019)
+
+    trainer = MatrixTrainer(stations=["KORD"], train_start_year=2000, train_end_year=2018)
+    df_slice_2019 = pd.DataFrame({
+        "target_date": ["2019-07-32"] * 5,
+        "ensemble_mean": [80.0] * 5,
+        "ensemble_variance": [2.0] * 5,
+        "observed_temp": [80.0] * 5,
+    })
+    with pytest.raises(AirgapViolationError, match="TRAINING AIRGAP VIOLATION"):
+        trainer.train_slice("KORD", "Summer", "max", 24, df_slice_2019)
+
+    # Legitimate 2018 load (whose GEFS parquet includes Dec 29-31 inits with 2019-01-01..03 targets) still succeeds
+    df_ghcn, df_gefs = retrain_p4_active10_matrix.load_station_training_data("KORD", years=[2018])
+    cell_df = retrain_p4_active10_matrix.extract_cell_dataset(df_ghcn, df_gefs, "Winter", "Max", 72)
+    assert not cell_df.empty
+    assert pd.to_datetime(cell_df["target_date"]).dt.year.max() == 2018

@@ -18,8 +18,10 @@ from scipy import stats
 
 logger = logging.getLogger("poly.metrics.calibration_audit")
 
-# NOAA ASOS 1088 PRT Sensor Accuracy specification (1998 §3.1.1): +/-0.9°F (+/-0.5°C)
-SIGMA_INST_PHYSICAL_FLOOR = 0.9  # Physical instrument uncertainty floor in °F
+# NOAA ASOS 1088 PRT Sensor Accuracy redline (1998 §3.1.1): +/-0.90°F (+/-0.5°C).
+# Retained strictly as a post-hoc verification / noise-fitting alarm redline (NOT a training optimizer floor).
+ASOS_PRT_ACCURACY_REDLINE_F = 0.90
+SIGMA_INST_PHYSICAL_FLOOR = ASOS_PRT_ACCURACY_REDLINE_F  # Backward-compatible alias for verification scripts
 
 
 class StatisticalClosureError(Exception):

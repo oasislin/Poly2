@@ -88,7 +88,8 @@ def emos_crps_loss(
         params: (a, b, c, d) EMOS calibration parameters.
         ensemble_mean: Forecast ensemble mean array.
         ensemble_variance: Forecast ensemble variance array.
-        sigma_clim_squared: Climatological variance floor array.
+        sigma_clim_squared: Retained only for call-site compatibility. Its additive contribution
+            was permanently abolished by ADR-0015 §2.1; the value is NOT consumed here.
         observed_temp: True observed temperature array.
         l2_lambda_d: L2 regularization coefficient for parameter d.
 
@@ -99,12 +100,11 @@ def emos_crps_loss(
 
     ens_mean = np.asarray(ensemble_mean, dtype=np.float64)
     ens_var = np.maximum(0.0, np.asarray(ensemble_variance, dtype=np.float64))
-    clim_var = np.maximum(0.0, np.asarray(sigma_clim_squared, dtype=np.float64))
     y = np.asarray(observed_temp, dtype=np.float64)
 
-    # Link functions: μ = a + b * T̄_ens, σ² = c² + d² * S²_ens + σ²_clim
+    # Link functions (ADR-0015 §2.1): μ = a + b * T̄_ens, σ² = c² + d² * S²_ens
     mu = a + b * ens_mean
-    variance = (c ** 2) + (d ** 2) * ens_var + clim_var
+    variance = (c ** 2) + (d ** 2) * ens_var
     variance = np.maximum(1e-8, variance)
     sigma = np.sqrt(variance)
 

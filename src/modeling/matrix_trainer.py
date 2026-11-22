@@ -23,6 +23,7 @@ from src.modeling.degradation import DegradationDecision, DegradationHandler
 from src.modeling.emos_trainer import EMOSOptimizer, ModelTrainingDiagnostics
 from src.modeling.gaussian_emos import GaussianEMOS
 from src.modeling.partitioner import DatasetPartitioner, SEASONS
+from src.utils.airgap import enforce_training_dataframe_seal, enforce_training_year_seal
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,10 @@ class MatrixTrainer:
         self.storage_manager = storage_manager
         self.climatology_calculator = climatology_calculator
         self.stations = list(stations if stations is not None else ACTIVE_10_STATIONS)
+        enforce_training_year_seal(
+            range(train_start_year, train_end_year + 1),
+            source_description="MatrixTrainer.__init__",
+        )
         self.train_start_year = train_start_year
         self.train_end_year = train_end_year
         self.l2_lambda_d = l2_lambda_d
@@ -154,6 +159,38 @@ class MatrixTrainer:
     ) -> Tuple[GaussianEMOS, ModelTrainingDiagnostics, DegradationDecision]:
         """Train a single EMOS model for one specific matrix partition slice."""
         n_samples = len(df_slice)
+        if not df_slice.empty:
+            src_desc = f"MatrixTrainer.train_slice({station_id},{season},{target_type},{lead_bucket})"
+            year_col = "year" if "year" in df_slice.columns else None
+            date_col = "target_date" if "target_date" in df_slice.columns else None
+            if year_col is not None or date_col is not None:
+                try:
+                    enforce_training_dataframe_seal(
+                        df_slice,
+                        year_col=year_col,
+                        date_col=date_col,
+                        source_description=src_desc,
+                    )
+                except (ValueError, TypeError):
+                    extracted_years = set()
+                    if year_col is not None:
+                        extracted_years.update(
+                            int(y) for y in pd.Series(df_slice[year_col]).dropna().astype(int).unique()
+                        )
+                    if date_col is not None:
+                        parsed_dt = pd.to_datetime(df_slice[date_col], errors="coerce")
+                        extracted_years.update(
+                            int(y) for y in parsed_dt.dt.year.dropna().astype(int).unique()
+                        )
+                        unparsed = df_slice.loc[parsed_dt.isna(), date_col].dropna().astype(str)
+                        for pattern in (r"^\s*(\d{4})(?:\D|$)", r"(?<!\d)(19\d{2}|20\d{2})(?!\d)"):
+                            tokens = unparsed.str.extract(pattern, expand=False).dropna().unique()
+                            extracted_years.update(int(y) for y in tokens)
+                    if extracted_years:
+                        enforce_training_year_seal(
+                            sorted(extracted_years),
+                            source_description=src_desc,
+                        )
 
         if n_samples < self.degradation_handler.min_sample_count:
             # Insufficient samples -> construct identity model and degrade to Level 2

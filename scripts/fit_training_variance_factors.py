@@ -25,7 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.metrics.calibration_audit import SIGMA_INST_PHYSICAL_FLOOR
-from src.utils.airgap import verify_year_whitelist
+from src.utils.airgap import enforce_training_dataframe_seal, enforce_training_year_seal
 
 STATIONS = [
     "KORD", "KLGA", "KATL", "KDAL", "KSEA",
@@ -56,14 +56,22 @@ def get_season(month: int) -> str:
 
 
 def load_station_training_data(station: str, years: range = range(2000, 2019)) -> pd.DataFrame:
-    verify_year_whitelist(years, f"load_station_training_data({station})")
+    validated_years = enforce_training_year_seal(
+        years, f"fit_training_variance_factors.load_station_training_data({station})"
+    )
     ghcn_file = GHCN_DIR / f"{station}.parquet"
     if not ghcn_file.exists():
         raise FileNotFoundError(f"GHCN truth file {ghcn_file} not found!")
 
     df_ghcn = pd.read_parquet(ghcn_file)
     df_ghcn["target_date"] = pd.to_datetime(df_ghcn["target_date"]).dt.date
-    df_ghcn = df_ghcn[df_ghcn["year"].isin(years)].copy()
+    df_ghcn = df_ghcn[df_ghcn["year"].isin(validated_years)].copy()
+    enforce_training_dataframe_seal(
+        df_ghcn,
+        year_col="year",
+        date_col="target_date",
+        source_description=f"fit_training_variance_factors.GHCN({station})",
+    )
     obs_clean = df_ghcn[["target_date", "tmax_f"]].rename(
         columns={"tmax_f": "obs_tmax_f"}
     ).dropna()
@@ -73,11 +81,18 @@ def load_station_training_data(station: str, years: range = range(2000, 2019)) -
     obs_clean["season"] = obs_clean["month"].apply(get_season)
 
     gefs_frames = []
-    for year in years:
+    for year in validated_years:
         gefs_file = DATA_DIR / "gefs_factors" / station / f"{year}.parquet"
         if not gefs_file.exists():
             continue
         df_gefs = pd.read_parquet(gefs_file)
+        if "init_date" in df_gefs.columns:
+            enforce_training_dataframe_seal(
+                df_gefs,
+                year_col=None,
+                date_col="init_date",
+                source_description=f"fit_training_variance_factors.GEFS_init({station},{year})",
+            )
         df_gefs["target_date"] = pd.to_datetime(df_gefs["target_date"]).dt.date
         tmax_18h = df_gefs[(df_gefs["variable"] == "tmax") & (df_gefs["lead_hours"] == 18)].copy()
         tmax_18h["temp_f"] = (tmax_18h["value_K"] - 273.15) * 1.8 + 32.0
@@ -90,6 +105,12 @@ def load_station_training_data(station: str, years: range = range(2000, 2019)) -
 
     all_gefs = pd.concat(gefs_frames, ignore_index=True)
     merged = pd.merge(obs_clean, all_gefs, on="target_date", how="inner").dropna()
+    enforce_training_dataframe_seal(
+        merged,
+        year_col=None,
+        date_col="target_date",
+        source_description=f"fit_training_variance_factors.merged({station})",
+    )
     return merged.sort_values("target_date").reset_index(drop=True)
 
 

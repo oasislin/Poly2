@@ -106,3 +106,14 @@ class TestTruncatedProbabilityEngine:
         for b in res.bins[:-1]:
             assert b.probability == 0.0
         assert res.bins[-1].probability == pytest.approx(1.0, abs=1e-6)
+
+    def test_zero_surviving_mass_fails_closed_without_manual_patch(self):
+        """No fabricated 1.0 tail: zero surviving mass means inconsistent input, must raise instead."""
+        bins = DiscreteBinEngine.generate_standard_bins(center_temp_f=70, num_exact_bins=5)
+        # Inconsistent input: every bin carries zero prior mass
+        for b in bins:
+            b.probability = 0.0
+
+        engine = TruncatedProbabilityEngine()
+        with pytest.raises(ValueError, match="zero surviving probability mass"):
+            engine.apply_truncation(bins, target_type="max", observed_extreme_f=95.0)

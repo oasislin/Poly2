@@ -25,7 +25,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set,
 import numpy as np
 import pandas as pd
 
-from src.utils.airgap import AirgapViolationError, SEALED_YEAR, verify_year_whitelist
+from src.utils.airgap import AirgapViolationError, SEALED_YEAR, enforce_training_year_seal
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +73,10 @@ def partition_into_30day_blocks(
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
-    # Airgap assertion: neither boundary can be 2019
-    if start_date.year == SEALED_YEAR or end_date.year == SEALED_YEAR:
+    # Airgap assertion: neither boundary can reach or exceed 2019
+    if start_date.year >= SEALED_YEAR or end_date.year >= SEALED_YEAR:
         raise AirgapViolationError(
-            f"Cannot create cross-validation blocks in sealed year {SEALED_YEAR}!"
+            f"Cannot create cross-validation blocks in sealed year {SEALED_YEAR}+!"
         )
 
     blocks: List[CalendarBlock] = []
@@ -85,9 +85,9 @@ def partition_into_30day_blocks(
 
     while curr_start <= end_date:
         curr_end = min(curr_start + timedelta(days=block_days - 1), end_date)
-        # Verify no 2019 date slips in
-        if curr_start.year == SEALED_YEAR or curr_end.year == SEALED_YEAR:
-            raise AirgapViolationError(f"Block crosses into sealed year {SEALED_YEAR}!")
+        # Verify no 2019+ date slips in
+        if curr_start.year >= SEALED_YEAR or curr_end.year >= SEALED_YEAR:
+            raise AirgapViolationError(f"Block crosses into sealed year {SEALED_YEAR}+!")
 
         # Enumerate dates in block
         block_dates_list = []
@@ -209,9 +209,9 @@ class BlockCrossValidator:
         # Convert date column to python date objects
         dates_series = pd.to_datetime(df[date_col]).dt.date
 
-        # Check year whitelist on dataframe
+        # Unconditionally enforce training-only year seal on dataframe (ignores 2019 OOS auth flag)
         years = pd.to_datetime(df[date_col]).dt.year.unique()
-        verify_year_whitelist(years, "BlockCrossValidator.split_dataframe")
+        enforce_training_year_seal(years, "BlockCrossValidator.split_dataframe")
 
         splits = self.split_blocks()
 
@@ -249,9 +249,9 @@ def run_block_cv(
     - Hook 1: Invokes run_reliability_gate(val_df / predictions) per fold.
     - Hook 2: Optional persistence of model, predictions, gate_report, and sha256 manifest per fold.
     """
-    # Enforce airgap on dataset
+    # Unconditionally enforce training-only airgap on dataset (ignores 2019 OOS auth flag)
     years = pd.to_datetime(df[date_col]).dt.year.unique()
-    verify_year_whitelist(years, "run_block_cv input dataframe")
+    enforce_training_year_seal(years, "run_block_cv input dataframe")
 
     cv = BlockCrossValidator(
         n_rounds=n_rounds,
@@ -452,11 +452,11 @@ def fit_statutory_pipeline_fold(
     station: str,
     variable: str = "tmax",
     lead_hour: int = 18,
-    sigma_floor: float = 0.90,
+    sigma_floor: Optional[float] = None,
 ) -> StatutoryFoldModel:
     """
     Full statutory fitting pipeline executed STRICTLY inside each CV fold:
-    1. Fits seasonal EMOS (a, b, c, d) with c >= sigma_floor on fold train_df.
+    1. Fits seasonal EMOS (a, b, c, d) on fold train_df (optional lower bound if sigma_floor explicitly passed).
     2. Derives fold-specific causal trailing bias and un-biased residuals.
     3. Derives fold-specific seasonal c_train = sqrt(Var(r) / E[sigma_raw^2]).
     4. Computes fold-specific Fisher excess kurtosis and skewness.
@@ -464,47 +464,63 @@ def fit_statutory_pipeline_fold(
     6. Selects optimal distribution family with EVT tie-breaker.
     """
     from scipy import optimize, stats
+    from src.modeling.crps import emos_crps_loss
 
     SEASONS = ["Winter", "Spring", "Summer", "Autumn"]
     seasonal_emos: Dict[str, Tuple[float, float, float, float]] = {}
     seasonal_c_train: Dict[str, float] = {}
 
     train_work = train_df.copy().sort_values("target_date").reset_index(drop=True)
+    global_resid_std = (
+        float(np.std(train_work["obs_tmax_f"] - train_work["ens_mean"]))
+        if len(train_work) > 0
+        else 1.0
+    )
+    c_lower_bound = float(sigma_floor) if sigma_floor is not None else 0.0
+    fallback_c_default = float(sigma_floor) if sigma_floor is not None else (global_resid_std if global_resid_std > 0.0 else 1.0)
 
     # Step 1: Fit seasonal EMOS parameters per season inside fold
     for season in SEASONS:
         s_mask = train_work["season"] == season
         df_season = train_work[s_mask]
         if len(df_season) < 100:  # Thin sample check
-            # Fallback to simple identity baseline if insufficient data
-            seasonal_emos[season] = (0.0, 1.0, sigma_floor, 0.1)
+            local_std = (
+                float(np.std(df_season["obs_tmax_f"] - df_season["ens_mean"]))
+                if len(df_season) > 0
+                else fallback_c_default
+            )
+            fb_c = max(c_lower_bound, local_std) if local_std > 0.0 else fallback_c_default
+            seasonal_emos[season] = (0.0, 1.0, fb_c, 0.1)
             continue
 
-        ens_m = df_season["ens_mean"].to_numpy()
-        ens_v = df_season["ens_var"].to_numpy()
-        y_tr = df_season["obs_tmax_f"].to_numpy()
+        ens_m = df_season["ens_mean"].to_numpy(dtype=np.float64)
+        ens_v = df_season["ens_var"].to_numpy(dtype=np.float64)
+        y_tr = df_season["obs_tmax_f"].to_numpy(dtype=np.float64)
+        zero_clim = np.zeros_like(ens_m)
 
         def emos_crps_obj(p):
-            a, b, c, d = p
-            mu = a + b * ens_m
-            var = (c ** 2) + (d ** 2) * ens_v
-            sig = np.maximum(1e-6, np.sqrt(var))
-            z = (y_tr - mu) / sig
-            crps = sig * (z * (2 * stats.norm.cdf(z) - 1) + 2 * stats.norm.pdf(z) - 1.0 / np.sqrt(np.pi))
-            return float(np.mean(crps))
+            return emos_crps_loss(
+                params=p,
+                ensemble_mean=ens_m,
+                ensemble_variance=ens_v,
+                sigma_clim_squared=zero_clim,
+                observed_temp=y_tr,
+                l2_lambda_d=0.0,
+            )
 
         init_a = float(np.mean(y_tr) - np.mean(ens_m))
         init_b = 1.0
-        init_c = float(max(sigma_floor, np.std(y_tr - ens_m)))
+        resid_std = float(np.std(y_tr - ens_m))
+        init_c = float(max(c_lower_bound, resid_std)) if resid_std > 0.0 else fallback_c_default
         init_d = 0.5
-        bounds = [(-50.0, 50.0), (0.0, 3.0), (sigma_floor, 20.0), (0.0, 3.0)]
+        bounds = [(-50.0, 50.0), (0.0, 3.0), (c_lower_bound, 20.0), (0.0, 3.0)]
 
         guesses = [
             [init_a, init_b, init_c, init_d],
             [0.0, 1.0, 2.0, 0.5],
             [-2.0, 1.05, 3.0, 0.8],
             [2.0, 0.95, 1.5, 0.3],
-            [init_a * 0.5, 1.0, sigma_floor, 0.2],
+            [init_a * 0.5, 1.0, max(c_lower_bound, 0.5 * init_c, 1e-3), 0.2],
         ]
 
         best_res = None
@@ -528,19 +544,20 @@ def fit_statutory_pipeline_fold(
         if best_res is not None:
             seasonal_emos[season] = tuple(best_res.x.tolist())
         else:
-            seasonal_emos[season] = (0.0, 1.0, sigma_floor, 0.1)
+            seasonal_emos[season] = (init_a, 1.0, init_c, 0.1)
 
     # Step 2: Compute raw predictions and fold-local causal trailing bias
     mu_raw = np.zeros(len(train_work))
     sig_raw = np.zeros(len(train_work))
+    min_var = (float(sigma_floor) ** 2) if sigma_floor is not None else 1e-8
 
     for idx, row in train_work.iterrows():
         s = row["season"]
-        a, b, c, d = seasonal_emos.get(s, (0.0, 1.0, sigma_floor, 0.1))
+        a, b, c, d = seasonal_emos.get(s, (0.0, 1.0, fallback_c_default, 0.1))
         m = a + b * row["ens_mean"]
         v = (c ** 2) + (d ** 2) * row["ens_var"]
         mu_raw[idx] = m
-        sig_raw[idx] = math.sqrt(max(sigma_floor ** 2, v))
+        sig_raw[idx] = math.sqrt(max(min_var, v))
 
     train_work["mu_raw"] = mu_raw
     train_work["sig_raw"] = sig_raw

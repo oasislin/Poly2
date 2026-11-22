@@ -21,6 +21,7 @@ issue a dedicated pre-registration authorization flag, rather than adding except
 
 import json
 import logging
+import numbers
 from pathlib import Path
 import re
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
@@ -52,6 +53,8 @@ def reset_sanitization_audit_log() -> None:
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 AUTHORIZATION_FLAG_FILE = PROJECT_ROOT / "evidence" / "preregistered_2019_authorization.flag"
 SEALED_YEAR = 2019
+TRAIN_START_YEAR = 2000
+TRAIN_END_YEAR = 2018
 
 # Mandatory frozen gate schema required in authorization flag
 REQUIRED_GATE_FIELDS = [
@@ -213,3 +216,91 @@ def filter_safe_years(
     target_years = list(years)
     verify_year_whitelist(target_years, source_description)
     return target_years
+
+
+def enforce_training_year_seal(
+    years: Union[int, Iterable[int]],
+    source_description: str = "",
+    min_train_year: int = TRAIN_START_YEAR,
+    max_train_year: int = TRAIN_END_YEAR,
+) -> List[int]:
+    """
+    Unconditionally block sealed 2019+ data (and out-of-window years) in any training or CV path.
+
+    Unlike verify_year_whitelist(), this training-side guardrail explicitly bypasses
+    evidence/preregistered_2019_authorization.flag: status=AUTHORIZED permits read-only
+    out-of-sample evaluation ONLY and must NEVER permit 2019+ data into parameter fitting
+    or Block-CV.
+    """
+    if isinstance(years, bool):
+        raise AirgapViolationError(
+            f"TRAINING AIRGAP VIOLATION: Invalid boolean year value in '{source_description}'."
+        )
+    if isinstance(years, numbers.Integral):
+        target_years = [int(years)]
+    else:
+        target_years = []
+        for y in years:
+            if isinstance(y, bool) or not isinstance(y, numbers.Integral):
+                raise AirgapViolationError(
+                    f"TRAINING AIRGAP VIOLATION: Non-integer year '{y}' in '{source_description}'."
+                )
+            target_years.append(int(y))
+
+    desc = f" in '{source_description}'" if source_description else ""
+    if not target_years:
+        raise AirgapViolationError(
+            f"TRAINING AIRGAP VIOLATION: Empty training year collection{desc}. "
+            f"Permitted training window: [{min_train_year}, {max_train_year}]."
+        )
+
+    bad_sealed = sorted({y for y in target_years if y >= SEALED_YEAR})
+    if bad_sealed:
+        raise AirgapViolationError(
+            f"TRAINING AIRGAP VIOLATION: Attempted to feed sealed year(s) {bad_sealed}{desc}. "
+            f"Training unconditionally seals {SEALED_YEAR}+ regardless of "
+            f"'evidence/preregistered_2019_authorization.flag' (which authorizes read-only OOS "
+            f"evaluation ONLY, never training). Permitted training window: "
+            f"[{min_train_year}, {max_train_year}]."
+        )
+
+    out_of_window = sorted({y for y in target_years if y < min_train_year or y > max_train_year})
+    if out_of_window:
+        raise AirgapViolationError(
+            f"TRAINING AIRGAP VIOLATION: Year(s) {out_of_window} outside permitted training window "
+            f"[{min_train_year}, {max_train_year}]{desc}."
+        )
+
+    return target_years
+
+
+def enforce_training_dataframe_seal(
+    df: pd.DataFrame,
+    year_col: Optional[str] = "year",
+    date_col: Optional[str] = "target_date",
+    source_description: str = "",
+    min_train_year: int = TRAIN_START_YEAR,
+    max_train_year: int = TRAIN_END_YEAR,
+) -> pd.DataFrame:
+    """
+    Unconditionally verify that a training/CV DataFrame contains zero rows from >= 2019
+    (or outside [min_train_year, max_train_year]), ignoring the OOS authorization flag.
+    """
+    if df.empty:
+        return df
+
+    years_found: List[int] = []
+    if year_col and year_col in df.columns:
+        years_found.extend(int(y) for y in pd.Series(df[year_col]).dropna().astype(int).unique())
+    if date_col and date_col in df.columns:
+        dt_years = pd.to_datetime(df[date_col]).dt.year.dropna().astype(int).unique()
+        years_found.extend(int(y) for y in dt_years)
+
+    if years_found:
+        enforce_training_year_seal(
+            sorted(set(years_found)),
+            source_description=source_description,
+            min_train_year=min_train_year,
+            max_train_year=max_train_year,
+        )
+    return df

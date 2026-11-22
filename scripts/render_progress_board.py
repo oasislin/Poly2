@@ -19,7 +19,16 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 ALLOWED_MODULE_STATES = frozenset({"已就绪", "待实现", "待修复", "待改造"})
 ALLOWED_TASK_STATES = frozenset(
-    {"DONE", "CODING", "DESIGNING", "PENDING_APPROVAL", "READY", "BLOCKED", "PLANNED"}
+    {
+        "DONE",
+        "CODING",
+        "DESIGNING",
+        "PENDING_APPROVAL",
+        "READY_TO_LAUNCH",
+        "READY",
+        "BLOCKED",
+        "PLANNED",
+    }
 )
 EXPECTED_MODULE_IDS = tuple(f"M{i}" for i in range(1, 11))
 ALGORITHM_PROTECTED_IDS = frozenset({"S3-01", "S3-02", "S3-04", "S3-05"})
@@ -400,6 +409,7 @@ def render_html(data: Dict[str, Any]) -> str:
   .st-CODING {{ background: rgba(6, 182, 212, 0.16); color: #22d3ee; border-color: rgba(34, 211, 238, 0.45); }}
   .st-DESIGNING {{ background: var(--purple-bg); color: var(--purple); border-color: rgba(167,139,250,0.45); }}
   .st-PENDING_APPROVAL {{ background: var(--amber-bg); color: var(--amber); border-color: rgba(245,158,11,0.45); }}
+  .st-READY_TO_LAUNCH {{ background: rgba(16, 185, 129, 0.16); color: #34d399; border-color: rgba(52, 211, 153, 0.5); }}
   .st-READY, .ms-待实现 {{ background: var(--blue-bg); color: var(--blue); border-color: rgba(56,189,248,0.35); }}
   .st-BLOCKED, .ms-待修复 {{ background: var(--red-bg); color: var(--red); border-color: rgba(239,68,68,0.38); }}
   .st-PLANNED {{ background: var(--slate-bg); color: #cbd5e1; border-color: rgba(148,163,184,0.3); }}
@@ -492,6 +502,7 @@ def render_html(data: Dict[str, Any]) -> str:
         <option value="CODING">CODING (编码中)</option>
         <option value="DESIGNING">DESIGNING (设计中)</option>
         <option value="PENDING_APPROVAL">PENDING_APPROVAL (待用户批准)</option>
+        <option value="READY_TO_LAUNCH">READY_TO_LAUNCH (就绪待开闸)</option>
         <option value="READY">READY (就绪可开)</option>
         <option value="BLOCKED">BLOCKED (受阻)</option>
         <option value="PLANNED">PLANNED (排期中)</option>
@@ -517,6 +528,7 @@ def render_html(data: Dict[str, Any]) -> str:
     CODING: "CODING · 编码中",
     DESIGNING: "DESIGNING · 设计中",
     PENDING_APPROVAL: "PENDING_APPROVAL · 待用户批准",
+    READY_TO_LAUNCH: "READY_TO_LAUNCH · 就绪待开闸",
     READY: "READY · 就绪可开",
     BLOCKED: "BLOCKED · 受阻",
     PLANNED: "PLANNED · 排期中"
@@ -558,7 +570,7 @@ def render_html(data: Dict[str, Any]) -> str:
 
   function renderKpis() {{
     const kpiRow = document.getElementById("kpi-row");
-    const pending = DATA.tasks.filter(t => t.status === "PENDING_APPROVAL").length;
+    const pending = DATA.tasks.filter(t => t.status === "PENDING_APPROVAL" || t.status === "READY_TO_LAUNCH").length;
     const activeAlgo = DATA.tasks.filter(t => t.status === "CODING" || t.status === "DESIGNING").length;
     const blocked = DATA.tasks.filter(t => t.status === "BLOCKED").length;
     const ready = DATA.tasks.filter(t => t.status === "READY").length;
@@ -676,6 +688,7 @@ def render_html(data: Dict[str, Any]) -> str:
               ${{t.modules.map(m => `<span class="badge tag-mod">${{esc(m)}}</span>`).join("")}}
               ${{t.is_arch_pending ? '<span class="badge tag-arch">待架构侧供给</span>' : ''}}
               ${{t.status === "PENDING_APPROVAL" ? '<span class="badge st-PENDING_APPROVAL">待用户批准</span>' : ''}}
+              ${{t.status === "READY_TO_LAUNCH" ? '<span class="badge st-READY_TO_LAUNCH">就绪待开闸</span>' : ''}}
             </div>
           </div>
         `;
@@ -725,7 +738,7 @@ def render_html(data: Dict[str, Any]) -> str:
   function renderActions() {{
     const el = document.getElementById("view-actions");
     const matched = DATA.tasks.filter(matchesFilter);
-    const pendingList = matched.filter(t => t.status === "PENDING_APPROVAL");
+    const pendingList = matched.filter(t => t.status === "PENDING_APPROVAL" || t.status === "READY_TO_LAUNCH");
     const archList = matched.filter(t => t.is_algo_protected || t.is_arch_pending || t.status === "DESIGNING" || t.status === "CODING");
     const readyBlockedList = matched.filter(t => (t.status === "READY" || t.status === "BLOCKED") && !t.is_algo_protected && !t.is_arch_pending);
 

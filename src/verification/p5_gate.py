@@ -31,6 +31,7 @@ from scripts.standalone_reliability_check import (
     DataAssetError,
     PhysicsViolationError,
 )
+from src.metrics.calibration_audit import ASOS_PRT_ACCURACY_REDLINE_F
 
 
 
@@ -102,8 +103,11 @@ def _extract_prediction_df(
         mu = df[mu_col].to_numpy(dtype=np.float64)
         sigma = df[sigma_col].to_numpy(dtype=np.float64)
 
-        if np.any(sigma < 0.90):
-            raise PhysicsViolationError("Forecast sigma collapsed below physical noise floor 0.90°F.")
+        if np.any(sigma < ASOS_PRT_ACCURACY_REDLINE_F):
+            raise PhysicsViolationError(
+                f"Forecast sigma violated ASOS 1088 PRT sensor accuracy redline "
+                f"({ASOS_PRT_ACCURACY_REDLINE_F:.2f}°F): possible noise fitting."
+            )
 
         # Compute standard PIT and event probability
         z = (obs - mu) / sigma

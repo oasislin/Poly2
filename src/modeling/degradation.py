@@ -3,7 +3,7 @@
 Two-Level Degradation and Soft Warning Mechanism (Ticket 2.2-02 / Issue #15).
 
 Implements the two-tier operational hierarchy:
-    Level 1: Gaussian EMOS with Climatological Variance Floor N(μ, σ²)
+    Level 1: Gaussian EMOS N(μ, σ²)
     Level 2: Historical Climatology Baseline N(μ_clim(d), σ_clim²(d))
 
 Triggers (v5.9.1 §4):
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 class DegradationDecision:
     """Encapsulates the degradation outcome and rationale."""
 
-    level: int  # 1 for Gaussian EMOS + Floor, 2 for Climatology
+    level: int  # 1 for Gaussian EMOS, 2 for Climatology
     is_degraded: bool
     reason: str
     p_value: Optional[float] = None
@@ -174,12 +174,11 @@ class DegradationHandler:
     ) -> GaussianEMOS:
         """Route to appropriate probability distribution based on active degradation level."""
         if level == 1:
-            # Level 1: Gaussian EMOS with Climatological Variance Floor
-            sigma_clim_sq = np.square(np.asarray(sigma_clim, dtype=np.float64))
+            # Level 1: Pure Gaussian EMOS (σ_clim belongs strictly to Level 2)
             mu, sigma = emos_model.compute_params(
                 ensemble_mean=ens_mean,
                 ensemble_variance=ens_var,
-                sigma_clim_squared=sigma_clim_sq,
+                sigma_clim_squared=0.0,
             )
             return GaussianEMOS.from_params(mu=mu, sigma=sigma)
         elif level == 2:

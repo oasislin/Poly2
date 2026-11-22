@@ -3,11 +3,12 @@
 ConstraintEnforcer: Physical warming/cooling rate limits and reachability boundary enforcement (Ticket 3.3-01 / Issue #28).
 
 Implements (Phase 1C / v5.9.2):
-    1. Maximum warming rate (r_warm, °C/h) and cooling rate (r_cool, °C/h) by station and season.
-    2. Reachability bounds calculation:
+    1. Maximum warming rate (r_warm) and cooling rate (r_cool) by station and season
+       (°C/h for ZSPD/KDEN, converted to °F/h for Active 10 native-°F stations).
+    2. Reachability bounds calculation (respecting extremum irreversibility):
        delta_t = max(0.0, time_remaining_to_peak)
-       T_max_possible = T_now + r_warm * delta_t
-       T_min_possible = T_now - r_cool * delta_t
+       - For daily "max": [T_now, T_now + r_warm * delta_t]
+       - For daily "min": [T_now - r_cool * delta_t, T_now]
     3. Hard physical constraint overrides:
        - Max Temp: If L > T_max_possible => P(X >= L) = 0.0 (F_phys(L) = 1.0)
        - Min Temp: If L < T_min_possible => P(X <= L) = 0.0 (F_phys(L) = 0.0)
@@ -23,6 +24,7 @@ from typing import Any, Dict, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from src.data_processing.constants import ACTIVE_10_STATIONS
 from src.modeling.partitioner import DatasetPartitioner
 
 logger = logging.getLogger(__name__)
@@ -154,20 +156,29 @@ class ConstraintEnforcer:
                     est_hourly_cool = (diurnal_range / 9.0).quantile(cooling_quantile)
                     custom_limits[st][season] = (float(max(2.0, est_hourly_warm)), float(max(2.0, est_hourly_cool)))
                 else:
-                    custom_limits[st][season] = DEFAULT_PHYSICAL_RATE_LIMITS.get(st, DEFAULT_PHYSICAL_RATE_LIMITS["ZSPD"]).get(season, (3.5, 4.0))
+                    base_pair = DEFAULT_PHYSICAL_RATE_LIMITS.get(st, DEFAULT_PHYSICAL_RATE_LIMITS["ZSPD"]).get(season, (3.5, 4.0))
+                    if st not in DEFAULT_PHYSICAL_RATE_LIMITS and st in ACTIVE_10_STATIONS:
+                        base_pair = (float(base_pair[0] * 1.8), float(base_pair[1] * 1.8))
+                    custom_limits[st][season] = base_pair
         else:
             custom_limits = DEFAULT_PHYSICAL_RATE_LIMITS
 
         return cls(custom_rate_limits=custom_limits)
 
     def get_rate_limits(self, station_id: str, season: str) -> Tuple[float, float]:
-        """Retrieve (max_warming_rate, max_cooling_rate) in °C/h for station and season."""
+        """Retrieve (max_warming_rate, max_cooling_rate) in station native units (°F/h for Active 10, °C/h for ZSPD/KDEN)."""
         station = station_id.upper()
         seas_cap = season.capitalize()
         norm_seas = seas_cap if seas_cap in ["Spring", "Summer", "Autumn", "Winter"] else self.partitioner.get_season(season)
 
-        st_limits = self.rate_limits.get(station, self.rate_limits.get("ZSPD", {}))
-        return st_limits.get(norm_seas, (3.5, 4.0))
+        if station in self.rate_limits:
+            return self.rate_limits[station].get(norm_seas, (3.5, 4.0))
+
+        base_limits = self.rate_limits.get("ZSPD", {})
+        r_warm, r_cool = base_limits.get(norm_seas, (3.5, 4.0))
+        if station in ACTIVE_10_STATIONS:
+            return (float(r_warm * 1.8), float(r_cool * 1.8))
+        return (float(r_warm), float(r_cool))
 
     def calculate_delta_hours(
         self,
@@ -202,10 +213,23 @@ class ConstraintEnforcer:
         observation_time: Optional[Union[time, datetime, str]] = None,
         delta_hours: Optional[float] = None,
     ) -> Tuple[float, float]:
-        """Compute [T_min_possible, T_max_possible] reachability interval."""
+        """Compute [T_min_possible, T_max_possible] reachability interval respecting extremum irreversibility.
+
+        Already-observed T_now is irreversible:
+        - target_type == "max": daily maximum >= T_now, so interval is [T_now, T_now + r_warm * delta_t].
+        - target_type == "min": daily minimum <= T_now, so interval is [T_now - r_cool * delta_t, T_now].
+        """
         r_warm, r_cool = self.get_rate_limits(station_id, season)
-        dt = max(0.0, float(delta_hours)) if delta_hours is not None else (self.calculate_delta_hours(target_type, observation_time) if observation_time is not None else 0.0)
-        return (float(current_temp - r_cool * dt), float(current_temp + r_warm * dt))
+        t_type = target_type.strip().lower()
+        if t_type not in ("max", "min"):
+            raise ValueError(f"Invalid target_type '{target_type}'. Must be 'max' or 'min'.")
+        dt = max(0.0, float(delta_hours)) if delta_hours is not None else (
+            self.calculate_delta_hours(t_type, observation_time) if observation_time is not None else 0.0
+        )
+        t_now = float(current_temp)
+        if t_type == "max":
+            return (t_now, float(t_now + r_warm * dt))
+        return (float(t_now - r_cool * dt), t_now)
 
     def enforce(
         self,

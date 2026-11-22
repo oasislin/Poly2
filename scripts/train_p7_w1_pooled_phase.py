@@ -32,7 +32,7 @@ import math
 from pathlib import Path
 import pickle
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -43,8 +43,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data_processing.constants import STATION_METADATA
+from src.modeling.crps import emos_crps_loss
 from src.modeling.gaussian_emos import GaussianEMOS
-from src.utils.airgap import verify_year_whitelist
+from src.utils.airgap import enforce_training_dataframe_seal, enforce_training_year_seal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("p7_w1_train")
@@ -59,7 +60,6 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed" / "calib-dataset-v2.0"
 GHCN_DIR = PROJECT_ROOT / "data" / "processed" / "truth_ghcn_daily"
 MODELS_DIR = PROJECT_ROOT / "data" / "models"
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
-SIGMA_INST_PHYSICAL_FLOOR = 0.90  # NOAA ASOS PRT floor
 
 
 def compute_sha256(file_path: Path) -> str:
@@ -90,8 +90,12 @@ def get_cluster(hour: int) -> str:
         return "transition"
 
 
-def load_station_training_data(station: str, years: range = range(2000, 2019)) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    verify_year_whitelist(years, f"load_station_training_data({station})")
+def load_station_training_data(
+    station: str,
+    years: Iterable[int] = range(2000, 2019),
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Load 2000-2018 GHCN observations and GEFS forecast factors (2019+ unconditionally sealed)."""
+    validated_years = enforce_training_year_seal(years, f"train_p7_w1_pooled_phase.load_station_training_data({station})")
 
     ghcn_file = GHCN_DIR / f"{station}.parquet"
     if not ghcn_file.exists():
@@ -99,19 +103,32 @@ def load_station_training_data(station: str, years: range = range(2000, 2019)) -
 
     df_ghcn = pd.read_parquet(ghcn_file)
     df_ghcn["target_date"] = pd.to_datetime(df_ghcn["target_date"]).dt.date
-    df_ghcn = df_ghcn[df_ghcn["year"].isin(years)].copy()
+    df_ghcn = df_ghcn[df_ghcn["year"].isin(validated_years)].copy()
+    enforce_training_dataframe_seal(
+        df_ghcn,
+        year_col="year",
+        date_col="target_date",
+        source_description=f"train_p7_w1_pooled_phase.GHCN({station})",
+    )
     df_ghcn["station"] = station
     df_ghcn["month"] = pd.to_datetime(df_ghcn["target_date"]).apply(lambda d: d.month)
     df_ghcn["season"] = df_ghcn["month"].apply(get_season)
 
     gefs_frames = []
-    for y in years:
+    for y in validated_years:
         gefs_file = DATA_DIR / "gefs_factors" / station / f"{y}.parquet"
         if not gefs_file.exists():
             continue
         gefs_frames.append(pd.read_parquet(gefs_file))
 
     df_gefs = pd.concat(gefs_frames, ignore_index=True)
+    if "init_date" in df_gefs.columns:
+        enforce_training_dataframe_seal(
+            df_gefs,
+            year_col=None,
+            date_col="init_date",
+            source_description=f"train_p7_w1_pooled_phase.GEFS_init({station})",
+        )
     df_gefs["target_date"] = pd.to_datetime(df_gefs["target_date"]).dt.date
     df_gefs["temp_f"] = (df_gefs["value_K"] - 273.15) * 1.8 + 32.0
 
@@ -146,6 +163,12 @@ def extract_matched_cluster_data(
     ).reset_index()
 
     merged = pd.merge(obs_sub, ens_stats, on="target_date", how="inner").dropna()
+    enforce_training_dataframe_seal(
+        merged,
+        year_col=None,
+        date_col="target_date",
+        source_description=f"train_p7_w1_pooled_phase.extract_matched_cluster_data({station},{season},{variable})",
+    )
 
     # Determine local verification hour
     # init_date is UTC 00Z
@@ -165,34 +188,37 @@ def extract_matched_cluster_data(
 
 def fit_emos_crps(
     df: pd.DataFrame,
-    sigma_floor: float = SIGMA_INST_PHYSICAL_FLOOR,
 ) -> Tuple[float, float, float, float]:
     """Fit EMOS parameters (a, b, c, d) via 5-guess multi-start L-BFGS-B minimizing CRPS."""
     ens_m = df["ens_mean"].to_numpy(dtype=np.float64)
     ens_v = df["ens_var"].to_numpy(dtype=np.float64)
     y_true = df["obs_temp_f"].to_numpy(dtype=np.float64)
+    zero_clim = np.zeros_like(ens_m)
 
     def crps_loss(params):
-        a, b, c, d = params
-        mu = a + b * ens_m
-        var = (c ** 2) + (d ** 2) * ens_v
-        sig = np.maximum(1e-6, np.sqrt(var))
-        z = (y_true - mu) / sig
-        crps = sig * (z * (2 * stats.norm.cdf(z) - 1) + 2 * stats.norm.pdf(z) - 1.0 / np.sqrt(np.pi))
-        return float(np.mean(crps))
+        return emos_crps_loss(
+            params=params,
+            ensemble_mean=ens_m,
+            ensemble_variance=ens_v,
+            sigma_clim_squared=zero_clim,
+            observed_temp=y_true,
+            l2_lambda_d=0.0,
+        )
 
-    init_a = float(np.mean(y_true) - np.mean(ens_m))
+    resid = y_true - ens_m
+    init_a = float(np.mean(resid))
     init_b = 1.0
-    init_c = float(max(sigma_floor, np.std(y_true - ens_m)))
+    resid_std = float(np.std(resid))
+    init_c = resid_std if resid_std > 0.0 else float(np.sqrt(max(float(np.mean(ens_v)), 1e-6)))
     init_d = 0.5
-    bounds = [(-50.0, 50.0), (0.0, 3.0), (sigma_floor, 20.0), (0.0, 3.0)]
+    bounds = [(-50.0, 50.0), (0.0, 3.0), (0.0, 20.0), (0.0, 3.0)]
 
     guesses = [
         [init_a, init_b, init_c, init_d],
         [0.0, 1.0, 2.0, 0.5],
         [-2.0, 1.05, 3.0, 0.8],
         [2.0, 0.95, 1.5, 0.3],
-        [init_a * 0.5, 1.0, sigma_floor, 0.2],
+        [init_a * 0.5, 1.0, max(0.5 * init_c, 1e-3), 0.2],
     ]
 
     best_res = None
@@ -216,7 +242,7 @@ def fit_emos_crps(
     if best_res is not None:
         return tuple(float(x) for x in best_res.x)
 
-    return (0.0, 1.0, sigma_floor, 0.1)
+    return (init_a, 1.0, init_c, 0.1)
 
 
 def run_jsu_gate_selection(
@@ -305,13 +331,13 @@ def run_jsu_gate_selection(
     return selected_family, winner_shape_params, delta_bic_winner
 
 
-def retrain_phase_matrix() -> Dict[str, Any]:
+def retrain_phase_matrix(years: Iterable[int] = range(2000, 2019)) -> Dict[str, Any]:
     logger.info("================================================================================")
     logger.info("  STARTING P7-W1-B PHASE-STRATIFIED 240-MODEL RETRAINING                        ")
     logger.info("  Spec: docs/w1_poolphase_preregistration.md (Rev.2 + Rev.3-Addendum)           ")
     logger.info("================================================================================")
 
-    verify_year_whitelist(range(2000, 2019), "W1-B Main Entry")
+    validated_years = enforce_training_year_seal(years, "W1-B Main Entry")
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Load existing manifest to update
@@ -323,8 +349,8 @@ def retrain_phase_matrix() -> Dict[str, Any]:
     audit_summary: Dict[str, Any] = {}
 
     for st_idx, station in enumerate(STATIONS, 1):
-        logger.info("[%d/10] Loading data for Station %s...", st_idx, station)
-        df_ghcn, df_gefs = load_station_training_data(station)
+        logger.info("[%d/10] Loading data for Station %s (%d-%d)...", st_idx, station, validated_years[0], validated_years[-1])
+        df_ghcn, df_gefs = load_station_training_data(station, years=validated_years)
 
         for season in SEASONS:
             for variable in VARIABLES:
@@ -361,8 +387,13 @@ def retrain_phase_matrix() -> Dict[str, Any]:
                         sig_eff = np.sqrt(sig_raw2 * (c_train ** 2))
                         family, shape_params, delta_bic = run_jsu_gate_selection(resid, sig_eff)
                     else:
-                        # Level 3 prior baseline
-                        a, b, c, d = 0.0, 1.0, SIGMA_INST_PHYSICAL_FLOOR, 0.1
+                        # Level 3 data-driven residual baseline
+                        fb_c = (
+                            float(np.std(combined_df["obs_temp_f"] - combined_df["ens_mean"]))
+                            if not combined_df.empty
+                            else 1.0
+                        )
+                        a, b, c, d = 0.0, 1.0, (fb_c if fb_c > 0.0 else 1.0), 0.1
                         c_train = 1.0
                         family = "gaussian"
                         shape_params = {}
@@ -509,4 +540,10 @@ def retrain_phase_matrix() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    retrain_phase_matrix()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Retrain P7-W1-B phase-stratified pooled fallback models (2000-2018 sealed).")
+    parser.add_argument("--train-start-year", type=int, default=2000)
+    parser.add_argument("--train-end-year", type=int, default=2018)
+    cli_args = parser.parse_args()
+    retrain_phase_matrix(years=range(cli_args.train_start_year, cli_args.train_end_year + 1))

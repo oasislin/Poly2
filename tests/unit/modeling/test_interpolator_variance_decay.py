@@ -261,7 +261,8 @@ class TestStatutory12hMasterNodeBitInvariance:
 
         # Bitwise hex representation check: ensuring zero drift from mathematical specification
         expected_mu = model_12h.a + model_12h.b * test_ens_mean
-        expected_var = (model_12h.c ** 2) + (model_12h.d ** 2) * test_ens_var + test_clim_var
+        # ADR-0015 §2.1: climatological variance addend abolished; sigma^2 = c^2 + d^2 * S_ens^2
+        expected_var = (model_12h.c ** 2) + (model_12h.d ** 2) * test_ens_var
         expected_sigma = np.sqrt(expected_var)
 
         np.testing.assert_equal(mu, expected_mu)

@@ -19,7 +19,7 @@ from src.data_processing.storage_manager import StorageManager
 from src.modeling.climatology import ClimatologyCalculator
 from src.modeling.pipeline import TrainingPipeline
 from src.modeling.registry import ModelRegistry
-from src.utils.airgap import verify_year_whitelist
+from src.utils.airgap import enforce_training_year_seal, verify_year_whitelist
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -81,7 +81,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="models/emos",
+        default="data/models",
         help="Directory to persist trained EMOS models",
     )
     parser.add_argument(
@@ -111,8 +111,9 @@ def main() -> int:
     args = parser.parse_args()
     setup_logging(args.verbose)
 
-    # Airgap Hard Guardrail: check both training and validation years
-    verify_year_whitelist(range(args.train_start_year, args.train_end_year + 1), "train_emos_matrix (train_years)")
+    # Airgap Hard Guardrail: unconditionally seal training years <= 2018 (ignores OOS auth flag);
+    # validation holdout years follow verify_year_whitelist() under pre-registration OOS rules.
+    enforce_training_year_seal(range(args.train_start_year, args.train_end_year + 1), "train_emos_matrix (train_years)")
     verify_year_whitelist(range(args.val_start_year, args.val_end_year + 1), "train_emos_matrix (val_years)")
 
     logger = logging.getLogger("train_emos_matrix")

@@ -3,8 +3,8 @@
 Unit tests for GaussianEMOS distribution class (Ticket 2.1-02 / Issue #12).
 
 Verifies:
-1. Squared parameterization: mu = a + b*ens_mean, sigma^2 = c^2 + d^2*ens_var + sigma_clim^2.
-2. Variance floor invariant: sigma^2 >= sigma_clim^2 regardless of (c, d) values (even if negative or zero).
+1. Squared parameterization: mu = a + b*ens_mean, sigma^2 = c^2 + d^2*ens_var (ADR-0015 §2.1, no clim addend).
+2. Climatological addend abolition: sigma_clim_squared must NOT enter the variance (ADR-0015 §2.1).
 3. Standard probability functions: PDF, CDF, Quantile (PPF), Confidence Interval.
 4. Accuracy against scipy.stats.norm.
 5. Vectorized array/Series support for batch inference.
@@ -29,39 +29,44 @@ class TestGaussianEMOSLinkFunctions:
             ensemble_variance=4.0,
             sigma_clim_squared=2.25,
         )
-        
+
         # Expected:
         # mu = 1.5 + 0.9 * 20.0 = 19.5
-        # sigma^2 = 0.4^2 + 1.2^2 * 4.0 + 2.25 = 0.16 + 1.44 * 4.0 + 2.25 = 0.16 + 5.76 + 2.25 = 8.17
-        # sigma = sqrt(8.17)
+        # sigma^2 = 0.4^2 + 1.2^2 * 4.0 = 0.16 + 5.76 = 5.92 (clim addend abolished by ADR-0015 §2.1)
         assert np.isclose(mu, 19.5)
-        assert np.isclose(sigma, np.sqrt(8.17))
+        assert np.isclose(sigma, np.sqrt(5.92))
 
-    def test_variance_floor_never_breached_even_with_zero_or_negative_params(self):
-        """Even with c=0, d=0, ens_var=0 or negative parameters, sigma^2 >= sigma_clim^2."""
+    def test_climatological_addend_not_consumed(self):
+        """ADR-0015 §2.1: sigma_clim_squared must have exactly zero influence on sigma."""
         emos = GaussianEMOS(a=0.0, b=1.0, c=-2.0, d=-1.5)
-        
+
         # If c=-2.0, c^2 = 4.0; d=-1.5, d^2 = 2.25
-        mu, sigma = emos.compute_params(
+        _, sigma_no_clim = emos.compute_params(
+            ensemble_mean=15.0,
+            ensemble_variance=0.0,
+            sigma_clim_squared=0.0,
+        )
+        _, sigma_with_clim = emos.compute_params(
             ensemble_mean=15.0,
             ensemble_variance=0.0,
             sigma_clim_squared=3.0,
         )
-        # sigma^2 = (-2)^2 + (-1.5)^2 * 0 + 3.0 = 4.0 + 0 + 3.0 = 7.0 >= 3.0
-        assert sigma ** 2 >= 3.0
-        assert np.isclose(sigma ** 2, 7.0)
+        # sigma^2 = (-2)^2 + (-1.5)^2 * 0 = 4.0, independent of the climatological variance
+        assert np.isclose(sigma_no_clim ** 2, 4.0)
+        assert np.isclose(sigma_with_clim ** 2, 4.0)
+        assert np.isclose(sigma_no_clim, sigma_with_clim)
 
     def test_link_function_vectorized(self):
         emos = GaussianEMOS(a=0.0, b=1.0, c=0.5, d=1.0)
         ens_means = np.array([10.0, 20.0, 30.0])
         ens_vars = np.array([1.0, 2.0, 3.0])
         clim_vars = np.array([2.0, 2.0, 2.0])
-        
+
         mus, sigmas = emos.compute_params(ens_means, ens_vars, clim_vars)
         assert len(mus) == 3
         assert len(sigmas) == 3
         assert np.allclose(mus, [10.0, 20.0, 30.0])
-        expected_vars = 0.25 + 1.0 * ens_vars + 2.0
+        expected_vars = 0.25 + 1.0 * ens_vars
         assert np.allclose(sigmas ** 2, expected_vars)
 
 

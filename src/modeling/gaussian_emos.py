@@ -2,12 +2,12 @@
 """
 GaussianEMOS: Gaussian distribution class with squared-parameterization EMOS link functions (Ticket 2.1-02 / Issue #12).
 
-Equations:
+Equations (ADR-0015 §2.1, restored standard Gneiting 2005 EMOS):
     μ = a + b · T̄_ens
-    σ² = c² + d² · S²_ens + σ²_clim(d)
+    σ² = c² + d² · S²_ens
     σ = √(σ²)
 
-Guarantees non-negative variance and strictly enforces the climatological variance floor σ² ≥ σ²_clim(d) > 0.
+The climatological variance additive term is permanently abolished (ADR-0015 §2.1).
 """
 
 from typing import Any, Dict, Optional, Tuple, Union
@@ -49,20 +49,23 @@ class GaussianEMOS:
         ensemble_variance: Union[float, np.ndarray, pd.Series],
         sigma_clim_squared: Union[float, np.ndarray, pd.Series],
     ) -> Tuple[Union[float, np.ndarray], Union[float, np.ndarray]]:
-        """Compute Gaussian distribution parameters (μ, σ) from ensemble statistics and variance floor.
+        """Compute Gaussian distribution parameters (μ, σ) from ensemble statistics.
 
-        Equations:
+        Equations (ADR-0015 §2.1):
             μ = a + b · ensemble_mean
-            σ² = c² + d² · ensemble_variance + sigma_clim_squared
+            σ² = c² + d² · ensemble_variance
             σ = √(σ²)
+
+        Args:
+            sigma_clim_squared: Retained only for call-site compatibility. Its additive contribution
+                was permanently abolished by ADR-0015 §2.1; the value is NOT consumed here.
         """
         # Ensure non-negative input variance
         ens_var = np.maximum(0.0, np.asarray(ensemble_variance, dtype=np.float64))
         ens_mean = np.asarray(ensemble_mean, dtype=np.float64)
-        clim_var = np.maximum(0.0, np.asarray(sigma_clim_squared, dtype=np.float64))
 
         mu = self.a + self.b * ens_mean
-        variance = (self.c ** 2) + (self.d ** 2) * ens_var + clim_var
+        variance = (self.c ** 2) + (self.d ** 2) * ens_var
 
         # Numerical safety floor to avoid exact 0
         variance = np.maximum(1e-8, variance)

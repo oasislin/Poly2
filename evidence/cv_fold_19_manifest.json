@@ -3,15 +3,15 @@
   "artifacts": {
     "model": {
       "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/cv_fold_19_model.json",
-      "sha256": "e02caa9601e8e5d0282c2c6b8148778e6a8296dea7c85a42e30c66b310af1089"
+      "sha256": "343dde5cf919a38d199bddd2d65bd0982b88e9f744809126340646e4860cede1"
     },
     "predictions": {
       "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/cv_fold_19_predictions.parquet",
-      "sha256": "00444a62394018f259d0cd7679a605b3be85fc1caf9a15c6511eac70eaeab419"
+      "sha256": "003085491df10b077a3cbc624d1d148700be7d156f1524f9b08b80149ebfaa70"
     },
     "gate_report": {
       "path": "/Users/ericlin/SynologyDrive/Project/Poly Way2/evidence/cv_fold_19_report.json",
-      "sha256": "3ecd9912c7e835ad33fec3c3b0d1ecbdf2935b44639565fe0fc00d3e82434f2d"
+      "sha256": "ace9d8737c63f288d6da7b17d4591230e116a3b57591e1f9e1f7acddf435b7a8"
     }
   }
 }
