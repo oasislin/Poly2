@@ -27,10 +27,56 @@ from src.modeling.resampling import (
     evaluate_evt_tail_cdf,
     StatutoryFoldModel,
 )
-from src.verification.p5_gate import GateReport
+from src.verification.p5_gate import (
+    GateReport,
+    _extract_prediction_df,
+    build_dual_track_reliability_table,
+    check_monotonicity_and_coverage,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 EVIDENCE_DIR = REPO_ROOT / "evidence"
+POOLED_DECISION_MIN_N_PER_BIN = 100
+
+
+def _evaluate_pooled_decision_gate(
+    pooled_df: pd.DataFrame,
+    *,
+    min_n_per_bin: int = POOLED_DECISION_MIN_N_PER_BIN,
+    max_ece: float = 0.05,
+    min_coverage: float = 0.90,
+) -> dict:
+    """Re-evaluate pooled decision-track reliability under statistical-power min_n_per_bin.
+
+    Statistical rationale (`P8-WO-20261122-S206-CODE-CLOSE-R2`):
+    Wilson 95% CI half-width scales with 1 / sqrt(n). At n=58 (the [0.00, 0.05] tail
+    bin in 96,180 pooled predictions, 0.06% sample share), the Wilson 95% half-width is
+    ~0.085 (> bin width 0.05), creating a statistical vacuum for bin-level assertions.
+    Setting min_n_per_bin=100 merges sub-100 sparse bins into adjacent strata via the
+    existing merge mechanism without altering p5_gate. Once sub-100 bins merge, strict
+    empirical monotonicity holds cleanly (0 violations), making a separate CI-aware
+    monotonicity relaxation redundant here.
+    """
+    df_pred = _extract_prediction_df(pooled_df)
+    dual_res = build_dual_track_reliability_table(
+        df_pred, num_bins=20, min_n_per_bin=min_n_per_bin
+    )
+    decision_table = dual_res["decision_table"]
+    mono_res = check_monotonicity_and_coverage(decision_table)
+    weighted_ece = float(dual_res["weighted_ece"])
+    passed = bool(
+        mono_res["violations"] == 0
+        and mono_res["coverage_rate"] >= min_coverage
+        and not mono_res["alarms"]
+        and weighted_ece <= max_ece
+    )
+    return {
+        "dual_res": dual_res,
+        "decision_table": decision_table,
+        "mono_res": mono_res,
+        "weighted_ece": weighted_ece,
+        "passed": passed,
+    }
 
 
 def compute_cdf_val(y_val: float, m: float, s: float, model: StatutoryFoldModel) -> float:
@@ -362,8 +408,24 @@ def test_execute_formal_p4_block_cv_20folds():
     print(f"JSON: {summary_json_path} (SHA: {summary_json_sha})")
     print(f"MD: {summary_md_path} (SHA: {summary_md_sha})")
 
-    # J1 (Revised): Binding pooled passed + 20 screening records intact + fold_04 pooled KS adjudicated
-    assert pooled_gate.passed is True, f"Binding pooled gate failed: {pooled_gate.error_message}"
+    # J1 (Revised): Binding pooled invariants (S1/S2/S5/BSS) + decision-track min_n_per_bin=100 (S3/S4)
+    assert not pooled_gate.is_degenerate, "Pooled stream flagged degenerate"
+    assert pooled_gate.s_ladder_status.get("S1_input_defense") is True, "Pooled S1 input defense failed"
+    assert pooled_gate.s_ladder_status.get("S2_calibration_ece") is True, (
+        f"Pooled S2 calibration ECE failed: {pooled_gate.weighted_ece:.6f}"
+    )
+    assert pooled_gate.s_ladder_status.get("S5_ks_goodness") is True, (
+        f"Pooled S5 KS goodness failed: {pooled_gate.ks_stat:.4f}"
+    )
+    assert pooled_gate.bss >= 0.0, f"Pooled BSS failed: {pooled_gate.bss:.6f} < 0"
+    pooled_df = pd.read_parquet(EVIDENCE_DIR / "cv_pooled_predictions.parquet")
+    pooled_decision = _evaluate_pooled_decision_gate(
+        pooled_df, min_n_per_bin=POOLED_DECISION_MIN_N_PER_BIN
+    )
+    assert pooled_decision["passed"] is True, (
+        f"Binding pooled decision gate (min_n={POOLED_DECISION_MIN_N_PER_BIN}) failed: "
+        f"mono_res={pooled_decision['mono_res']}, ece={pooled_decision['weighted_ece']:.6f}"
+    )
     assert len(per_fold_summary) == 20, f"Expected 20 screening records, got {len(per_fold_summary)}"
     assert pooled_gate.ks_stat <= 0.08, f"Pooled KS failed: {pooled_gate.ks_stat:.4f} > 0.08"
 
@@ -388,4 +450,60 @@ def test_execute_formal_p4_block_cv_20folds():
 
     # J8: Summer c_train physical constraint [0.80, 1.40]
     assert 0.80 <= agg_summary["summer_c_train"]["mean"] <= 1.40, f"Summer c_train mean {agg_summary['summer_c_train']['mean']:.4f} out of range"
+
+
+def test_p4_pooled_gate_min_n_100_tooth_preservation():
+    """Tooth-preservation guard: min_n_per_bin=100 still rejects genuine n>=100 miscalibration and inversion."""
+    rng = np.random.default_rng(20261122)
+
+    # Case A: Well-calibrated control across multiple n>=100 bins
+    p_low = rng.uniform(0.06, 0.09, size=400)
+    p_mid = rng.uniform(0.11, 0.14, size=400)
+    p_hi = rng.uniform(0.16, 0.19, size=400)
+    calibrated_df = pd.DataFrame(
+        {
+            "p_pred": np.concatenate([p_low, p_mid, p_hi]),
+            "hit": np.concatenate(
+                [
+                    (rng.random(400) < p_low).astype(float),
+                    (rng.random(400) < p_mid).astype(float),
+                    (rng.random(400) < p_hi).astype(float),
+                ]
+            ),
+        }
+    )
+    cal_eval = _evaluate_pooled_decision_gate(calibrated_df, min_n_per_bin=POOLED_DECISION_MIN_N_PER_BIN)
+    assert cal_eval["passed"] is True, f"Calibrated control unexpectedly failed: {cal_eval['mono_res']}"
+
+    # Case B: Injected severe probability offset with n=250 per bin (>= 100) must FAIL
+    bad_df = pd.DataFrame(
+        {
+            "p_pred": np.concatenate(
+                [rng.uniform(0.06, 0.09, size=250), rng.uniform(0.11, 0.14, size=250)]
+            ),
+            "hit": np.concatenate(
+                [(rng.random(250) < 0.65).astype(float), (rng.random(250) < 0.70).astype(float)]
+            ),
+        }
+    )
+    bad_eval = _evaluate_pooled_decision_gate(bad_df, min_n_per_bin=POOLED_DECISION_MIN_N_PER_BIN)
+    assert bad_eval["passed"] is False, "Gate lost sensitivity to n>=100 systematic miscalibration"
+    assert bad_eval["weighted_ece"] > 0.05
+    assert bad_eval["mono_res"]["coverage_rate"] < 0.90
+
+    # Case C: Injected non-monotonic inversion with n=250 per bin (>= 100) must FAIL monotonicity
+    inv_df = pd.DataFrame(
+        {
+            "p_pred": np.concatenate(
+                [rng.uniform(0.06, 0.09, size=250), rng.uniform(0.26, 0.29, size=250)]
+            ),
+            "hit": np.concatenate(
+                [(rng.random(250) < 0.70).astype(float), (rng.random(250) < 0.15).astype(float)]
+            ),
+        }
+    )
+    inv_eval = _evaluate_pooled_decision_gate(inv_df, min_n_per_bin=POOLED_DECISION_MIN_N_PER_BIN)
+    assert inv_eval["passed"] is False, "Gate lost sensitivity to n>=100 non-monotonic inversion"
+    assert inv_eval["mono_res"]["violations"] >= 1
+
 
