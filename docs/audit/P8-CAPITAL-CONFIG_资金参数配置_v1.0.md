@@ -1,7 +1,9 @@
-# P8-CAPITAL-CONFIG：资金参数配置与参数账本（v1.0）
+# P8-CAPITAL-CONFIG：资金参数配置与参数账本（v1.1 · `2026-11-22` 已对齐 `P8-OWNER-CONSOLIDATED-20261123-v2`）
+
+> **版本标注（`v1.0 → v1.1` · `2026-11-22` `P8-OWNER-CONSOLIDATED-20261123-v2` 甲案）**：物理路径保持 `_v1.0.md` 权威引用不变；既有内容保留，新增 **`§1.5 UTC 日部署上限与常态日闸口径`** 并勘误 `D-A2` 三处滞留行（`L16 / L101 / L113`），同步明确 `daily_ledger_path` 为 YAML 必填项。
 
 - **治理编号**：`P8-CAPITAL-CONFIG`（B 线治理 / 配置与参数账本档）
-- **版本与生效日期**：`v1.0` · `2026-11-17`
+- **版本与生效日期**：`v1.0`（`2026-11-17`）→ **`v1.1`（`2026-11-22`）**
 - **表述与迭代纪律（`2026-11-17`）**：本文一切参数与机制均为 **当前决策 / 首期选择 / 数据前预设**，统一遵循 **“月度复检可替换；数据充分时形态让位于数据”**，严禁固化为不可推翻常数；完整 `w / φ` 决策推导链见 [`P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md`](P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)。
 
 ---
@@ -13,7 +15,21 @@
 3. **单市场日预算 $B$**：
    $$B = \frac{\text{站点敞口上限}}{\text{并发市场日数}}$$
    - **当前占位（`2026-11-17`，数据前预设）**：并发市场日数暂假设 $\approx 2 \implies B \approx \$250$；*月度复检可替换；数据充分时由实测同时挂存活跃市场日数分布替代*。
-4. **单注基础单元**：**暂不设**——**欠账 `D-A2`（CLOB/Gamma 最小单与精度调研）交付前禁止拍数**，届时由最小合法交易粒度反算护栏并与 `§6 w_0` 推导式联动。
+4. **单注基础单元**：**暂不设**——*历史注记（2026-11-17）：欠账 `D-A2` 交付前禁止拍数*；**[`v1.1` 勘误 · 对齐 [`P8-FACTS-LEDGER FACT-004`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#L18)]**：`S1-01 | D-A2` 五组调研已于 `2026-11-18` `DONE`（`min_order_size_shares = 5` 实盘实证），仅 **`<$1` `FAK` 最小名义额实证**随真钱试单段（`S3-15` `Probe 3`）待触发；Gamma `/markets` 公开端只读复核转 `PAPER` 轨待办池（`S3-14`）。
+
+### 1.5 UTC 日部署上限与网关金额双闸口径（`v1.1` 新增 · `2026-11-22` 业主授权）
+
+- **“UTC 日部署上限”正式定义**：UTC 自然日界（`00:00:00Z–23:59:59Z`）内，账户级 **新增买入实盘订单** 累计资金防护闸（独立于 `M4/M6` 资金门的第二道网关硬防线）：
+  1. **发单前阻断口径**：`当日已成交买入 + 在途预留 + 本笔最大名义额（limit_price × target_shares） <= max_daily_cumulative_usd`，超出即本地拒绝、零触网；
+  2. **入账累计口径**：仅计实际成交名义额（`FILLED / PARTIAL`）；**手续费单列 `fee_paid_usd` 科目**；未成交余款即时释放；
+  3. **卖出语义**：卖出不占用买入部署额度，亦**严禁逆向冲减**当日已累加买入额度；
+  4. **跨重启持久化**：计数器必须跨进程重启持久保存；**`daily_ledger_path` 配置化为 [`configs/clob_gateway.yaml`](../../configs/clob_gateway.yaml) 必填项**（代码中校验强制化随 `S3-14` Runner 开发单落实）。
+- **常态日部署基准与双闸公式**：
+  $$D_{\text{deploy}} = \min\!\left(\frac{\text{当期有效资金池 } P_{\text{tier}}}{\text{持仓周期 } D_{\text{hold}}},\; \text{活跃站数 } N \times B\right)$$
+  $$\text{常态日闸} = k_{\text{safety}} \times D_{\text{deploy}}, \qquad k_{\text{safety}} \in [1.25,\; 1.5]\ \text{（缺省 } 1.5\text{）}$$
+- **分期定值纪律**：
+  - **试单期缺省值**：沿用单笔 **`$25`** / 日累计 **`$250`**（`configs/clob_gateway.yaml` 缺省；试单授权执行时按 [`试单运行手册草案`](P8-S305B-TRIAL-RUNBOOK_试单运行手册草案_v0.1.md) 临时单向收紧为 `$6 / $15`；当前依常设指令 `STANDING-DIRECTIVE-NOREAL-ORDER` 保持 `PAPER` 冻结待触发）；
+  - **常态运营值（`v1.1` 不拍美元数字）**：常态单笔闸/日闸随 **`S3-12 GATE-LIVE`** 按业主实际批准的活跃站数 $N$ 与总资金池 $P_{\text{tier}}$ 依上式计算并写入 `configs/clob_gateway.yaml`；任何调大须业主签字，调小可随时配合台账留痕执行。
 
 ---
 
@@ -98,7 +114,7 @@
 | **`ρ₀`（含 `k, ρ_min, ρ_max`）** | `k = 0` 退化起步；`ρ₀ / ρ_min / ρ_max` 占位值于 `T4` 按薄盘深度基线落账（禁裸用） | 先以固定参与率安全起步，保留 Edge 感知斜率接口槽 | `ExecutionAttemptLog`（滑点 `slippage_vs_est_vwap` + 完成率 `fill_rate`） | 月度复检按滑点与完成率校准 `ρ₀` 并评估打开 `k > 0` | `2026-11-17` 建账 `k=0` 起步，待 `T3` 被动盘口基线填 `ρ₀` 数值 |
 | **`扫描间隔初始形状`** | 信息钟阶梯（`6h / 3h / 1h / 15–30min`）；价格钟独立 `30–60min` | 兼顾预报轮次/日内收敛节奏与盘口捕获频率 | `ScanDecisionEvent` 跨时段信息增量 vs 扫描频率效率样本 | 月度复检按信息价值-频率数据重估阶梯或连续曲线 | `2026-11-17` 并入账本占位 |
 | **`摩擦中位数`** | **`[欠 D-A1]`**（待首期盘口实测填充） | 决定 `D-1 edge` 安全垫与价差扣除基准 | 被动盘口价差/冲击日志（`T3`）与成交回执（`ExecutionAttemptLog`） | `D-A1` 完成数天被动录盘统计后填入首期数值，月度滚动更新 | `2026-11-17` 建账待填（欠 `D-A1`） |
-| **`平台最小单占位`** | 股数参考本地 `SPEC` `5 shares / gamma.minimum_order_size`；名义美元底 **`[欠 D-A2]`** | 直接制约 `w₀` 最小单下界与发单舍入拦截门槛 | Gamma `/markets` `minimum_order_size` 与 CLOB 网关核验（见 [`P8-FACTS-LEDGER`](P8-FACTS-LEDGER_静态事实档案_v0.1.md)） | `D-A2` 完成官方实测核验后转入静态事实档案并解除账本占位 | `2026-11-17` 建账占位（欠 `D-A2`） |
+| **`平台最小单占位`** | 股数已实证 `5 shares`（`FACT-004`）；名义美元底保守占位 `$1.0`（待真钱试单段 `Probe 3` 终验） | 直接制约 `w₀` 最小单下界与发单舍入拦截门槛 | Gamma `/markets` `minimum_order_size` 与 CLOB 网关核验（见 [`P8-FACTS-LEDGER FACT-004`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#L18)） | Gamma 公开端只读复核转 `S3-14` `PAPER` 轨待办；`<$1` 名义额实证随 `S3-15`（真钱试单段）待触发 | `2026-11-17` 建账；**`2026-11-22` `v1.1` 对齐 `FACT-004` 勘误** |
 | **`yellow_multiplier`**（`P16 YELLOW` 灯级乘子） | `0.5`（`D-6 v1` 预设，见 [`P6 RiskGatePolicy`](../../src/decision/engine.py#L129-L133)） | [`P8-D6-POLICY-CLOSURE §1.3 / §6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md#六-黄灯半额精确定义与-yellow_multiplier-作用点议程第-6-项)：$G = B \cdot w(\tau) \cdot [s(\text{edge}) \cdot \lambda(L)]$，`YELLOW → λ = yellow_multiplier`；已纳入 `_compute_policy_config_hash` | `P1 / P3 / P19`（黄灯期收益、滑点与空转率样本） | 月度复检按黄灯实测表现校准；**任何改动须换版 `policy_version` 并重算 `config_hash`** | `2026-11-22` 随 `S3-06` 阶段二（修正 3）增补入账 |
 
 ---
@@ -110,7 +126,7 @@
 | 欠账编号 | 名称与内容 | 当前状态 | 阻塞影响 / 归属去向 |
 | :--- | :--- | :--- | :--- |
 | **`D-A1`** | **摩擦中位数与真实盘口深度分布**（价差、浅盘深度、闪现频率基线） | **`PENDING（待被动录盘统计）`** | 决定 `§7` 摩擦中位数与 `ρ₀` 初值标定；由阶段 0 `T3` 被动抓盘完成后补齐 |
-| **`D-A2`** | **Polymarket 接口与最小单调研**（CLOB `/book`、WSS、`gamma.minimum_order_size`、最小名义美元、IOC/FAK、批量 `POST /orders`、rate limit、官方费率直连再确认） | **`IN_PROGRESS（本地研究已检索，待线上官方核实）`** | 本地 [`P7-ALGO-2 市场特性契约`](P7-ALGO-2_Polymarket市场特性契约.md) 已提供基线，全部结果转入 [`P8-FACTS-LEDGER_静态事实档案_v0.1.md`](P8-FACTS-LEDGER_静态事实档案_v0.1.md) 闭合 |
+| **`D-A2`** | **Polymarket 接口与最小单调研**（CLOB `/book`、WSS、`gamma.minimum_order_size`、`5 shares`、`< $1` 最小名义美元、IOC/FAK、rate limit、官方费率） | **`DONE（研究项 · `S1-01` 已于 `2026-11-18` 闭合；`<$1` 实证待真钱试单段）`** | `5 shares` 等五组研究已全部转入 [`P8-FACTS-LEDGER v0.4`](P8-FACTS-LEDGER_静态事实档案_v0.1.md)（`FACT-001~006`）；Gamma 公开端只读复核转 `S3-14` `PAPER` 待办池，`< $1` `FAK` 名义底线实证挂 `S3-15 Probe 3` 待“统一开通”后触发（`2026-11-22` `v1.1` 勘误对齐 `FACT-004`） |
 | **`D-A3a`** | **结算源规则实证差异拆分（`G-15` 前置文本侧：`Polymarket FAQ` vs `ADR` 逐字比对）** | **`PENDING（升格 P0 · 即 `T1`）`** | 最优先零成本任务，未闭合前**阻塞 `T8` 改版代码实现** |
 | **`D-A3b`** | **观测流源与真值日界错位残差（`M_now` 裂缝实证与影子补偿基线评估）** | **`PENDING（挂入影子期采样）`** | 依 `KERNEL-CONSENSUS v1.1 §七 B`：影子期零修正仅采样，月度人工审截尾中位数 `[0, 2°F]` |
 | **`D-A4`** | **散户占比 `> 70%` 出处核验与气候微结构先验佐证入档** | **`PENDING（来源待归档）`** | 补充 [`P8-KERNEL-CONSENSUS D-2`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#d-2-市场结构--已定稿) 统计出处，不阻塞阶段 0 |

@@ -17,6 +17,7 @@ use_system_proxy: false
 # Dual amount safety gates (UTC daily boundary; includes partial fill notional)
 max_single_order_usd: "25"
 max_daily_cumulative_usd: "250"
+daily_ledger_path: data/gateway/daily_usage.json
 
 # Local pre-submit validation guardrails (FACT-003 / FACT-004 / FACT-005)
 min_order_size_shares: "5"
