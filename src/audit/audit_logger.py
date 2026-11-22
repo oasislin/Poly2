@@ -9,19 +9,82 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import json
 from pathlib import Path
 import queue
 import threading
-from typing import Dict, Literal, Optional, Tuple
+from typing import Any, Dict, Literal, Mapping, Optional, Tuple
 
 from src.audit.p19_events import CapitalEventLog, ExecutionMode
 from src.data_acquisition.settlement_metar_stream import CoverageLedgerEntry
 from src.decision.engine import ScanDecisionEvent
 from src.execution.executor import ExecutionAttemptLog
 from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
-from src.utils.causal_utils import ensure_utc_datetime
+from src.utils.causal_utils import compute_record_sha256, ensure_utc_datetime
 
 AuditStreamName = Literal["p1", "p3", "p12", "p17", "p19"]
+GatewayTraceStage = Literal[
+    "PRE_SIGN_SNAPSHOT",
+    "HTTP_REQUEST",
+    "HTTP_RESPONSE",
+    "ORDER_RECONCILE",
+    "EXCEPTION",
+    "CIRCUIT_BREAKER",
+]
+
+
+@dataclass(frozen=True)
+class GatewayP3TraceEvent:
+    """Structured `p3.gateway.v1` lifecycle audit line written via `AsyncAuditLogger`."""
+
+    schema_version: str
+    trace_id: str
+    event_ts_utc: datetime
+    decision_ts_utc: datetime
+    session_id: str
+    execution_mode: ExecutionMode
+    decision_id: str
+    attempt_id: str
+    client_order_id: str
+    idempotency_key: str
+    station_id: str
+    market_id: str
+    token_id: str
+    model_hash: str
+    config_hash: str
+    stage: GatewayTraceStage
+    details: Mapping[str, Any]
+
+    def to_dict_without_hash(self) -> Dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "trace_id": self.trace_id,
+            "event_ts_utc": ensure_utc_datetime(
+                self.event_ts_utc, field_name="p3_gateway.event_ts_utc"
+            ).isoformat(),
+            "decision_ts_utc": ensure_utc_datetime(
+                self.decision_ts_utc, field_name="p3_gateway.decision_ts_utc"
+            ).isoformat(),
+            "session_id": self.session_id,
+            "execution_mode": self.execution_mode,
+            "decision_id": self.decision_id,
+            "attempt_id": self.attempt_id,
+            "client_order_id": self.client_order_id,
+            "idempotency_key": self.idempotency_key,
+            "station_id": self.station_id,
+            "market_id": self.market_id,
+            "token_id": self.token_id,
+            "model_hash": self.model_hash,
+            "config_hash": self.config_hash,
+            "stage": self.stage,
+            "terminal_status": None,
+            "details": dict(self.details),
+        }
+
+    def to_json_line(self) -> str:
+        payload = self.to_dict_without_hash()
+        payload["record_sha256"] = compute_record_sha256(payload)
+        return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 STREAM_FILENAMES: Dict[AuditStreamName, str] = {
     "p1": "p1_scan_decisions.jsonl",
     "p3": "p3_execution_attempts.jsonl",
@@ -102,6 +165,10 @@ class AsyncAuditLogger:
         """Enqueue a `P3 ExecutionAttemptLog` asynchronously."""
         self._enqueue("p3", attempt.decision_ts_utc, attempt.execution_mode, attempt.to_json_line())
 
+    def log_p3_gateway_trace(self, event: GatewayP3TraceEvent) -> None:
+        """Enqueue a `p3.gateway.v1` gateway trace event asynchronously into `p3`."""
+        self._enqueue("p3", event.decision_ts_utc, event.execution_mode, event.to_json_line())
+
     def log_p12_coverage_ledger(self, ledger: CoverageLedgerEntry) -> None:
         """Enqueue a `P12 CoverageLedgerEntry` asynchronously."""
         self._enqueue("p12", ledger.run_ts_utc, ledger.execution_mode, ledger.to_json_line())
@@ -163,5 +230,7 @@ __all__ = [
     "AsyncAuditLogger",
     "AuditStreamName",
     "AuditWriteStats",
+    "GatewayP3TraceEvent",
+    "GatewayTraceStage",
     "STREAM_FILENAMES",
 ]

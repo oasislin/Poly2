@@ -1,0 +1,35 @@
+# S3-05b CLOB Gateway Execution & Dual Safety Gate Configuration
+# Default profile: Trial Period ($25 single order / $250 UTC daily cumulative)
+# Governance rule (P8-WO-20261123-S305B-GATEWAY-DEV §5c):
+#   - Decreasing safety caps may be applied immediately with ledger trace.
+#   - Increasing safety caps requires explicit owner sign-off.
+
+execution_mode: PAPER
+live_confirmation_env_var: POLY_LIVE_CONFIRM
+live_confirmation_expected_value: CONFIRM_LIVE
+
+clob_host: https://clob.polymarket.com
+chain_id: 137
+signature_type: 2
+tick_size_ttl_sec: 300.0
+use_system_proxy: false
+
+# Dual amount safety gates (UTC daily boundary; includes partial fill notional)
+max_single_order_usd: "25"
+max_daily_cumulative_usd: "250"
+
+# Local pre-submit validation guardrails (FACT-003 / FACT-004 / FACT-005)
+min_order_size_shares: "5"
+max_limit_price: "0.99"
+allowed_tick_sizes:
+  - "0.01"
+  - "0.001"
+require_neg_risk: true
+
+# Network fault tolerance & circuit breaker
+request_timeout_sec: 10.0
+max_reconnect_attempts: 3
+backoff_base_sec: 0.5
+backoff_max_sec: 8.0
+backoff_jitter_ratio: 0.25
+circuit_breaker_failure_threshold: 5

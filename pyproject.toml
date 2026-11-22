@@ -2,6 +2,9 @@
 name = "poly-way2"
 version = "2.2.0"
 requires-python = ">=3.13,<3.14"
+dependencies = [
+    "py-clob-client==0.34.6",
+]
 
 [tool.pytest.ini_options]
 minversion = "8.3"

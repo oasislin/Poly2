@@ -9,4 +9,6 @@ temp/
 *.log
 .env
 *.env
+config/credentials.local.yaml
+configs/credentials.local.yaml
 *_Conflict*

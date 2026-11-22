@@ -25,6 +25,9 @@ cfgrib>=0.9.9
 # Database
 sqlite3>=3.35.0  # Usually included with Python
 
+# Polymarket CLOB Gateway SDK (locked version per P8-WO-20261123-S305B-GATEWAY-DEV; upgrade requires verdict)
+py-clob-client==0.34.6
+
 # Testing and development
 pytest==8.3.4
 pytest-cov>=4.0.0
