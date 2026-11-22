@@ -431,3 +431,73 @@ def test_t21_mechanical_cell_column_alignment_assertion(tmp_path: Path):
     _write_csv_rows(c_file5, bad_c)
     with pytest.raises(ContractConversionError, match="Variable mismatch between metrics"):
         convert_csv_to_contract(METRICS_REAL_PATH, c_file5, MANIFEST_REAL_PATH)
+
+
+def _seed_v2_target_contract(tmp_path: Path, *, name: str = "v2_target.json") -> tuple[Path, str]:
+    """Copy current v2 physical_param_contract.json into tmp_path and return (path, original_text)."""
+    src = Path("data/contracts/physical_param_contract.json")
+    original = src.read_text(encoding="utf-8")
+    target = tmp_path / name
+    target.write_text(original, encoding="utf-8")
+    return target, original
+
+
+def test_t22_export_guard_rejects_v2_target_downgrade(tmp_path: Path):
+    """Guard 1: export_contract_to_json rejects legacy v1 contract targeting a v2 contract (0-byte diff)."""
+    if not METRICS_REAL_PATH.exists() or not COMPARISON_REAL_PATH.exists():
+        pytest.skip("Real evidence CSV files not found")
+
+    target_path, before_text = _seed_v2_target_contract(tmp_path)
+    v1_contract = convert_csv_to_contract(
+        metrics_csv_path=METRICS_REAL_PATH,
+        comparison_csv_path=COMPARISON_REAL_PATH,
+        manifest_path=MANIFEST_REAL_PATH,
+    )
+
+    with pytest.raises(ContractConversionError, match="手工重签"):
+        export_contract_to_json(v1_contract, target_path)
+
+    after_data = json.loads(target_path.read_text(encoding="utf-8"))
+    assert target_path.read_text(encoding="utf-8") == before_text
+    assert after_data["s_oos_version"] == "v2_2000_2018_oof_cv"
+    assert "s_oos_metadata" in after_data
+    assert after_data["cells"]["KMIA_30h"]["s_oos"] == 1.004713
+    assert "s_oos_historical" in after_data["cells"]["KMIA_30h"]
+
+
+def test_t23_convert_guard_rejects_v1_csv_for_v2_target(tmp_path: Path):
+    """Guard 2: convert_csv_to_contract fails closed before building when v1 CSV targets v2 contract."""
+    if not METRICS_REAL_PATH.exists() or not COMPARISON_REAL_PATH.exists():
+        pytest.skip("Real evidence CSV files not found")
+
+    target_path, before_text = _seed_v2_target_contract(tmp_path)
+
+    with pytest.raises(ContractConversionError, match="s_oos_version='v2_2000_2018_oof_cv'"):
+        convert_csv_to_contract(
+            metrics_csv_path=METRICS_REAL_PATH,
+            comparison_csv_path=COMPARISON_REAL_PATH,
+            manifest_path=MANIFEST_REAL_PATH,
+            target_contract_path=target_path,
+        )
+
+    assert target_path.read_text(encoding="utf-8") == before_text
+
+
+def test_t24_legacy_v1_target_without_s_oos_version_unaffected(tmp_path: Path):
+    """Guard 3: Legacy targets lacking s_oos_version keep normal convert + export behavior."""
+    if not METRICS_REAL_PATH.exists() or not COMPARISON_REAL_PATH.exists():
+        pytest.skip("Real evidence CSV files not found")
+
+    v1_target = tmp_path / "legacy_v1_contract.json"
+    v1_target.write_text(json.dumps({"contract_version": "ADR-0019-Ticket01-v1"}), encoding="utf-8")
+
+    contract = convert_csv_to_contract(
+        metrics_csv_path=METRICS_REAL_PATH,
+        comparison_csv_path=COMPARISON_REAL_PATH,
+        manifest_path=MANIFEST_REAL_PATH,
+        target_contract_path=v1_target,
+    )
+    out_path = export_contract_to_json(contract, v1_target)
+    written = json.loads(out_path.read_text(encoding="utf-8"))
+    assert written["total_cells"] == 22
+    assert "s_oos_version" not in written

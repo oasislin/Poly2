@@ -33,6 +33,8 @@ from src.contract.version_watchdog import (
 
 logger = logging.getLogger(__name__)
 
+EXPECTED_V2_S_OOS_VERSION = "v2_2000_2018_oof_cv"
+
 # Statutory columns required in metrics CSV
 REQUIRED_METRICS_COLUMNS = {
     "station",
@@ -386,22 +388,80 @@ def _load_manifest_sha_and_weights(
     return canonical_sha, weights_map
 
 
+def _read_target_s_oos_version(target_path: Path) -> Optional[str]:
+    """Read existing target contract JSON and return its s_oos_version if present."""
+    if not target_path.exists():
+        return None
+    try:
+        data = json.loads(target_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ContractConversionError(
+            f"Failed to parse existing target contract JSON at {target_path}: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        return None
+    ver = data.get("s_oos_version")
+    if isinstance(ver, str) and ver.strip():
+        return ver.strip()
+    return None
+
+
+def _csv_has_explicit_v2_provenance(m_rows: List[Dict[str, str]]) -> bool:
+    """Return True iff metrics CSV rows explicitly carry v2_2000_2018_oof_cv provenance.
+
+    Legacy v1 2019 in-sample CSVs matching REQUIRED_METRICS_COLUMNS lack an `s_oos_version`
+    column and therefore evaluate to False (identified strictly from CSV schema).
+    """
+    return bool(m_rows) and all(
+        str(row.get("s_oos_version", "")).strip() == EXPECTED_V2_S_OOS_VERSION
+        for row in m_rows
+    )
+
+
+def _assert_no_v2_target_downgrade(
+    target_path: Optional[Union[str, Path]],
+    *,
+    input_is_v2: bool,
+    entrypoint: str,
+) -> None:
+    """Fail closed before touching any file if a legacy v1 input targets a v2 contract."""
+    if target_path is None:
+        return
+    out_file = Path(target_path)
+    target_ver = _read_target_s_oos_version(out_file)
+    if target_ver is not None and not input_is_v2:
+        raise ContractConversionError(
+            f"Refusing {entrypoint}: target contract {out_file} carries "
+            f"s_oos_version='{target_ver}', while input is legacy v1 (lacking "
+            f"'{EXPECTED_V2_S_OOS_VERSION}' provenance). Writing s_oos / s_oos_version / "
+            f"s_oos_metadata / s_oos_historical is blocked to prevent airgap_2019 regression; "
+            f"follow the manual v2 contract re-signing procedure (手工重签规程)."
+        )
+
+
 def convert_csv_to_contract(
     metrics_csv_path: Union[str, Path],
     comparison_csv_path: Union[str, Path],
     manifest_path: Optional[Union[str, Path]] = None,
     *,
     created_at: Optional[str] = None,
+    target_contract_path: Optional[Union[str, Path]] = None,
 ) -> PhysicalParamContract:
     """
     Convert V2 metrics and comparison CSVs into a statutory 22-grid PhysicalParamContract.
     Strictly verifies EXACT 22 cell coverage, fail-closed type validation, and ADR-0019 alignment.
     Derives model_weights_sha256 directly from manifest.json (external injection prohibited).
+    Fails closed when target_contract_path contains s_oos_version and input lacks v2 provenance.
     """
     m_path = Path(metrics_csv_path)
     c_path = Path(comparison_csv_path)
 
     m_rows = _read_and_validate_csv(m_path, REQUIRED_METRICS_COLUMNS, "Metrics")
+    _assert_no_v2_target_downgrade(
+        target_contract_path,
+        input_is_v2=_csv_has_explicit_v2_provenance(m_rows),
+        entrypoint="convert_csv_to_contract",
+    )
     c_rows = _read_and_validate_csv(c_path, REQUIRED_COMPARISON_COLUMNS, "Comparison")
 
     m_map = _load_csv_grid_map(m_rows, "metrics")
@@ -426,10 +486,18 @@ def convert_csv_to_contract(
 def export_contract_to_json(
     contract: PhysicalParamContract, output_path: Union[str, Path]
 ) -> Path:
-    """Serialize PhysicalParamContract instance to formatted JSON on disk."""
+    """Serialize PhysicalParamContract instance to formatted JSON on disk (fail-closed on v2 target)."""
     out_file = Path(output_path)
-    out_file.parent.mkdir(parents=True, exist_ok=True)
     serialized_dict = contract.to_dict()
+    input_is_v2 = (
+        str(serialized_dict.get("s_oos_version", "")).strip() == EXPECTED_V2_S_OOS_VERSION
+    )
+    _assert_no_v2_target_downgrade(
+        out_file,
+        input_is_v2=input_is_v2,
+        entrypoint="export_contract_to_json",
+    )
+    out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text(json.dumps(serialized_dict, indent=2, ensure_ascii=False), encoding="utf-8")
     return out_file
 
@@ -447,6 +515,7 @@ def main() -> None:
         metrics_csv_path=args.metrics,
         comparison_csv_path=args.comparison,
         manifest_path=args.manifest,
+        target_contract_path=args.output,
     )
     out_path = export_contract_to_json(contract, args.output)
     print(f"Contract successfully exported to: {out_path}")
