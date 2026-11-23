@@ -216,12 +216,57 @@ class AllowanceProbeResult:
 
 
 @dataclass(frozen=True)
+class GammaMarketSpec:
+    """Per-market minimum order & tick specification parsed from read-only Gamma JSON."""
+
+    market_id: str
+    slug: str
+    order_min_size: Optional[Decimal]
+    minimum_order_size: Optional[Decimal]
+    min_shares: Optional[Decimal]
+    min_notional: Optional[Decimal]
+    tick_size: Optional[Decimal]
+    neg_risk: Optional[bool]
+    enable_order_book: Optional[bool]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "market_id": self.market_id,
+            "slug": self.slug,
+            "order_min_size": str(self.order_min_size) if self.order_min_size is not None else None,
+            "minimum_order_size": str(self.minimum_order_size) if self.minimum_order_size is not None else None,
+            "min_shares": str(self.min_shares) if self.min_shares is not None else None,
+            "min_notional": str(self.min_notional) if self.min_notional is not None else None,
+            "tick_size": str(self.tick_size) if self.tick_size is not None else None,
+            "neg_risk": self.neg_risk,
+            "enable_order_book": self.enable_order_book,
+        }
+
+
+@dataclass(frozen=True)
 class GammaProbeResult:
     """Read-only Gamma public API market metadata check (D-A2 follow-up, zero credentials)."""
 
     status: Literal["OK_READONLY", "PLACEHOLDER_NO_GAMMA_READONLY", "GAMMA_UNAVAILABLE_READONLY"]
     markets_sampled: int
     detail: str
+    minimum_order_size: Optional[Decimal] = None
+    min_shares: Optional[Decimal] = None
+    min_notional: Optional[Decimal] = None
+    observed_field_names: Tuple[str, ...] = ()
+    market_specs: Tuple[GammaMarketSpec, ...] = ()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "status": self.status,
+            "markets_sampled": self.markets_sampled,
+            "detail": self.detail,
+            "minimum_order_size": str(self.minimum_order_size) if self.minimum_order_size is not None else None,
+            "min_shares": str(self.min_shares) if self.min_shares is not None else None,
+            "min_notional": str(self.min_notional) if self.min_notional is not None else None,
+            "observed_field_names": list(self.observed_field_names),
+            "market_specs": [m.to_dict() for m in self.market_specs],
+        }
 
 
 @dataclass(frozen=True)
@@ -255,11 +300,7 @@ class PreflightReport:
                 "raw_allowance_units": self.allowance_probe.raw_allowance_units,
                 "detail": self.allowance_probe.detail,
             },
-            "gamma_probe": {
-                "status": self.gamma_probe.status,
-                "markets_sampled": self.gamma_probe.markets_sampled,
-                "detail": self.gamma_probe.detail,
-            },
+            "gamma_probe": self.gamma_probe.to_dict(),
             "errors": list(self.errors),
         }
 
@@ -343,6 +384,29 @@ def query_readonly_erc20_allowance(
         )
 
 
+def _opt_decimal(val: Any) -> Optional[Decimal]:
+    if val is None or isinstance(val, bool):
+        return None
+    raw = str(val).strip()
+    if not raw or raw.lower() == "null":
+        return None
+    return Decimal(raw)
+
+
+def _extract_gamma_markets(payload: Any) -> List[Mapping[str, Any]]:
+    items = payload if isinstance(payload, list) else ([payload] if isinstance(payload, dict) else [])
+    markets: List[Mapping[str, Any]] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        nested = item.get("markets")
+        if isinstance(nested, list):
+            markets.extend(m for m in nested if isinstance(m, Mapping))
+        else:
+            markets.append(item)
+    return markets
+
+
 def query_readonly_gamma_metadata(
     *,
     gamma_url: Optional[str] = None,
@@ -357,17 +421,56 @@ def query_readonly_gamma_metadata(
             detail="Read-only placeholder (no Gamma URL passed; zero auth required)",
         )
     target = gamma_url or "https://gamma-api.polymarket.com/markets?limit=1"
+    size_keys = ("orderMinSize", "minimum_order_size", "min_shares", "minOrderSize")
+    notional_keys = ("min_notional", "minNotional", "min_notional_usd")
     try:
         with httpx.Client(transport=gamma_transport, timeout=timeout_sec, trust_env=False) as client:
             resp = client.get(target)
             resp.raise_for_status()
-            payload = resp.json()
-            count = len(payload) if isinstance(payload, list) else (1 if isinstance(payload, dict) else 0)
-            return GammaProbeResult(
-                status="OK_READONLY",
-                markets_sampled=count,
-                detail="Verified read-only public Gamma metadata endpoint",
+            markets = _extract_gamma_markets(resp.json())
+        specs: List[GammaMarketSpec] = []
+        observed: set[str] = set()
+        for m in markets:
+            for k in (*size_keys, *notional_keys):
+                if k in m and m.get(k) is not None:
+                    observed.add(k)
+            ord_min = _opt_decimal(m.get("orderMinSize"))
+            lit_min = _opt_decimal(m.get("minimum_order_size"))
+            resolved_shares = next((_opt_decimal(m.get(k)) for k in size_keys if _opt_decimal(m.get(k)) is not None), None)
+            resolved_notional = next(
+                (_opt_decimal(m.get(k)) for k in notional_keys if _opt_decimal(m.get(k)) is not None), None
             )
+            specs.append(
+                GammaMarketSpec(
+                    market_id=str(m.get("id") or ""),
+                    slug=str(m.get("slug") or ""),
+                    order_min_size=ord_min,
+                    minimum_order_size=lit_min,
+                    min_shares=resolved_shares,
+                    min_notional=resolved_notional,
+                    tick_size=_opt_decimal(m.get("orderPriceMinTickSize")),
+                    neg_risk=bool(m["negRisk"]) if "negRisk" in m and m["negRisk"] is not None else None,
+                    enable_order_book=(
+                        bool(m["enableOrderBook"])
+                        if "enableOrderBook" in m and m["enableOrderBook"] is not None
+                        else None
+                    ),
+                )
+            )
+        shares_vals = [s.min_shares for s in specs if s.min_shares is not None]
+        notional_vals = [s.min_notional for s in specs if s.min_notional is not None]
+        eff_shares = max(shares_vals) if shares_vals else None
+        eff_notional = max(notional_vals) if notional_vals else None
+        return GammaProbeResult(
+            status="OK_READONLY",
+            markets_sampled=len(specs),
+            detail="Verified read-only public Gamma metadata endpoint",
+            minimum_order_size=eff_shares,
+            min_shares=eff_shares,
+            min_notional=eff_notional,
+            observed_field_names=tuple(sorted(observed)),
+            market_specs=tuple(specs),
+        )
     except Exception as exc:
         return GammaProbeResult(
             status="GAMMA_UNAVAILABLE_READONLY",

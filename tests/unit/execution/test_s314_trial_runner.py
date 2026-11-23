@@ -125,7 +125,19 @@ def test_preflight_checks_locked_sdk_paper_fail_closed_and_readonly_allowance(tm
 
     def gamma_handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "GET"
-        return httpx.Response(200, json=[{"id": "gamma-mkt-1", "enableOrderBook": True, "orderPriceMinTickSize": 0.01}])
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "id": "678686",
+                    "slug": "will-2026-be-the-hottest-year-on-record",
+                    "enableOrderBook": True,
+                    "negRisk": True,
+                    "orderMinSize": 5,
+                    "orderPriceMinTickSize": 0.001,
+                }
+            ],
+        )
 
     with AsyncAuditLogger(tmp_path / "m7", execution_mode="PAPER") as audit_logger:
         report = run_preflight_checks(
@@ -150,6 +162,22 @@ def test_preflight_checks_locked_sdk_paper_fail_closed_and_readonly_allowance(tm
     assert report.allowance_probe.raw_allowance_units == 125_000_000
     assert report.gamma_probe.status == "OK_READONLY"
     assert report.gamma_probe.markets_sampled == 1
+    assert report.gamma_probe.minimum_order_size == Decimal("5")
+    assert report.gamma_probe.min_shares == Decimal("5")
+    assert report.gamma_probe.min_notional is None
+    assert report.gamma_probe.observed_field_names == ("orderMinSize",)
+    assert len(report.gamma_probe.market_specs) == 1
+    spec0 = report.gamma_probe.market_specs[0]
+    assert spec0.market_id == "678686"
+    assert spec0.order_min_size == Decimal("5")
+    assert spec0.minimum_order_size is None
+    assert spec0.min_shares == Decimal("5")
+    assert spec0.min_notional is None
+    assert spec0.tick_size == Decimal("0.001")
+    assert spec0.neg_risk is True
+    gamma_dict = report.to_dict()["gamma_probe"]
+    assert gamma_dict["min_shares"] == "5"
+    assert gamma_dict["min_notional"] is None
     assert len(rpc_methods) == 1
     assert rpc_methods[0]["method"] == "eth_call"
     call_data = rpc_methods[0]["params"][0]["data"]  # type: ignore[index]

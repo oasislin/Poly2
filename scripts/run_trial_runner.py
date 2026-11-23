@@ -45,6 +45,7 @@ def _cmd_preflight(args: argparse.Namespace) -> int:
             audit_logger=logger,
             rpc_url=args.rpc_url,
             owner_address=args.owner_address,
+            gamma_url=args.gamma_url,
         )
     print(json.dumps(report.to_dict(), sort_keys=True))
     return 0 if report.ok else 1
@@ -152,6 +153,7 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "preflight":
             p.add_argument("--rpc-url", default=None)
             p.add_argument("--owner-address", default=None)
+            p.add_argument("--gamma-url", default=None)
         elif name == "start":
             p.add_argument("--once", action="store_true")
         elif name == "reconcile":
