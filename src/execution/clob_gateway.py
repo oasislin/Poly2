@@ -97,6 +97,7 @@ class GatewaySafetyConfig:
     use_system_proxy: bool
     max_single_order_usd: Decimal
     max_daily_cumulative_usd: Decimal
+    daily_ledger_path: Path
     min_order_size_shares: Decimal
     max_limit_price: Decimal
     allowed_tick_sizes: Tuple[Decimal, ...]
@@ -218,6 +219,11 @@ def load_gateway_safety_config(config_path: Path) -> GatewaySafetyConfig:
     if cb_threshold < 1:
         raise GatewayConfigError("circuit_breaker_failure_threshold must be >= 1")
 
+    raw_daily_ledger = _require_key(parsed, "daily_ledger_path")
+    daily_ledger_str = str(raw_daily_ledger).strip() if raw_daily_ledger is not None else ""
+    if not daily_ledger_str:
+        raise GatewayConfigError("Gateway safety config 'daily_ledger_path' must be non-empty")
+
     return GatewaySafetyConfig(
         execution_mode=mode,
         live_confirmation_env_var=str(_require_key(parsed, "live_confirmation_env_var")),
@@ -229,6 +235,7 @@ def load_gateway_safety_config(config_path: Path) -> GatewaySafetyConfig:
         use_system_proxy=bool(_require_key(parsed, "use_system_proxy")),
         max_single_order_usd=max_single,
         max_daily_cumulative_usd=max_daily,
+        daily_ledger_path=Path(daily_ledger_str),
         min_order_size_shares=min_shares,
         max_limit_price=max_price,
         allowed_tick_sizes=ticks,
@@ -437,7 +444,6 @@ class ClobOrderGateway:
         self._safety_config_path = Path(safety_config_path)
         self._audit_logger = audit_logger
         self._credentials_path = credentials_path
-        self._daily_ledger_path = Path(daily_ledger_path) if daily_ledger_path is not None else None
         self._environ = environ
         self._http_transport = http_transport
         self._alert_callback = alert_callback
@@ -447,6 +453,11 @@ class ClobOrderGateway:
         self._lock = threading.Lock()
 
         self._safety_config = load_gateway_safety_config(self._safety_config_path)
+        self._daily_ledger_path = (
+            Path(daily_ledger_path)
+            if daily_ledger_path is not None
+            else self._safety_config.daily_ledger_path
+        )
         self._cached_mtime_ns: Optional[int] = self._safety_config_path.stat().st_mtime_ns
         self._startup_decision = self._resolve_mode(self._safety_config)
         self._transport: Optional[_LiveClobTransport] = (
@@ -518,11 +529,11 @@ class ClobOrderGateway:
     def _refresh_safety_config(self) -> GatewaySafetyConfig:
         if not self._safety_config_path.exists():
             raise GatewayConfigError(f"Gateway safety config missing: {self._safety_config_path}")
-        stat_mtime = self._safety_config_path.stat().st_mtime_ns
-        if self._cached_mtime_ns != stat_mtime:
+        current_sha = hashlib.sha256(self._safety_config_path.read_bytes()).hexdigest()
+        if current_sha != self._safety_config.config_sha256:
             reloaded = load_gateway_safety_config(self._safety_config_path)
             self._safety_config = reloaded
-            self._cached_mtime_ns = stat_mtime
+            self._cached_mtime_ns = self._safety_config_path.stat().st_mtime_ns
             new_decision = self._resolve_mode(reloaded)
             if new_decision.effective_mode != "LIVE":
                 self._startup_decision = new_decision
@@ -557,6 +568,31 @@ class ClobOrderGateway:
     def get_daily_used_usd(self, utc_day: date) -> Decimal:
         """Return UTC daily cumulative filled notional (including partial fills)."""
         return self._daily_used_by_date.get(utc_day, Decimal("0"))
+
+    def preflight_safety_snapshot(self) -> Dict[str, Any]:
+        """Return read-only safety configuration & ledger readiness metadata for preflight checks."""
+        with self._lock:
+            safety = self._refresh_safety_config()
+            ledger_parent_creatable = False
+            if self._daily_ledger_path is not None:
+                try:
+                    self._daily_ledger_path.parent.mkdir(parents=True, exist_ok=True)
+                    ledger_parent_creatable = self._daily_ledger_path.parent.exists()
+                except OSError:
+                    ledger_parent_creatable = False
+            stats = self._audit_logger.stats()
+            return {
+                "sdk_version": self.sdk_version,
+                "safety_config_mode": safety.execution_mode,
+                "effective_mode": self.effective_mode,
+                "live_transport_enabled": self.live_transport_enabled,
+                "daily_ledger_path": str(self._daily_ledger_path) if self._daily_ledger_path else "",
+                "ledger_dir_ready": ledger_parent_creatable,
+                "max_single_order_usd": str(safety.max_single_order_usd),
+                "max_daily_cumulative_usd": str(safety.max_daily_cumulative_usd),
+                "config_sha256": safety.config_sha256,
+                "audit_logger_online": (not self._audit_logger._closed) and stats.error_count == 0,
+            }
 
     def get_risk_panel_snapshot(
         self,
@@ -1197,6 +1233,27 @@ class ClobOrderGateway:
                 return out
 
         assert resp_payload is not None
+        return self._finalize_order_response(
+            req=req,
+            utc_day=utc_day,
+            attempt_id=attempt_id,
+            client_order_id=client_order_id,
+            idem_key=idem_key,
+            sub_ts=sub_ts,
+            resp_payload=resp_payload,
+        )
+
+    def _finalize_order_response(
+        self,
+        *,
+        req: LiveOrderRequest,
+        utc_day: date,
+        attempt_id: str,
+        client_order_id: str,
+        idem_key: str,
+        sub_ts: datetime,
+        resp_payload: Mapping[str, Any],
+    ) -> ExecutionAttemptLog:
         self._consecutive_failures = 0
         self._emit_trace(
             req=req,
@@ -1245,6 +1302,154 @@ class ClobOrderGateway:
         )
         self._idempotency_cache[idem_key] = out
         return out
+
+    def submit_paper_simulated_order(
+        self,
+        req: LiveOrderRequest,
+        *,
+        paper_submit: Callable[[LiveOrderRequest, str, str, str, int], Mapping[str, Any]],
+        paper_lookup: Optional[Callable[[str, str, int], Optional[Mapping[str, Any]]]] = None,
+    ) -> ExecutionAttemptLog:
+        """PAPER-only simulated CLOB execution reusing safety gates, daily ledger, fault recovery & P3."""
+        if self.effective_mode != "PAPER" or self.live_transport_enabled:
+            raise RuntimeError("submit_paper_simulated_order is strictly restricted to PAPER mode")
+        with self._lock:
+            ctx = req.context
+            sub_ts = ensure_utc_datetime(ctx.submit_ts_utc, field_name="gateway.submit_ts_utc")
+            utc_day = sub_ts.date()
+            attempt_id = ctx.resolved_attempt_id(sub_ts)
+            idem_key = ctx.resolved_idempotency_key(sub_ts)
+            client_order_id = req.client_order_id or f"cid-{attempt_id}"
+
+            self._emit_trace(
+                req=req,
+                attempt_id=attempt_id,
+                client_order_id=client_order_id,
+                idem_key=idem_key,
+                stage="PRE_SIGN_SNAPSHOT",
+                details={
+                    "requested_mode": ctx.execution_mode,
+                    "gateway_effective_mode": self.effective_mode,
+                    "paper_simulation": True,
+                    "target_shares": str(req.plan.target_shares),
+                    "limit_price": str(req.plan.limit_price),
+                    "target_usd": str(req.plan.target_usd),
+                    "daily_used_before_usd": str(self._daily_used_by_date.get(utc_day, Decimal("0"))),
+                },
+                event_ts=sub_ts,
+            )
+            if idem_key in self._idempotency_cache:
+                return self._idempotency_cache[idem_key]
+            if self._circuit_open:
+                return self._reject_locally(
+                    req=req, attempt_id=attempt_id, client_order_id=client_order_id,
+                    idem_key=idem_key, sub_ts=sub_ts, reason="CIRCUIT_BREAKER_OPEN",
+                )
+            safety = self._refresh_safety_config()
+            if safety.execution_mode != "PAPER":
+                return self._reject_locally(
+                    req=req, attempt_id=attempt_id, client_order_id=client_order_id,
+                    idem_key=idem_key, sub_ts=sub_ts, reason="PAPER_MODE_REQUIRED_FOR_SIM",
+                )
+            val_err = self._validate_local_order(req, safety, utc_day)
+            if val_err is not None:
+                return self._reject_locally(
+                    req=req, attempt_id=attempt_id, client_order_id=client_order_id,
+                    idem_key=idem_key, sub_ts=sub_ts, reason=val_err,
+                )
+
+            nonce = self._nonce_provider(ctx)
+            reserved_usd = req.plan.target_shares * req.plan.limit_price
+            self._daily_inflight_by_date[utc_day] = (
+                self._daily_inflight_by_date.get(utc_day, Decimal("0")) + reserved_usd
+            )
+            try:
+                resp_payload = self._execute_paper_with_recovery(
+                    req=req,
+                    safety=safety,
+                    attempt_id=attempt_id,
+                    client_order_id=client_order_id,
+                    idem_key=idem_key,
+                    nonce=nonce,
+                    sub_ts=sub_ts,
+                    paper_submit=paper_submit,
+                    paper_lookup=paper_lookup,
+                )
+                if isinstance(resp_payload, ExecutionAttemptLog):
+                    return resp_payload
+                return self._finalize_order_response(
+                    req=req, utc_day=utc_day, attempt_id=attempt_id,
+                    client_order_id=client_order_id, idem_key=idem_key,
+                    sub_ts=sub_ts, resp_payload=resp_payload,
+                )
+            finally:
+                self._daily_inflight_by_date[utc_day] = max(
+                    Decimal("0"),
+                    self._daily_inflight_by_date.get(utc_day, Decimal("0")) - reserved_usd,
+                )
+
+    def _execute_paper_with_recovery(
+        self,
+        *,
+        req: LiveOrderRequest,
+        safety: GatewaySafetyConfig,
+        attempt_id: str,
+        client_order_id: str,
+        idem_key: str,
+        nonce: int,
+        sub_ts: datetime,
+        paper_submit: Callable[[LiveOrderRequest, str, str, str, int], Mapping[str, Any]],
+        paper_lookup: Optional[Callable[[str, str, int], Optional[Mapping[str, Any]]]],
+    ) -> Mapping[str, Any] | ExecutionAttemptLog:
+        max_attempts = 1 + safety.max_reconnect_attempts
+        last_err: Optional[Exception] = None
+        for post_try in range(max_attempts):
+            try:
+                resp = paper_submit(req, client_order_id, attempt_id, idem_key, nonce)
+                if str(resp.get("status", "")).upper() in ("LIVE", "PENDING") and paper_lookup is not None:
+                    for poll_idx in range(max_attempts):
+                        self._sleep_fn(self._compute_backoff_sec(safety, poll_idx))
+                        polled = paper_lookup(client_order_id, attempt_id, nonce)
+                        self._emit_trace(
+                            req=req, attempt_id=attempt_id, client_order_id=client_order_id,
+                            idem_key=idem_key, stage="ORDER_RECONCILE",
+                            details={"delayed_callback_poll": poll_idx + 1, "found": polled is not None},
+                        )
+                        if polled is not None and str(polled.get("status", "")).upper() not in ("LIVE", "PENDING"):
+                            return polled
+                return resp
+            except (ConnectionError, TimeoutError, httpx.TransportError) as exc:
+                last_err = exc
+                self._emit_trace(
+                    req=req, attempt_id=attempt_id, client_order_id=client_order_id,
+                    idem_key=idem_key, stage="EXCEPTION",
+                    details={"paper_fault": f"{type(exc).__name__}: {exc}", "try": post_try + 1},
+                )
+                found = paper_lookup(client_order_id, attempt_id, nonce) if paper_lookup is not None else None
+                self._emit_trace(
+                    req=req, attempt_id=attempt_id, client_order_id=client_order_id,
+                    idem_key=idem_key, stage="ORDER_RECONCILE",
+                    details={"lookup_before_retry": True, "found": found is not None},
+                )
+                if found is not None:
+                    return found
+                is_pre_connect = isinstance(exc, (ConnectionError, httpx.ConnectError))
+                if not is_pre_connect or post_try + 1 >= max_attempts:
+                    reason = f"PAPER_FAULT_UNRECOVERED:{type(exc).__name__}:{exc}"
+                    self._register_failure(
+                        req=req, safety=safety, attempt_id=attempt_id,
+                        client_order_id=client_order_id, idem_key=idem_key, reason=reason,
+                    )
+                    out = self._record_terminal_attempt(
+                        req=req, attempt_id=attempt_id, idem_key=idem_key, sub_ts=sub_ts,
+                        final_ts=datetime.now(timezone.utc), terminal_status="REJECTED",
+                        reject_reason=reason, filled_shares=Decimal("0"),
+                        filled_usd=Decimal("0"), fee_paid_usd=Decimal("0.00000"),
+                    )
+                    self._idempotency_cache[idem_key] = out
+                    return out
+                self._sleep_fn(self._compute_backoff_sec(safety, post_try))
+        raise RuntimeError(f"Unreachable paper execution loop failure: {last_err}")
 
 
 __all__ = [

@@ -16,15 +16,29 @@ import pytest
 import numpy as np
 from scipy import stats
 
+import scripts.audit_p4_reliability_v12 as mod_v12
 from scripts.audit_p4_reliability_v12 import run_v12_reliability_audit
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
 
 
-def test_v12_lineage_and_artifact_integrity():
+def _isolated_evidence_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setattr(mod_v12, "PROJECT_ROOT", tmp_path)
+    for r in range(20):
+        name = f"cv_fold_{r}_predictions.parquet"
+        src = EVIDENCE_DIR / name
+        dst = tmp_path / name
+        if src.exists() and not dst.exists():
+            dst.symlink_to(src)
+    return tmp_path
+
+
+def test_v12_lineage_and_artifact_integrity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that daily samples strictly originate from 20-fold Block-CV artifacts with valid SHA256."""
-    res = run_v12_reliability_audit(evidence_dir=EVIDENCE_DIR, n_days_per_fold=30, seed=20260923)
+    res = run_v12_reliability_audit(
+        evidence_dir=_isolated_evidence_dir(tmp_path, monkeypatch), n_days_per_fold=30, seed=20260923
+    )
     lineage_file = res["lineage_path"]
     assert lineage_file.exists(), f"Missing lineage file: {lineage_file}"
 
@@ -52,9 +66,11 @@ def test_v12_lineage_and_artifact_integrity():
         assert cnt == 30, f"Fold {fid} sample count mismatch: {cnt} != 30"
 
 
-def test_v12_poisson_mechanical_adjudication_no_adjectives():
+def test_v12_poisson_mechanical_adjudication_no_adjectives(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that right tail is mechanically flagged via Poisson test without subjective adjectives."""
-    res = run_v12_reliability_audit(evidence_dir=EVIDENCE_DIR, n_days_per_fold=30, seed=20260923)
+    res = run_v12_reliability_audit(
+        evidence_dir=_isolated_evidence_dir(tmp_path, monkeypatch), n_days_per_fold=30, seed=20260923
+    )
     tails = res["summary"]["dual_tail_diagnostics"]
     assert len(tails) == 2
 
@@ -78,9 +94,11 @@ def test_v12_poisson_mechanical_adjudication_no_adjectives():
         assert "UNHEALTHY" not in t["status"]
 
 
-def test_v12_kurtosis_diagnostics_and_exceedance_math():
+def test_v12_kurtosis_diagnostics_and_exceedance_math(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify mathematical correctness of skewness, kurtosis and exceedance rates."""
-    res = run_v12_reliability_audit(evidence_dir=EVIDENCE_DIR, n_days_per_fold=30, seed=20260923)
+    res = run_v12_reliability_audit(
+        evidence_dir=_isolated_evidence_dir(tmp_path, monkeypatch), n_days_per_fold=30, seed=20260923
+    )
     shape = res["summary"]["kurtosis_shape_diagnostics"]
 
     assert "excess_kurtosis" in shape

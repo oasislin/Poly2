@@ -70,6 +70,8 @@ class BankrollAccountManager:
         self._frozen_by_decision: Dict[str, _FrozenLot] = {}
         self._freeze_receipts: Dict[str, FreezeReceipt] = {}
         self._held_by_market: Dict[Tuple[str, str], Decimal] = {}
+        self._fee_by_market: Dict[Tuple[str, str], Decimal] = {}
+        self._fee_paid_total_usd: Decimal = Decimal("0")
         self._realized_pnl_by_station: Dict[str, Decimal] = {}
         self._tripped_stations: Set[str] = set()
         self._settled_attempts: Dict[str, Decimal] = {}
@@ -101,10 +103,20 @@ class BankrollAccountManager:
         return self._free_usd + self.active_locked_usd + self.held_total_usd
 
     @property
+    def fee_paid_total_usd(self) -> Decimal:
+        """Total cumulative execution fees recorded through `P14` fill settlements."""
+        return self._fee_paid_total_usd
+
+    def position_cost_basis_incl_fee(self, station_id: str, market_id: str) -> Decimal:
+        """Return fee-inclusive cost basis (`held + fee`) for open `(station_id, market_id)`."""
+        key = (station_id, market_id)
+        return self._held_by_market.get(key, Decimal("0")) + self._fee_by_market.get(key, Decimal("0"))
+
+    @property
     def conservation_residual_usd(self) -> Decimal:
-        """Must remain `Decimal('0')` (`free + active_locked + held - (tier_pool + realized_pnl)`)."""
+        """Must remain `Decimal('0')` (`free + active_locked + held + fee - (tier_pool + realized_pnl)`)."""
         expected = self._tier_pool_usd + self.realized_pnl_total_usd
-        return self.equity_usd - expected
+        return (self.equity_usd + self._fee_paid_total_usd) - expected
 
     def _station_active_locked(self, station_id: str) -> Decimal:
         return sum(
@@ -197,6 +209,7 @@ class BankrollAccountManager:
             consecutive_green_months=self._consecutive_green_months,
             realized_pnl_total_usd=self.realized_pnl_total_usd,
             conservation_residual_usd=self.conservation_residual_usd,
+            fee_paid_total_usd=self._fee_paid_total_usd,
         )
 
     def query_quota(self, query: QuotaQuery) -> QuotaSnapshot:
@@ -319,32 +332,37 @@ class BankrollAccountManager:
         return receipt
 
     def settle_order_fill(self, loopback: FillSettleLoopback) -> Decimal:
-        """`P14` IOC loopback: convert filled USD to `held`, refund remainder, emit `P19`."""
+        """`P14` IOC loopback: convert filled USD to `held`, account fee, refund remainder."""
         if loopback.attempt_id in self._settled_attempts:
             return self._settled_attempts[loopback.attempt_id]
         if loopback.terminal_status in ("CANCELLED_UNFILLED", "REJECTED", "PAPER_MATCH_ABORTED_GAP"):
-            if loopback.filled_usd > Decimal("0"):
-                raise ValueError(f"Non-fill status {loopback.terminal_status} has filled_usd={loopback.filled_usd}")
+            if loopback.filled_usd > Decimal("0") or loopback.fee_paid_usd > Decimal("0"):
+                raise ValueError(
+                    f"Non-fill status {loopback.terminal_status} has filled_usd={loopback.filled_usd}, fee_paid_usd={loopback.fee_paid_usd}"
+                )
             reason = loopback.reject_or_abort_reason or loopback.terminal_status
             return self.release_unfill(
                 decision_id=loopback.decision_id, attempt_id=loopback.attempt_id,
                 ts_utc=loopback.settled_ts_utc, reason=reason,
             )
         lot = self._frozen_by_decision.pop(loopback.decision_id)
-        if loopback.filled_usd > lot.amount_usd:
+        total_cash_spent = loopback.filled_usd + loopback.fee_paid_usd
+        if total_cash_spent > lot.amount_usd:
             self._frozen_by_decision[loopback.decision_id] = lot
-            raise ValueError(f"filled_usd {loopback.filled_usd} exceeds frozen {lot.amount_usd}")
-        refund = lot.amount_usd - loopback.filled_usd
-        self._free_usd += refund
+            raise ValueError(f"filled+fee {total_cash_spent} exceeds frozen {lot.amount_usd}")
+        self._free_usd += lot.amount_usd - total_cash_spent
         key = (lot.station_id, lot.market_id)
         self._held_by_market[key] = self._held_by_market.get(key, Decimal("0")) + loopback.filled_usd
-        self._settled_attempts[loopback.attempt_id] = loopback.filled_usd
+        if loopback.fee_paid_usd > Decimal("0"):
+            self._fee_by_market[key] = self._fee_by_market.get(key, Decimal("0")) + loopback.fee_paid_usd
+            self._fee_paid_total_usd += loopback.fee_paid_usd
+        self._settled_attempts[loopback.attempt_id] = total_cash_spent
         self._emit_p19(
             ts_utc=loopback.settled_ts_utc, event_type="FILL_SETTLE_CONVERSION",
             station_id=lot.station_id, related_ref_id=loopback.attempt_id,
             reason=f"P14_{loopback.terminal_status}:{loopback.decision_id}",
         )
-        return loopback.filled_usd
+        return total_cash_spent
 
     def release_unfill(
         self,
@@ -421,6 +439,7 @@ class BankrollAccountManager:
         remaining = held_amt - cost_basis
         if remaining == Decimal("0"):
             self._held_by_market.pop(key, None)
+            self._fee_by_market.pop(key, None)
         else:
             self._held_by_market[key] = remaining
         self._free_usd += event.payout_usd

@@ -27,8 +27,8 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert {t["slice"] for t in data["tasks"]} == {"切片 1", "切片 2", "切片 3", "切片 4"}
 
     by_id = {t["id"]: t for t in data["tasks"]}
-    assert by_id["S3-05b"]["status"] == "PENDING_APPROVAL"
-    assert by_id["S3-14"]["status"] == "PLANNED"
+    assert by_id["S3-05b"]["status"] == "DONE"
+    assert by_id["S3-14"]["status"] == "DONE"
     assert by_id["S3-15"]["status"] == "PLANNED"
     assert "S3-14" in by_id["S3-11"]["depends_on"]
     assert "S3-14" in by_id["S3-15"]["depends_on"]

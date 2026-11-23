@@ -15,6 +15,7 @@ import pytest
 import numpy as np
 from scipy import stats
 
+import scripts.audit_p4_reliability_v13 as mod_v13
 from scripts.audit_p4_reliability_v13 import (
     run_v13_reliability_audit,
     construct_true_model_cdf,
@@ -22,6 +23,17 @@ from scripts.audit_p4_reliability_v13 import (
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 EVIDENCE_DIR = PROJECT_ROOT / "evidence"
+
+
+def _isolated_evidence_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setattr(mod_v13, "PROJECT_ROOT", tmp_path)
+    for r in range(20):
+        name = f"cv_fold_{r}_predictions.parquet"
+        src = EVIDENCE_DIR / name
+        dst = tmp_path / name
+        if src.exists() and not dst.exists():
+            dst.symlink_to(src)
+    return tmp_path
 
 
 def test_v13_statutory_excerpts_and_design_fidelity():
@@ -39,9 +51,9 @@ def test_v13_statutory_excerpts_and_design_fidelity():
     assert cdf_fn(200.0) > 1.0 - 1e-6
 
 
-def test_v13_full_13740_lineage_and_prediction_artifacts():
+def test_v13_full_13740_lineage_and_prediction_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that all 13,740 validation days are pinned with complete distribution parameters."""
-    res = run_v13_reliability_audit(evidence_dir=EVIDENCE_DIR)
+    res = run_v13_reliability_audit(evidence_dir=_isolated_evidence_dir(tmp_path, monkeypatch))
     lineage_file = res["lineage_path"]
     assert lineage_file.exists()
 
@@ -60,9 +72,9 @@ def test_v13_full_13740_lineage_and_prediction_artifacts():
     assert len(first["artifact_sha256"]) == 64
 
 
-def test_v13_true_f_vs_gaussian_proxy_tail_restoration():
+def test_v13_true_f_vs_gaussian_proxy_tail_restoration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that True F restores right-tail probability mass and mechanically flags excess."""
-    res = run_v13_reliability_audit(evidence_dir=EVIDENCE_DIR)
+    res = run_v13_reliability_audit(evidence_dir=_isolated_evidence_dir(tmp_path, monkeypatch))
     summary = res["summary"]
     comp = summary["comparative_tail_impact"]
 
@@ -81,9 +93,9 @@ def test_v13_true_f_vs_gaussian_proxy_tail_restoration():
         assert "HEALTHY" not in t["status"]
 
 
-def test_v13_kurtosis_and_shape_diagnostics():
+def test_v13_kurtosis_and_shape_diagnostics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that excess kurtosis and positive skewness are reproduced on full 13,740 universe."""
-    res = run_v13_reliability_audit(evidence_dir=EVIDENCE_DIR)
+    res = run_v13_reliability_audit(evidence_dir=_isolated_evidence_dir(tmp_path, monkeypatch))
     shape = res["summary"]["kurtosis_shape_diagnostics"]
 
     assert shape["skewness"] > 0.40

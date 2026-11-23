@@ -86,6 +86,7 @@ class FillSettleLoopback:
     terminal_status: P14TerminalStatus
     settled_ts_utc: datetime
     reject_or_abort_reason: Optional[str] = None
+    fee_paid_usd: Decimal = Decimal("0")
 
     def __post_init__(self) -> None:
         if not self.decision_id or not self.attempt_id:
@@ -93,7 +94,11 @@ class FillSettleLoopback:
         amt = to_bankroll_decimal(self.filled_usd, name="FillSettleLoopback.filled_usd")
         if amt < Decimal("0"):
             raise ValueError(f"filled_usd must be >= 0, got {amt}")
+        fee = to_bankroll_decimal(self.fee_paid_usd, name="FillSettleLoopback.fee_paid_usd")
+        if fee < Decimal("0"):
+            raise ValueError(f"fee_paid_usd must be >= 0, got {fee}")
         object.__setattr__(self, "filled_usd", amt)
+        object.__setattr__(self, "fee_paid_usd", fee)
         ensure_utc_datetime(self.settled_ts_utc, field_name="FillSettleLoopback.settled_ts_utc")
 
 
@@ -198,3 +203,4 @@ class BankrollStateSnapshot:
     consecutive_green_months: int
     realized_pnl_total_usd: Decimal
     conservation_residual_usd: Decimal
+    fee_paid_total_usd: Decimal = Decimal("0")

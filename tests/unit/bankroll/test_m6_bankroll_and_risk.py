@@ -282,6 +282,64 @@ def test_config_hash_v2_includes_yellow_multiplier_and_p8_aggregator_filter(tmp_
     assert batch.idle_rate_by_tau == {"tau_ge_24h": 0.0, "tau_6h_24h": 0.0, "tau_lt_6h": 0.0}
 
 
+def test_p14_fee_paid_conservation_and_cost_basis() -> None:
+    """`P14` fee_paid_usd stays conserved in `free + locked + held + fee == tier_pool + realized_pnl`."""
+    t0 = datetime(2026, 11, 23, 12, 0, 0, tzinfo=timezone.utc)
+    mgr, _ = _make_manager(initial_pool_usd=Decimal("2000.00"))
+    req = FreezeRequest("dec-fee-1", "idem-fee-1", "KORD", "mkt-fee", "tok-fee", Decimal("25.00"), t0)
+    assert mgr.freeze_for_order(req).accepted
+
+    total_spent = mgr.settle_order_fill(
+        FillSettleLoopback(
+            decision_id="dec-fee-1",
+            attempt_id="att-fee-1",
+            station_id="KORD",
+            market_id="mkt-fee",
+            filled_usd=Decimal("20.00"),
+            fee_paid_usd=Decimal("0.40"),
+            terminal_status="PARTIAL",
+            settled_ts_utc=t0 + timedelta(seconds=1),
+        )
+    )
+    assert total_spent == Decimal("20.40")
+    snap = mgr.snapshot_state()
+    assert snap.active_locked_usd == Decimal("0")
+    assert snap.free_usd == Decimal("1979.60")
+    assert snap.held_total_usd == Decimal("20.00")
+    assert snap.fee_paid_total_usd == Decimal("0.40")
+    assert snap.conservation_residual_usd == Decimal("0")
+    assert mgr.position_cost_basis_incl_fee("KORD", "mkt-fee") == Decimal("20.40")
+
+    # P15 settlement preserves cumulative fee_paid_usd conservation (`residual == 0`)
+    pnl = mgr.apply_p15_settlement(
+        P15SettlementEvent("settle-fee-1", "KORD", "mkt-fee", Decimal("30.00"), t0 + timedelta(hours=4))
+    )
+    assert pnl == Decimal("10.00")
+    post_snap = mgr.snapshot_state()
+    assert post_snap.held_total_usd == Decimal("0")
+    assert post_snap.free_usd == Decimal("2009.60")
+    assert post_snap.fee_paid_total_usd == Decimal("0.40")
+    assert post_snap.conservation_residual_usd == Decimal("0")
+    assert mgr.position_cost_basis_incl_fee("KORD", "mkt-fee") == Decimal("0")
+
+    # Non-fill terminal status forbids non-zero fee_paid_usd
+    req2 = FreezeRequest("dec-fee-2", "idem-fee-2", "KORD", "mkt-fee-2", "tok-fee-2", Decimal("10.00"), t0)
+    assert mgr.freeze_for_order(req2).accepted
+    with pytest.raises(ValueError, match="fee_paid_usd"):
+        mgr.settle_order_fill(
+            FillSettleLoopback(
+                decision_id="dec-fee-2",
+                attempt_id="att-fee-2",
+                station_id="KORD",
+                market_id="mkt-fee-2",
+                filled_usd=Decimal("0"),
+                fee_paid_usd=Decimal("0.10"),
+                terminal_status="REJECTED",
+                settled_ts_utc=t0 + timedelta(seconds=2),
+            )
+        )
+
+
 def test_bankroll_and_decision_ast_function_length_under_50_lines() -> None:
     ge_50: list[tuple[str, str, int]] = []
     targets = list((REPO_ROOT / "src/bankroll").glob("*.py")) + [REPO_ROOT / "src/decision/engine.py"]

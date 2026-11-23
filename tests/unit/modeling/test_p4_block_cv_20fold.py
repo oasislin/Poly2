@@ -96,7 +96,7 @@ def bootstrap_ci_95(data: np.ndarray, n_boot: int = 1000, seed: int = 20260923) 
     return float(np.percentile(boot_means, 2.5)), float(np.percentile(boot_means, 97.5))
 
 
-def test_execute_formal_p4_block_cv_20folds():
+def test_execute_formal_p4_block_cv_20folds(tmp_path: Path):
     station = "KORD"
     df_ghcn, df_gefs = load_station_training_data(station)
 
@@ -218,7 +218,7 @@ def test_execute_formal_p4_block_cv_20folds():
         holdout_ratio=0.10,
         seed=DEFAULT_SEED,
         export_evidence=True,
-        evidence_dir=EVIDENCE_DIR,
+        evidence_dir=tmp_path,
     )
     total_duration = time.time() - t0_all
 
@@ -351,7 +351,7 @@ def test_execute_formal_p4_block_cv_20folds():
         "per_fold": per_fold_summary,
     }
 
-    summary_json_path = EVIDENCE_DIR / "p4_block_cv_20fold_summary.json"
+    summary_json_path = tmp_path / "p4_block_cv_20fold_summary.json"
     with open(summary_json_path, "w", encoding="utf-8") as f:
         json.dump(summary_data, f, indent=2)
 
@@ -359,7 +359,7 @@ def test_execute_formal_p4_block_cv_20folds():
     with open(summary_json_path, "rb") as f:
         summary_json_sha = hashlib.sha256(f.read()).hexdigest()
 
-    summary_md_path = EVIDENCE_DIR / "p4_block_cv_20fold_summary.md"
+    summary_md_path = tmp_path / "p4_block_cv_20fold_summary.md"
     md_content = f"""# P4 20 轮 30-Day Block-CV 全量跑数法定汇总报告
 
 - **工单编号**: `P4-PHASE2-BLOCKCV-20FOLD` / `P4-PHASE2-R1`
@@ -418,7 +418,7 @@ def test_execute_formal_p4_block_cv_20folds():
         f"Pooled S5 KS goodness failed: {pooled_gate.ks_stat:.4f}"
     )
     assert pooled_gate.bss >= 0.0, f"Pooled BSS failed: {pooled_gate.bss:.6f} < 0"
-    pooled_df = pd.read_parquet(EVIDENCE_DIR / "cv_pooled_predictions.parquet")
+    pooled_df = pd.read_parquet(tmp_path / "cv_pooled_predictions.parquet")
     pooled_decision = _evaluate_pooled_decision_gate(
         pooled_df, min_n_per_bin=POOLED_DECISION_MIN_N_PER_BIN
     )

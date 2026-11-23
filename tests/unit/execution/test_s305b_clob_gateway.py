@@ -35,39 +35,44 @@ def _write_safety_config(
     execution_mode: str = "PAPER",
     max_single_order_usd: str = "25",
     max_daily_cumulative_usd: str = "250",
+    daily_ledger_path: str | None = "__AUTO__",
     circuit_threshold: int = 5,
     max_reconnect_attempts: int = 3,
 ) -> Path:
-    path.write_text(
-        "\n".join(
-            [
-                f"execution_mode: {execution_mode}",
-                "live_confirmation_env_var: POLY_LIVE_CONFIRM",
-                "live_confirmation_expected_value: CONFIRM_LIVE",
-                "clob_host: https://clob.polymarket.com",
-                "chain_id: 137",
-                "signature_type: 0",
-                "tick_size_ttl_sec: 300.0",
-                "use_system_proxy: false",
-                f'max_single_order_usd: "{max_single_order_usd}"',
-                f'max_daily_cumulative_usd: "{max_daily_cumulative_usd}"',
-                'min_order_size_shares: "5"',
-                'max_limit_price: "0.99"',
-                "allowed_tick_sizes:",
-                '  - "0.01"',
-                '  - "0.001"',
-                "require_neg_risk: true",
-                "request_timeout_sec: 5.0",
-                f"max_reconnect_attempts: {max_reconnect_attempts}",
-                "backoff_base_sec: 0.01",
-                "backoff_max_sec: 0.05",
-                "backoff_jitter_ratio: 0.2",
-                f"circuit_breaker_failure_threshold: {circuit_threshold}",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
+    resolved_ledger = (
+        str(path.parent / "daily_usage.json") if daily_ledger_path == "__AUTO__" else daily_ledger_path
     )
+    lines = [
+        f"execution_mode: {execution_mode}",
+        "live_confirmation_env_var: POLY_LIVE_CONFIRM",
+        "live_confirmation_expected_value: CONFIRM_LIVE",
+        "clob_host: https://clob.polymarket.com",
+        "chain_id: 137",
+        "signature_type: 0",
+        "tick_size_ttl_sec: 300.0",
+        "use_system_proxy: false",
+        f'max_single_order_usd: "{max_single_order_usd}"',
+        f'max_daily_cumulative_usd: "{max_daily_cumulative_usd}"',
+    ]
+    if resolved_ledger is not None:
+        lines.append(f"daily_ledger_path: {resolved_ledger}")
+    lines.extend(
+        [
+            'min_order_size_shares: "5"',
+            'max_limit_price: "0.99"',
+            "allowed_tick_sizes:",
+            '  - "0.01"',
+            '  - "0.001"',
+            "require_neg_risk: true",
+            "request_timeout_sec: 5.0",
+            f"max_reconnect_attempts: {max_reconnect_attempts}",
+            "backoff_base_sec: 0.01",
+            "backoff_max_sec: 0.05",
+            "backoff_jitter_ratio: 0.2",
+            f"circuit_breaker_failure_threshold: {circuit_threshold}",
+        ]
+    )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
 
 
@@ -968,5 +973,15 @@ def test_repo_default_gateway_config_and_fail_closed_missing_limits(tmp_path: Pa
     bad_cfg.write_text("execution_mode: PAPER\n", encoding="utf-8")
     with pytest.raises(GatewayConfigError):
         load_gateway_safety_config(bad_cfg)
+
+    missing_ledger = _write_safety_config(tmp_path / "missing_ledger.yaml", daily_ledger_path=None)
+    with pytest.raises(GatewayConfigError, match="daily_ledger_path"):
+        load_gateway_safety_config(missing_ledger)
+
+    blank_ledger = _write_safety_config(tmp_path / "blank_ledger.yaml", daily_ledger_path='""')
+    with pytest.raises(GatewayConfigError, match="daily_ledger_path"):
+        load_gateway_safety_config(blank_ledger)
+
+    assert real_cfg.daily_ledger_path == Path("data/gateway/daily_usage.json")
 
 
