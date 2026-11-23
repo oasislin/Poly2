@@ -29,7 +29,7 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     by_id = {t["id"]: t for t in data["tasks"]}
     assert by_id["S3-05b"]["status"] == "DONE"
     assert by_id["S3-09"]["status"] == "DONE"
-    assert by_id["S3-10"]["status"] == "READY"
+    assert by_id["S3-10"]["status"] == "DONE"
     assert by_id["S3-14"]["status"] == "DONE"
     assert by_id["S3-15"]["status"] == "PLANNED"
     assert "S3-14" in by_id["S3-11"]["depends_on"]
