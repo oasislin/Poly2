@@ -162,6 +162,20 @@
 
 ---
 
+### 2.7 `P9 SettlementTruthRecord`（`M9 → M7 / M8` · `v1.0` · `2026-11-23 S3-09` 正式固化）
+
+- **语义**：记录经 `M9`（[`src/settlement/m9_settler.py`](../../src/settlement/m9_settler.py)）依 [`ADR-0012 §5`](../adr/ADR-0012：法定结算真值源（NWS%20WRH）、僵尸仓位双轨估值与舍入闭环裁决.md#5-2026-11-19-s1-06--g-15-修订节--世界事实变更跟随当前决策) 计算确立的唯一法定日结算真值、中奖档位与修订锁定时点；同步供 **`M7` 持久化 / `P10` 只读展示**、**`M8` 月度复检（`P8`）** 及 **`M6` `P15` 持仓结算释放** 消费。
+- **核心契约字段（`schema_version = "p9.v1"`）**：
+  - 主键与溯源：`settlement_id: str`（按 `(session_id, station_id, target_date, target_type, market_id)` 确定性 `uuid5`）、`settled_ts_utc: str` (ISO-8601 UTC)、`session_id: str`、`execution_mode: Literal["PAPER", "LIVE"]`；
+  - 标的与中奖档：`station_id: str`、`station_timezone: str`（IANA `ZoneInfo`）、`target_date: str` (`YYYY-MM-DD`)、`target_type: Literal["TMAX", "TMIN"]`、`market_id: str`、`winning_bin_id: Optional[str]`；
+  - 口径与锁窗：`oracle_source: Literal["AWC_ROUTINE_METAR", "WU_FALLBACK_DAILY", "LOWEST_BIN_FALLBACK"]`、`oracle_source_tier: Literal["AWC_METAR_TGROUP", "AWC_METAR_BODY", "WU_DAILY_OBSERVATIONS", "LOWEST_BIN_FALLBACK"]`、`day_start_utc: str`、`settle_close_utc: str`、`revision_lock_ts_utc: str`（次日首条常规 METAR 与次日 `11:59 PM ET` 先到者）；
+  - 统计与真值：`qualifying_obs_count: int`、`speci_excluded_count: int`（严格剔除 `SPECI`）、`cor_included_count: int`、`post_lock_cor_ignored_count: int`、`settled_temp_f_exact: Optional[str]`（精确十进制串）、`settled_temp_f_int: Optional[int]`（`.5` 向 $+\infty$ 进位 `floor(x + 0.5)`）、`fallback_to_lowest_bin: bool`、`wu_fallback_reason: Optional[str]`、`record_sha256: str`。
+- **强约束**：
+  1. 主源为 AWC 常规 `METAR`（优先 `T`-group `0.1°C`，缺备注退回体 `TT/TD` `1°C`），全天存在任一合格常规报时严禁回退 WU；
+  2. Weather Underground `WU Daily Observations` 仅允许在**次日 `11:59 PM ET` 之后**且常规 `METAR` 为零时触发（严禁从 `src/legacy/wunderground/` 导入）；双方均空则落 `LOWEST_BIN_FALLBACK`。
+
+---
+
 ## 三、 落盘目录结构与 `P10` (`M10`) 只读渲染兼容设计
 
 ### 3.1 目录分层契约（本地存储默认布局，切片 2 起按需配置路径前缀）
@@ -173,6 +187,7 @@ data/
 │       └── <YYYY-MM-DD>/                  # 按 UTC 事件日分片，控制单文件体积
 │           ├── p1_scan_decisions.jsonl
 │           ├── p3_execution_attempts.jsonl
+│           ├── p9_settlement_truths.jsonl
 │           ├── p12_weather_coverage.jsonl
 │           ├── p17_forecast_snapshots.jsonl
 │           └── p19_capital_events.jsonl
@@ -194,7 +209,7 @@ data/
    - **目录或分片缺失**：目录或当日 JSONL 文件不存在时不抛异常，显式返回视图状态 `render_status = "NO_AUDIT_RECORDS"`（空记录集合，`0` 报错）；
    - **尾部并发读安全**：读取器逐行扫描，若遇末尾**未以 `\n` 结尾**的在写未完成行，跳过当行并计入 `partial_tail_skipped_lines`（状态标注 `"CONCURRENT_TAIL_SKIPPED"`），绝不将其计为损坏行、绝不加任何文件写锁或阻塞正在写入的录盘/日志进程；
    - **坏 JSON 或校验和失败**：遇无法 `json.loads` 的完整行（已以 `\n` 结尾）或 `record_sha256` 校验失败行，严禁静默丢弃或中断页面渲染，必须隔离计数入 `corrupt_lines` 并在 UI/摘要返回中亮起完整性警告（`render_status = "DEGRADED_CORRUPT_LINES"`）；
-   - **结算视图延迟兼容**：在 `P9`（`M9 → M7/M8`）待 `ADR` 裁决后落盘之前，`M10` 结算对账面板显式降级为 `settlement_status = "PENDING_P9"`，不影响决策/执行/资金视图渲染。
+   - **结算视图兼容状态（`S3-09` 已闭合支持）**：当查询区间存在 `p9_settlement_truths.jsonl` 记录时，`P10SessionView` 自动填充 `p9_events` 并将 `settlement_status` 置为 `"READY"`；不存在 `P9` 记录时降级保持 `settlement_status = "PENDING_P9"`，不影响决策/执行/资金视图渲染。
 4. **零写回强制校验清单（`M10 / S2-07` 防污染门禁）**：
    - **只读文件句柄约束**：`P10` 读取器全路径仅允许以只读模式（`open(..., "r")`）打开 `data/audit_logs/` 与 `data/market_recordings/` 下文件，严禁在读路径调用 `.write()` / `truncate()` / `unlink()` / `mkdir()`；
    - **运行态零扰动**：`P10` 查询严禁向运行中录盘进程发信号、修改 PID 文件或清理 `.jsonl`；

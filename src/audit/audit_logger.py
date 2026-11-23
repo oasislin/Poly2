@@ -22,7 +22,7 @@ from src.execution.executor import ExecutionAttemptLog
 from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
 from src.utils.causal_utils import compute_record_sha256, ensure_utc_datetime
 
-AuditStreamName = Literal["p1", "p3", "p12", "p17", "p19"]
+AuditStreamName = Literal["p1", "p3", "p9", "p12", "p17", "p19"]
 GatewayTraceStage = Literal[
     "PRE_SIGN_SNAPSHOT",
     "HTTP_REQUEST",
@@ -88,6 +88,7 @@ class GatewayP3TraceEvent:
 STREAM_FILENAMES: Dict[AuditStreamName, str] = {
     "p1": "p1_scan_decisions.jsonl",
     "p3": "p3_execution_attempts.jsonl",
+    "p9": "p9_settlement_truths.jsonl",
     "p12": "p12_weather_coverage.jsonl",
     "p17": "p17_forecast_snapshots.jsonl",
     "p19": "p19_capital_events.jsonl",
@@ -191,6 +192,10 @@ class AsyncAuditLogger:
     def log_p19_capital_event(self, event: CapitalEventLog) -> None:
         """Enqueue a `P19 CapitalEventLog` asynchronously."""
         self._enqueue("p19", event.event_ts_utc, event.execution_mode, event.to_json_line())
+
+    def log_p9_settlement_truth(self, record: Any) -> None:
+        """Enqueue a `P9 SettlementTruthRecord` (`M9 -> M7/M8`) asynchronously."""
+        self._enqueue("p9", record.settled_ts_utc, record.execution_mode, record.to_json_line())
 
     def flush(self, timeout_sec: float = 5.0) -> None:
         """Wait until all currently queued JSONL lines have been flushed to disk."""

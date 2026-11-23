@@ -83,6 +83,7 @@ class P10SessionView:
     corrupt_lines: Tuple[CorruptLineRecord, ...]
     partial_tail_skipped_lines: int
     missing_forecast_fk_count: int
+    p9_events: Tuple[Dict[str, Any], ...] = ()
 
 
 def read_verified_jsonl_file(path: Path, *, verify_sha256: bool = True) -> JsonlStreamReadResult:
@@ -239,7 +240,7 @@ def query_p10_session_view(
         execution_mode=query.execution_mode,
         render_status=status,
         tail_status=tail_status,
-        settlement_status="PENDING_P9",
+        settlement_status="READY" if by_stream.get("p9") else "PENDING_P9",
         p1_events=by_stream["p1"],
         p3_events=by_stream["p3"],
         p12_ledgers=by_stream["p12"],
@@ -250,6 +251,7 @@ def query_p10_session_view(
         corrupt_lines=corrupt,
         partial_tail_skipped_lines=tail_cnt,
         missing_forecast_fk_count=missing_fk,
+        p9_events=by_stream.get("p9", ()),
     )
 
 
