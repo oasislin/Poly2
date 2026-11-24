@@ -317,3 +317,303 @@ def test_m10_ast_zero_database_zero_write_and_cli_render(tmp_path: Path) -> None
     rendered = out_html.read_text(encoding="utf-8")
     _assert_strictly_readonly_html(rendered)
     assert "mode-banner-paper" in rendered
+
+
+def _write_signed_stream(path: Path, records: list[dict]) -> None:
+    from src.utils.causal_utils import compute_record_sha256
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    for rec in records:
+        payload = dict(rec)
+        payload["record_sha256"] = compute_record_sha256(payload)
+        lines.append(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _sample_p1(
+    *,
+    decision_id: str,
+    session_id: str = "sess-q6",
+    station_id: str = "KORD",
+    target_date: str = "2026-11-23",
+    target_type: str = "TMAX",
+    market_id: str = "mkt-a",
+    bin_id: str = "bin-58-59",
+    forecast_id: str = "fc-ok-1",
+) -> dict:
+    return {
+        "schema_version": "p1.v1",
+        "decision_id": decision_id,
+        "session_id": session_id,
+        "execution_mode": "PAPER",
+        "scan_clock": "PRICE_CLOCK",
+        "scan_ts_utc": "2026-11-23T14:00:00+00:00",
+        "station_id": station_id,
+        "target_date": target_date,
+        "target_type": target_type,
+        "bin_id": bin_id,
+        "token_id": f"tok-{market_id}",
+        "market_id": market_id,
+        "model_hash": "mh-q6",
+        "config_hash": "ch-q6",
+        "policy_version": "p6.v3",
+        "policy_overdue": False,
+        "forecast_id": forecast_id,
+        "book_frame_ref": 1,
+        "decision_outcome": "ORDERED",
+    }
+
+
+def _sample_p3_attempt(
+    *,
+    attempt_id: str,
+    decision_id: str,
+    session_id: str = "sess-q6",
+    station_id: str = "KORD",
+    market_id: str = "mkt-a",
+    terminal_status: str,
+    filled_shares: str,
+    filled_usd: str,
+    fee_paid_usd: str,
+    final_ts_utc: str,
+) -> dict:
+    return {
+        "schema_version": "p3.v1",
+        "attempt_id": attempt_id,
+        "decision_id": decision_id,
+        "idempotency_key": f"idem-{attempt_id}",
+        "session_id": session_id,
+        "execution_mode": "PAPER",
+        "station_id": station_id,
+        "market_id": market_id,
+        "token_id": f"tok-{market_id}",
+        "model_hash": "mh-q6",
+        "config_hash": "ch-q6",
+        "submit_ts_utc": final_ts_utc,
+        "final_ts_utc": final_ts_utc,
+        "terminal_status": terminal_status,
+        "filled_shares": filled_shares,
+        "filled_usd": filled_usd,
+        "fee_paid_usd": fee_paid_usd,
+    }
+
+
+def test_m10_single_decision_multiple_partial_p3_attempts_aggregated(tmp_path: Path) -> None:
+    """1:N `P1 -> P3` multi-attempt re-slicing sums fills/fees without overwriting earlier attempts."""
+    from src.ui.m10_view import build_m10_dashboard_model
+
+    audit_root = tmp_path / "m7"
+    day_dir = audit_root / "PAPER" / "2026-11-23"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    _write_signed_stream(
+        day_dir / "p17_forecast_snapshots.jsonl",
+        [{"schema_version": "p17.v1", "execution_mode": "PAPER", "session_id": "sess-q6", "station_id": "KORD", "forecast_id": "fc-ok-1", "model_hash": "mh-q6", "config_hash": "ch-q6"}],
+    )
+    _write_signed_stream(
+        day_dir / "p1_scan_decisions.jsonl",
+        [
+            _sample_p1(decision_id="dec-reslice-filled", market_id="mkt-a", bin_id="bin-58-59"),
+            _sample_p1(decision_id="dec-partial-cancel", market_id="mkt-b", bin_id="bin-60plus"),
+        ],
+    )
+    _write_signed_stream(
+        day_dir / "p3_execution_attempts.jsonl",
+        [
+            _sample_p3_attempt(
+                attempt_id="att-1a",
+                decision_id="dec-reslice-filled",
+                market_id="mkt-a",
+                terminal_status="PARTIAL",
+                filled_shares="10.00",
+                filled_usd="2.50",
+                fee_paid_usd="0.01",
+                final_ts_utc="2026-11-23T14:00:01+00:00",
+            ),
+            _sample_p3_attempt(
+                attempt_id="att-1b",
+                decision_id="dec-reslice-filled",
+                market_id="mkt-a",
+                terminal_status="FILLED",
+                filled_shares="15.00",
+                filled_usd="3.75",
+                fee_paid_usd="0.02",
+                final_ts_utc="2026-11-23T14:00:02+00:00",
+            ),
+            _sample_p3_attempt(
+                attempt_id="att-2a",
+                decision_id="dec-partial-cancel",
+                market_id="mkt-b",
+                terminal_status="PARTIAL",
+                filled_shares="8.00",
+                filled_usd="2.00",
+                fee_paid_usd="0.01",
+                final_ts_utc="2026-11-23T14:01:01+00:00",
+            ),
+            _sample_p3_attempt(
+                attempt_id="att-2b",
+                decision_id="dec-partial-cancel",
+                market_id="mkt-b",
+                terminal_status="CANCELLED_UNFILLED",
+                filled_shares="0",
+                filled_usd="0",
+                fee_paid_usd="0",
+                final_ts_utc="2026-11-23T14:01:02+00:00",
+            ),
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    by_dec = {row["decision_id"]: row for row in model.decision_rows}
+    assert by_dec["dec-reslice-filled"]["attempt_count"] == 2
+    assert by_dec["dec-reslice-filled"]["filled_shares"] == Decimal("25.00")
+    assert by_dec["dec-reslice-filled"]["filled_usd"] == Decimal("6.25")
+    assert by_dec["dec-reslice-filled"]["fee_paid_usd"] == Decimal("0.03")
+    assert by_dec["dec-reslice-filled"]["terminal_status"] == "FILLED"
+
+    assert by_dec["dec-partial-cancel"]["attempt_count"] == 2
+    assert by_dec["dec-partial-cancel"]["filled_shares"] == Decimal("8.00")
+    assert by_dec["dec-partial-cancel"]["filled_usd"] == Decimal("2.00")
+    assert by_dec["dec-partial-cancel"]["fee_paid_usd"] == Decimal("0.01")
+    assert by_dec["dec-partial-cancel"]["terminal_status"] == "PARTIAL"
+
+    assert model.total_filled_usd == Decimal("8.25")
+    assert model.total_fee_paid_usd == Decimal("0.04")
+
+
+def test_m10_multiple_p9_same_station_date_bound_by_market_session_type_no_double_count(tmp_path: Path) -> None:
+    """Multiple `P9` rows on same `(station, target_date)` bind strictly by `settlement_id` scope without double counting."""
+    from src.ui.m10_view import build_m10_dashboard_model
+
+    audit_root = tmp_path / "m7"
+    day_dir = audit_root / "PAPER" / "2026-11-23"
+    settle_dir = audit_root / "PAPER" / "2026-11-24"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    _write_signed_stream(
+        day_dir / "p17_forecast_snapshots.jsonl",
+        [{"schema_version": "p17.v1", "execution_mode": "PAPER", "session_id": "sess-q6", "station_id": "KORD", "forecast_id": "fc-ok-1", "model_hash": "mh-q6", "config_hash": "ch-q6"}],
+    )
+    _write_signed_stream(
+        day_dir / "p1_scan_decisions.jsonl",
+        [
+            _sample_p1(decision_id="dec-mkt-a", session_id="sess-q6", station_id="KORD", target_date="2026-11-23", target_type="TMAX", market_id="mkt-a", bin_id="bin-58-59"),
+            _sample_p1(decision_id="dec-mkt-b", session_id="sess-q6", station_id="KORD", target_date="2026-11-23", target_type="TMIN", market_id="mkt-b", bin_id="bin-40-41"),
+        ],
+    )
+    _write_signed_stream(
+        day_dir / "p3_execution_attempts.jsonl",
+        [
+            _sample_p3_attempt(
+                attempt_id="att-a",
+                decision_id="dec-mkt-a",
+                session_id="sess-q6",
+                market_id="mkt-a",
+                terminal_status="FILLED",
+                filled_shares="20.00",
+                filled_usd="5.00",
+                fee_paid_usd="0.02",
+                final_ts_utc="2026-11-23T14:00:01+00:00",
+            ),
+            _sample_p3_attempt(
+                attempt_id="att-b",
+                decision_id="dec-mkt-b",
+                session_id="sess-q6",
+                market_id="mkt-b",
+                terminal_status="FILLED",
+                filled_shares="10.00",
+                filled_usd="4.00",
+                fee_paid_usd="0.01",
+                final_ts_utc="2026-11-23T14:00:02+00:00",
+            ),
+        ],
+    )
+    _write_signed_stream(
+        settle_dir / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-tmax-mkt-a",
+                "settled_ts_utc": "2026-11-24T06:10:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-23",
+                "target_type": "TMAX",
+                "market_id": "mkt-a",
+                "winning_bin_id": "bin-58-59",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 59,
+                "fallback_to_lowest_bin": False,
+            },
+            # Duplicate identical settlement_id row must be deduplicated cleanly
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-tmax-mkt-a",
+                "settled_ts_utc": "2026-11-24T06:10:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-23",
+                "target_type": "TMAX",
+                "market_id": "mkt-a",
+                "winning_bin_id": "bin-58-59",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 59,
+                "fallback_to_lowest_bin": False,
+            },
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-tmin-mkt-b",
+                "settled_ts_utc": "2026-11-24T06:10:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-23",
+                "target_type": "TMIN",
+                "market_id": "mkt-b",
+                "winning_bin_id": "bin-42-43",  # losing bin -> payout 0
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 42,
+                "fallback_to_lowest_bin": False,
+            },
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert len(model.settlement_rows) == 2
+    by_sid = {row["settlement_id"]: row for row in model.settlement_rows}
+    # mkt-a: payout 20.00 - (5.00 + 0.02) = 14.98
+    assert by_sid["sid-tmax-mkt-a"]["realized_pnl_usd"] == Decimal("14.98")
+    # mkt-b: payout 0 - (4.00 + 0.01) = -4.01
+    assert by_sid["sid-tmin-mkt-b"]["realized_pnl_usd"] == Decimal("-4.01")
+    # Total = 14.98 + (-4.01) = 10.97 (zero cross-P9 double-counting)
+    assert model.total_realized_pnl_usd == Decimal("10.97")
+
+
+def test_m10_missing_forecast_fk_count_positive(tmp_path: Path) -> None:
+    """Broken non-MISSING `forecast_id` increments `missing_forecast_fk_count`, while `MISSING*` sentinel is exempted."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    day_dir = audit_root / "PAPER" / "2026-11-23"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    _write_signed_stream(
+        day_dir / "p1_scan_decisions.jsonl",
+        [
+            _sample_p1(decision_id="dec-fk-broken", forecast_id="fc-missing-p17"),
+            _sample_p1(decision_id="dec-fk-sentinel", forecast_id="MISSING_FORECAST"),
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert model.render_status == "OK"
+    assert model.missing_forecast_fk_count == 1
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert "<div class=\"k\">missing_forecast_fk</div><div class=\"v\">1</div>" in html

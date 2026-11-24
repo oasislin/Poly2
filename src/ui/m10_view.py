@@ -121,11 +121,34 @@ def _derive_model_hash(view: P10SessionView, explicit_model_hash: Optional[str])
     return None
 
 
+def _resolve_consolidated_terminal_status(
+    attempt_recs: Sequence[Dict[str, Any]],
+    total_filled_shares: Decimal,
+) -> str:
+    if not attempt_recs:
+        return "-"
+    ordered = sorted(
+        enumerate(attempt_recs),
+        key=lambda item: (
+            str(item[1].get("final_ts_utc") or item[1].get("submit_ts_utc") or ""),
+            item[0],
+        ),
+    )
+    last_status = str(ordered[-1][1].get("terminal_status") or "-")
+    if len(ordered) == 1:
+        return last_status
+    if last_status == "FILLED":
+        return "FILLED"
+    if total_filled_shares > _ZERO:
+        return "PARTIAL"
+    return last_status
+
+
 def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str, Any], ...]:
     rows: List[Dict[str, Any]] = []
     for chain in chains:
         p1 = chain.p1_record
-        attempt_rec: Optional[Dict[str, Any]] = None
+        attempt_recs: List[Dict[str, Any]] = []
         gateway_stages: List[str] = []
         for p3 in chain.p3_records:
             sv = p3.get("schema_version")
@@ -133,16 +156,20 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
                 if p3.get("stage"):
                     gateway_stages.append(str(p3["stage"]))
             else:
-                attempt_rec = p3
-        filled_usd = _to_decimal(attempt_rec.get("filled_usd")) if attempt_rec else _ZERO
-        filled_shares = _to_decimal(attempt_rec.get("filled_shares")) if attempt_rec else _ZERO
-        fee_paid_usd = _to_decimal(attempt_rec.get("fee_paid_usd")) if attempt_rec else _ZERO
+                attempt_recs.append(p3)
+        filled_usd = sum((_to_decimal(a.get("filled_usd")) for a in attempt_recs), _ZERO)
+        filled_shares = sum((_to_decimal(a.get("filled_shares")) for a in attempt_recs), _ZERO)
+        fee_paid_usd = sum((_to_decimal(a.get("fee_paid_usd")) for a in attempt_recs), _ZERO)
+        terminal_status = _resolve_consolidated_terminal_status(attempt_recs, filled_shares)
         rows.append(
             {
                 "decision_id": chain.decision_id,
+                "session_id": str(p1.get("session_id") or ""),
                 "scan_ts_utc": str(p1.get("scan_ts_utc") or ""),
                 "station_id": str(p1.get("station_id") or ""),
                 "target_date": str(p1.get("target_date") or ""),
+                "target_type": str(p1.get("target_type") or ""),
+                "market_id": str(p1.get("market_id") or ""),
                 "bin_id": str(p1.get("bin_id") or ""),
                 "decision_outcome": str(p1.get("decision_outcome") or ""),
                 "model_hash": str(p1.get("model_hash") or ""),
@@ -153,7 +180,8 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
                 "forecast_fk_present": chain.p17_record is not None,
                 "book_frame_ref": p1.get("book_frame_ref"),
                 "p13_ref_present": chain.p13_record is not None,
-                "terminal_status": str(attempt_rec.get("terminal_status")) if attempt_rec else "-",
+                "terminal_status": terminal_status,
+                "attempt_count": len(attempt_recs),
                 "filled_shares": filled_shares,
                 "filled_usd": filled_usd,
                 "fee_paid_usd": fee_paid_usd,
@@ -162,6 +190,23 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
             }
         )
     return tuple(rows)
+
+
+def _matches_p9_settlement_scope(row: Dict[str, Any], p9: Dict[str, Any]) -> bool:
+    if row["filled_shares"] <= _ZERO:
+        return False
+    p9_session = str(p9.get("session_id") or "")
+    p9_station = str(p9.get("station_id") or "")
+    p9_target_date = str(p9.get("target_date") or "")
+    p9_target_type = str(p9.get("target_type") or "")
+    p9_market_id = str(p9.get("market_id") or "")
+    return (
+        row["session_id"] == p9_session
+        and row["station_id"] == p9_station
+        and row["target_date"] == p9_target_date
+        and row["target_type"] == p9_target_type
+        and row["market_id"] == p9_market_id
+    )
 
 
 def _build_settlement_rows(
@@ -175,19 +220,21 @@ def _build_settlement_rows(
             p15_by_ref[str(ref)] = ev
 
     rows: List[Dict[str, Any]] = []
+    seen_settlement_ids: set[str] = set()
     total_pnl = _ZERO
     for p9 in view.p9_events:
         sid = str(p9.get("settlement_id") or "")
+        if sid and sid in seen_settlement_ids:
+            continue
+        if sid:
+            seen_settlement_ids.add(sid)
+
         st_id = str(p9.get("station_id") or "")
         t_date = str(p9.get("target_date") or "")
         win_bin = p9.get("winning_bin_id")
         p15 = p15_by_ref.get(sid)
 
-        matched_decisions = [
-            r
-            for r in decision_rows
-            if r["station_id"] == st_id and r["target_date"] == t_date and r["filled_shares"] > _ZERO
-        ]
+        matched_decisions = [r for r in decision_rows if _matches_p9_settlement_scope(r, p9)]
         payout_usd = sum(
             (r["filled_shares"] for r in matched_decisions if r["bin_id"] == win_bin),
             _ZERO,
@@ -207,6 +254,7 @@ def _build_settlement_rows(
         rows.append(
             {
                 "settlement_id": sid,
+                "session_id": str(p9.get("session_id") or ""),
                 "settled_ts_utc": str(p9.get("settled_ts_utc") or ""),
                 "station_id": st_id,
                 "target_date": t_date,
