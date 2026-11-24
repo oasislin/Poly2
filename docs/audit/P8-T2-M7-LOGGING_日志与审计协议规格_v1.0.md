@@ -1,9 +1,9 @@
-# P8-T2-M7-LOGGING：日志与审计模块（`M7`）协议本体及落盘规范（`v1.2` · 已对齐 `Batch 1 p1.v2 / p17.v2` 决策时点捕获）
+# P8-T2-M7-LOGGING：日志与审计模块（`M7`）协议本体及落盘规范（`v1.3` · 已对齐 `S3-11 p1.v3 / p17.v3` 离线回放与实时流隔离标记）
 
-- **任务单与治理编号**：`S1-03`（`T2` 落盘规范）+ **`S2-04`（`P10` 正文冻结）** + **`P8-WO-20261124-M10-BIZCHAIN-EXEC3`（`p1.v2 / p17.v2` 升版）**｜归属模块：**`M7`（日志审计）↔ `M2/M4/M10`**
+- **任务单与治理编号**：`S1-03`（`T2` 落盘规范）+ **`S2-04`（`P10` 正文冻结）** + **`P8-WO-20261124-M10-BIZCHAIN-EXEC3`（`p1.v2 / p17.v2`）** + **`P8-WO-20261125-S3-11-OFFLINE-SCHED`（`p1.v3 / p17.v3` 升版）**｜归属模块：**`M7`（日志审计）↔ `M2/M4/M10`**
 - **法定锚点**：[`P8-KERNEL-CONSENSUS v1.1 §六 E/F`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`项目方案 (v3.0) §8.1 / §8.2 / §8.3`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策)
 - **文件增殖判据核验（[`AGENTS.md`](../../AGENTS.md)）**：全仓此前不存在承载 `M7` JSONL 六条流完整字段字典、目录分片规范及 `P10` 只读渲染兼容约定的独立支撑文档；若强制塞入 [`P8-KERNEL-CONSENSUS`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) 或 [`P8-CAPITAL-CONFIG`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) 将导致战略共识/资金配置与数据工程 schema 职责混杂，故按判据合规新建本支撑文档。
-- **版本与表述纪律**：**`v1.2`（`2026-11-24` 对齐 `p1.v2 / p17.v2`；向下完全兼容 `p1.v1 / p17.v1`）**；本文件确立 `M7` 日志 schema、校验和、目录结构及 `P10` 只读查询契约，不触碰 `src/pricing/` 与 `src/execution/` 双冻结区。
+- **版本与表述纪律**：**`v1.3`（`2026-11-25` 对齐 `p1.v3 / p17.v3` 增设 `capture_replay_mode`；向下完全兼容 `p1.v1/p1.v2` 与 `p17.v1/p17.v2`）**；本文件确立 `M7` 日志 schema、校验和、目录结构及 `P10` 只读查询契约，不触碰 `src/pricing/` 与 `src/execution/` 双冻结区。
 
 ---
 
@@ -32,10 +32,11 @@
 
 | 字段名 | 类型 | 必填 | 说明与约束 |
 | :--- | :--- | :---: | :--- |
-| `schema_version` | `str` | ✓ | 现行 `"p1.v2"`（读取端向下兼容历史 `"p1.v1"`） |
+| `schema_version` | `str` | ✓ | 现行 `"p1.v3"`（读取端向下兼容历史 `"p1.v1"` / `"p1.v2"`） |
 | `decision_id` | `str` | ✓ | 全局唯一 UUIDv7 / ULID（`P3` 之外键锚） |
 | `session_id` | `str` | ✓ | 运行会话唯一 ID |
 | `execution_mode` | `Literal["PAPER", "LIVE"]` | ✓ | 强隔离标识 |
+| `capture_replay_mode` | `Literal["NONE", "REPLAY_P13"]` | ✓ | `p1.v3` 新增（与 `P3` 同构）：离线 `P13` 回放记 `"REPLAY_P13"`，实时流默认 `"NONE"`（历史 `v1/v2` 无此字段由读取端视作 `None`） |
 | `scan_clock` | `Literal["INFO_CLOCK", "PRICE_CLOCK"]` | ✓ | 触发该次扫描的时钟源 |
 | `scan_ts_utc` | `str` (ISO-8601 UTC) | ✓ | 决策计算时刻 UTC |
 | `station_id` | `str` | ✓ | ICAO 台站代码（必须属 Active 10） |
@@ -140,7 +141,7 @@
 ### 2.3 `P17 ForecastSnapshotLog`（`M2 → M7`）
 
 - **语义**：每次预测引擎推理（每站 × 每目标日 × 每次信息钟/触发更新）异步持久化一条 **`P5 ForecastDistributionSnapshot` 全量记录**；既是 `P1.forecast_id` 的外键宿主机，也是 **`P8` 校准样本流的唯一合法源头**（严禁 `M2` 旁路直写 `M8`）。
-- **核心字段**：完整包含 [`P5 v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) 字段（`forecast_id`, `issue_ts_utc`, `station_id`, `target_date`, `target_type`, `gefs_lead_hours`, `tau_hours`, `settle_close_utc`, `model_hash`, `prior_mu0`, `prior_sigma0`, `family`, `m_now_f`, `m_now_int_f`, `oracle_compliant`, `upstream_obs_fresh`, `is_bridge_active`, `p_stay_phys`, `p_bin_stay`, `bin_probs` 整数边界列表 `lower_int_f/upper_int_f`、`sigma_delta_sample`），并自 **`p17.v2`（`2026-11-24`）** 起新增决策时点瞬时观测隔离三元组 **`obs_temp_f: Optional[float]`、`obs_ts_utc: Optional[str]`、`obs_source: Optional[str]`**（与日内单调极值 `m_now_f` 及 `P9` 次日终态官方结算温度 `settled_temp_f_exact/int` 三重物理隔离，绝不混用），附加 `schema_version="p17.v2"`（读取端向下兼容历史 `"p17.v1"`）, `session_id`, `execution_mode`, `config_hash`, `record_sha256`。
+- **核心字段**：完整包含 [`P5 v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) 字段（`forecast_id`, `issue_ts_utc`, `station_id`, `target_date`, `target_type`, `gefs_lead_hours`, `tau_hours`, `settle_close_utc`, `model_hash`, `prior_mu0`, `prior_sigma0`, `family`, `m_now_f`, `m_now_int_f`, `oracle_compliant`, `upstream_obs_fresh`, `is_bridge_active`, `p_stay_phys`, `p_bin_stay`, `bin_probs` 整数边界列表 `lower_int_f/upper_int_f`、`sigma_delta_sample`），自 `p17.v2`（`2026-11-24`）起新增决策时点瞬时观测隔离三元组 **`obs_temp_f: Optional[float]`、`obs_ts_utc: Optional[str]`、`obs_source: Optional[str]`**（与日内单调极值 `m_now_f` 及 `P9` 次日终态官方结算温度 `settled_temp_f_exact/int` 三重物理隔离，绝不混用），并自 **`p17.v3`（`2026-11-25`）** 起新增与 `P1/P3` 同构之 **`capture_replay_mode: Literal["NONE", "REPLAY_P13"]`**（离线回放记 `"REPLAY_P13"`，实时流默认 `"NONE"`），附加 `schema_version="p17.v3"`（读取端向下兼容历史 `"p17.v1"` / `"p17.v2"`）, `session_id`, `execution_mode`, `config_hash`, `record_sha256`。
 
 ---
 
@@ -217,7 +218,7 @@ data/
 
 1. **零独立数据库**：依据 [`项目方案 v3.0 §8.1`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策) 架构铁律，`M10` 不建立 SQLite/Postgres 业务状态库，所有视图（决策链路穿透、挂单/成交滑点审计、资金曲线、盘口回放检查）一律从 `data/audit_logs/` 与 `data/market_recordings/` 只读读取聚合；
 2. **正式查询契约（`P10Query` / `P10SessionView`）**：
-   - **过滤参数**：支持按 `execution_mode: Literal["PAPER", "LIVE"]`（必填，严禁跨模式混查）、`date_range: tuple[date, date]`、`session_id: Optional[str]`、`station_id: Optional[str]`、`target_date: Optional[str]` 检索，底层只扫描对应分片目录下 `p1_scan_decisions.jsonl`、`p3_execution_attempts.jsonl`、`p12_weather_coverage.jsonl`、`p17_forecast_snapshots.jsonl`、`p19_capital_events.jsonl`（**向后兼容约定**：同一读取器须无差别支持混合历史 `p1.v1 / p17.v1` 与新版 `p1.v2 / p17.v2` 记录，`v1` 缺失新增可选字段时由 `M10` 诚实展示 `"未落盘"`/`None`）；
+   - **过滤参数**：支持按 `execution_mode: Literal["PAPER", "LIVE"]`（必填，严禁跨模式混查）、`date_range: tuple[date, date]`、`session_id: Optional[str]`、`station_id: Optional[str]`、`target_date: Optional[str]` 检索，底层只扫描对应分片目录下 `p1_scan_decisions.jsonl`、`p3_execution_attempts.jsonl`、`p12_weather_coverage.jsonl`、`p17_forecast_snapshots.jsonl`、`p19_capital_events.jsonl`（**向后兼容约定**：同一读取器须无差别支持混合历史 `p1.v1 / p1.v2 / p17.v1 / p17.v2` 与新版 `p1.v3 / p17.v3` 记录，`v1/v2` 缺失 `capture_replay_mode` 时由读取端返回 `None`，`v1` 缺失新增可选字段时由 `M10` 诚实展示 `"未落盘"`/`None`）；
    - **统一联结键**：全部流共享 `(execution_mode, session_id, station_id, target_date)`；跨表钻取通过 `P1.decision_id == P3.decision_id`、`P1.forecast_id == P17.forecast_id`、`P1.book_frame_ref == P13.payload.frame_seq`（同 `(session_id, token_id)`）及 `P19.related_ref_id` 完成；
    - **一致性与损坏率统计面板**：每条已完整换行记录必须调用 `verify_record_sha256_line` 验证 `record_sha256`，返回 `valid_lines`、`corrupt_lines`（逐行记录文件与行号）与 `partial_tail_skipped_lines`。
 3. **空/坏/未完日志降级渲染规则**：

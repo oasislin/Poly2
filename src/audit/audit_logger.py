@@ -180,12 +180,14 @@ class AsyncAuditLogger:
         *,
         session_id: str,
         config_hash: str,
+        capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE",
     ) -> None:
         """Enqueue a `P17 ForecastSnapshotLog` derived from `P5 v1.1` asynchronously."""
         line = snapshot.to_p17_json_line(
             session_id=session_id,
             execution_mode=self.execution_mode,
             config_hash=config_hash,
+            capture_replay_mode=capture_replay_mode,
         )
         self._enqueue("p17", snapshot.issue_ts_utc, self.execution_mode, line)
 

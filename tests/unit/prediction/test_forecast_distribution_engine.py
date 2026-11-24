@@ -551,7 +551,8 @@ def test_p17_jsonl_serialization_and_120_case_p5_four_invariant_certification() 
     )
     assert verify_p17_json_line(p17_line) is True
     p17_obj = json.loads(p17_line)
-    assert p17_obj["schema_version"] == "p17.v2"
+    assert p17_obj["schema_version"] == "p17.v3"
+    assert p17_obj["capture_replay_mode"] == "NONE"
     assert "p5_schema_version" not in p17_obj
     # No .5°F fields anywhere in bin_probs
     assert all("lower_bound_f" not in b and "upper_bound_f" not in b for b in p17_obj["bin_probs"])
@@ -721,7 +722,8 @@ def test_p17_v2_instant_obs_isolated_from_m_now_and_missing_p11() -> None:
     p17_line = snap.to_p17_json_line(session_id="sess-v2", execution_mode="PAPER", config_hash="cfg-v2")
     assert verify_p17_json_line(p17_line) is True
     p17 = json.loads(p17_line)
-    assert p17["schema_version"] == "p17.v2"
+    assert p17["schema_version"] == "p17.v3"
+    assert p17["capture_replay_mode"] == "NONE"
     assert p17["obs_temp_f"] == pytest.approx(71.4)
     assert p17["m_now_f"] == pytest.approx(76.8)
     assert p17["obs_temp_f"] != p17["m_now_f"]
@@ -742,7 +744,8 @@ def test_p17_v2_instant_obs_isolated_from_m_now_and_missing_p11() -> None:
         p11_state=None,
     )
     p17_empty = json.loads(snap_none.to_p17_json_line(session_id="sess-v2", execution_mode="PAPER", config_hash="cfg-v2"))
-    assert p17_empty["schema_version"] == "p17.v2"
+    assert p17_empty["schema_version"] == "p17.v3"
+    assert p17_empty["capture_replay_mode"] == "NONE"
     assert p17_empty["obs_temp_f"] is None
     assert p17_empty["obs_ts_utc"] is None
     assert p17_empty["obs_source"] is None

@@ -356,55 +356,34 @@ class ScanDecisionEvent:
     gate_result: Optional[str] = None
     reject_reason: Optional[str] = None
     fee_rate_official_raw: Optional[Any] = None
+    capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE"
 
     def to_dict_without_hash(self) -> Dict[str, Any]:
         return {
-            "schema_version": self.schema_version,
-            "decision_id": self.decision_id,
-            "session_id": self.session_id,
-            "execution_mode": self.execution_mode,
-            "scan_clock": self.scan_clock,
-            "scan_ts_utc": self.scan_ts_utc.isoformat(),
-            "station_id": self.station_id,
-            "target_date": self.target_date,
-            "target_type": self.target_type,
-            "bin_id": self.bin_id,
-            "token_id": self.token_id,
-            "market_id": self.market_id,
-            "model_hash": self.model_hash,
-            "config_hash": self.config_hash,
-            "policy_version": self.policy_version,
-            "policy_overdue": self.policy_overdue,
-            "forecast_id": self.forecast_id,
-            "book_frame_ref": self.book_frame_ref,
+            "schema_version": self.schema_version, "decision_id": self.decision_id,
+            "session_id": self.session_id, "execution_mode": self.execution_mode,
+            "capture_replay_mode": self.capture_replay_mode,
+            "scan_clock": self.scan_clock, "scan_ts_utc": self.scan_ts_utc.isoformat(),
+            "station_id": self.station_id, "target_date": self.target_date, "target_type": self.target_type,
+            "bin_id": self.bin_id, "token_id": self.token_id, "market_id": self.market_id,
+            "model_hash": self.model_hash, "config_hash": self.config_hash,
+            "policy_version": self.policy_version, "policy_overdue": self.policy_overdue,
+            "forecast_id": self.forecast_id, "book_frame_ref": self.book_frame_ref,
             "selected_bin_p_model": self.selected_bin_p_model,
-            "best_ask_price": self.best_ask_price,
-            "best_ask_edge": self.best_ask_edge,
-            "net_ev": self.net_ev,
-            "q_eff": self.q_eff,
-            "fee_rate_applied": self.fee_rate_applied,
-            "fee_rate_official_raw": self.fee_rate_official_raw,
-            "m_threshold": self.m_threshold,
-            "tau_hours": self.tau_hours,
-            "b_budget_usd": self.b_budget_usd,
-            "w_tau": self.w_tau,
-            "s_edge": self.s_edge,
-            "lambda_l": self.lambda_l,
-            "g_cap_usd": self.g_cap_usd,
-            "held_usd": self.held_usd,
-            "b_eff_headroom_usd": self.b_eff_headroom_usd,
-            "headroom_d": self.headroom_d,
-            "pov_cap_usd": self.pov_cap_usd,
-            "decision_outcome": self.decision_outcome,
+            "best_ask_price": self.best_ask_price, "best_ask_edge": self.best_ask_edge,
+            "net_ev": self.net_ev, "q_eff": self.q_eff,
+            "fee_rate_applied": self.fee_rate_applied, "fee_rate_official_raw": self.fee_rate_official_raw,
+            "m_threshold": self.m_threshold, "tau_hours": self.tau_hours,
+            "b_budget_usd": self.b_budget_usd, "w_tau": self.w_tau,
+            "s_edge": self.s_edge, "lambda_l": self.lambda_l,
+            "g_cap_usd": self.g_cap_usd, "held_usd": self.held_usd,
+            "b_eff_headroom_usd": self.b_eff_headroom_usd, "headroom_d": self.headroom_d,
+            "pov_cap_usd": self.pov_cap_usd, "decision_outcome": self.decision_outcome,
             "gate_result": self.gate_result or self.decision_outcome,
-            "reject_reason": self.reject_reason,
-            "target_slice_usd": self.target_slice_usd,
-            "scaler_policy_id": self.scaler_policy_id,
-            "scaler_provisional": self.scaler_provisional,
-            "scaler_provenance": self.scaler_provenance,
-            "light_status": self.light_status,
-            "p16_event_id": self.p16_event_id,
-            "degradation_reason": self.degradation_reason,
+            "reject_reason": self.reject_reason, "target_slice_usd": self.target_slice_usd,
+            "scaler_policy_id": self.scaler_policy_id, "scaler_provisional": self.scaler_provisional,
+            "scaler_provenance": self.scaler_provenance, "light_status": self.light_status,
+            "p16_event_id": self.p16_event_id, "degradation_reason": self.degradation_reason,
         }
 
     def to_json_line(self) -> str:
@@ -625,6 +604,7 @@ class _DecisionContext:
     lambda_l: float
     b_eff_headroom_usd: float
     fee_rate_official_raw: Optional[Any]
+    capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE"
 
 
 class DeterministicDecider:
@@ -712,7 +692,7 @@ class DeterministicDecider:
         target_usd = float(slice_plan.target_usd) if (slice_plan and slice_plan.should_submit) else 0.0
         reject_reason = "NONE" if outcome == "ORDERED" else (reason or outcome)
         return ScanDecisionEvent(
-            schema_version="p1.v2", decision_id=ctx.decision_id, session_id=ctx.orig_session_id,
+            schema_version="p1.v3", decision_id=ctx.decision_id, session_id=ctx.orig_session_id,
             execution_mode=ctx.execution_mode, scan_clock=ctx.scan_clock, scan_ts_utc=ctx.t_scan,
             station_id=ctx.station_id, target_date=ctx.target_date, target_type=ctx.target_type,
             bin_id=ctx.bin_id, token_id=ctx.yes_token_id, market_id=ctx.market_id,
@@ -733,6 +713,7 @@ class DeterministicDecider:
             scaler_policy_id=self.scaler.policy_id, scaler_provisional=self.scaler.provisional,
             scaler_provenance=self.scaler.provenance, light_status=ctx.light_status,
             p16_event_id=ctx.p16_event_id, degradation_reason=reason, slice_plan=slice_plan,
+            capture_replay_mode=ctx.capture_replay_mode,
         )
 
     def _build_decision_context(
@@ -743,6 +724,7 @@ class DeterministicDecider:
         bin_id: str, market_id: str, yes_token_id: str, policy_bundle: ExecutionPolicyBundle,
         quota: QuotaSnapshot, assembled: AssembledScanInputs,
         light_event: Optional[LightLevelEvent], fee_rate_official_raw: Optional[Any],
+        capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE",
     ) -> _DecisionContext:
         fc = assembled.winning_forecast
         tau_h = (
@@ -772,6 +754,7 @@ class DeterministicDecider:
             lambda_l=self._resolve_lambda_l(light_lvl, policy_bundle.risk_gate),
             b_eff_headroom_usd=float(quota.b_eff_headroom_usd),
             fee_rate_official_raw=fee_rate_official_raw,
+            capture_replay_mode=capture_replay_mode,
         )
 
     def _check_input_gates(
@@ -953,6 +936,7 @@ class DeterministicDecider:
         no_frame: Optional[MarketBookSnapshot] = None, dual_pair: Optional[DualSideBookPair] = None,
         include_no_side: bool = False, target_type: str = "TMAX",
         light_event: Optional[LightLevelEvent] = None, fee_rate_official_raw: Optional[Any] = None,
+        capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE",
     ) -> ScanDecisionEvent:
         """Evaluate one bin deterministically (never raises on bad book / stale forecast)."""
         t_scan = ensure_utc_datetime(scan_ts_utc, field_name="scan_ts_utc")
@@ -972,6 +956,7 @@ class DeterministicDecider:
             policy_bundle=policy_bundle, quota=resolved_quota, assembled=assembled,
             light_event=light_event,
             fee_rate_official_raw=self._probe_official_fee_rate(yes_token_id, fee_rate_official_raw),
+            capture_replay_mode=capture_replay_mode,
         )
         gate_block = self._check_input_gates(ctx, assembled)
         return gate_block if gate_block is not None else self._evaluate_bin_with_view(ctx, assembled, bin_id)

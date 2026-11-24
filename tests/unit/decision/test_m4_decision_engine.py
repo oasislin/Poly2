@@ -365,11 +365,12 @@ def test_p16_red_blocks_new_entries_and_yellow_held_over_cap_stops_adding() -> N
 
 def test_p16_none_default_bitwise_regression_equivalence_and_bounds() -> None:
     t0 = datetime(2026, 11, 21, 14, 0, 0, tzinfo=timezone.utc)
-    # 阶段二新基线（P8-WO-20261124-M10-BIZCHAIN-EXEC3 升版 p1.v2 决策时点全量字段捕获；
-    # 前代 p1.v1 基线 record_sha256="e9849fe5..." 随 p1.v2 退役）
+    # 阶段二新基线（P8-WO-20261125-S3-11-OFFLINE-SCHED R1 升版 p1.v3 增加 capture_replay_mode；
+    # 前代 p1.v2 基线 record_sha256="8cd53f96..." 与 p1.v1 基线 "e9849fe5..." 随 p1.v3 退役）
     expected_baseline_jsonl = (
         '{"b_budget_usd":250.0,"b_eff_headroom_usd":250.0,"best_ask_edge":1.183622828784119,'
-        '"best_ask_price":0.25,"bin_id":"bin-58-59","book_frame_ref":1,"config_hash":"8173bc6e03015b22",'
+        '"best_ask_price":0.25,"bin_id":"bin-58-59","book_frame_ref":1,"capture_replay_mode":"NONE",'
+        '"config_hash":"8173bc6e03015b22",'
         '"decision_id":"9b306f27-0fe1-5c37-be8c-a341de55173f","decision_outcome":"ORDERED",'
         '"degradation_reason":null,"execution_mode":"PAPER","fee_rate_applied":0.01,'
         '"fee_rate_official_raw":null,"forecast_id":"fc-20ae8269c7f54f31","g_cap_usd":125.24384332715898,'
@@ -377,11 +378,11 @@ def test_p16_none_default_bitwise_regression_equivalence_and_bounds() -> None:
         '"light_status":null,"m_threshold":0.05,"market_id":"mkt-1","model_hash":"stub-model-hash-v1",'
         '"net_ev":0.29812500000000003,"p16_event_id":null,"policy_overdue":false,'
         '"policy_version":"p6.base.v1","pov_cap_usd":24.3,"q_eff":0.251875,'
-        '"record_sha256":"8cd53f9613b983b5a4eeac30da2ebf6236df5ffafd86325407f0ff80342cdbf5",'
+        '"record_sha256":"c31a41130e0bfeefe215f5a4d534f1b2566e8e237941bd9d66164a1b31e405f1",'
         '"reject_reason":"NONE","s_edge":1.0,"scaler_policy_id":"provisional_identity_v0",'
         '"scaler_provenance":"PROVISIONAL_UNTIL_D6","scaler_provisional":true,'
         '"scan_clock":"PRICE_CLOCK","scan_ts_utc":"2026-11-21T14:00:00+00:00",'
-        '"schema_version":"p1.v2","selected_bin_p_model":0.55,"session_id":"base-sess",'
+        '"schema_version":"p1.v3","selected_bin_p_model":0.55,"session_id":"base-sess",'
         '"station_id":"KORD","target_date":"2026-11-21","target_slice_usd":24.2984,'
         '"target_type":"TMAX","tau_hours":10.0,"token_id":"tok-y","w_tau":0.500975373308636}'
     )
@@ -463,7 +464,8 @@ def test_p1_v2_decision_time_attribution_and_fee_rate_official_raw_mock(monkeypa
         quota=_sample_quota(b_eff_headroom_usd=40.0), yes_frame=ask_hi.payload,
     )
     p1_skip = json.loads(ev_skip.to_json_line())
-    assert p1_skip["schema_version"] == "p1.v2"
+    assert p1_skip["schema_version"] == "p1.v3"
+    assert p1_skip["capture_replay_mode"] == "NONE"
     assert p1_skip["selected_bin_p_model"] == pytest.approx(0.55)
     assert p1_skip["fee_rate_applied"] == pytest.approx(0.01)
     assert p1_skip["q_eff"] == pytest.approx(0.85 * (1.0 + 0.01 * 0.15))

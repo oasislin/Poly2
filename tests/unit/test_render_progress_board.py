@@ -23,10 +23,12 @@ REAL_BOARD = REPO_ROOT / "docs/audit/progress_board.html"
 def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     data = load_task_ledger(REAL_LEDGER)
     assert tuple(m["id"] for m in data["modules"]) == EXPECTED_MODULE_IDS
-    assert len(data["tasks"]) == 31
+    assert len(data["tasks"]) == 32
     assert {t["slice"] for t in data["tasks"]} == {"切片 1", "切片 2", "切片 3", "切片 4"}
 
     by_id = {t["id"]: t for t in data["tasks"]}
+    assert by_id["S3-16"]["status"] == "BLOCKED"
+    assert "Batch 3" in by_id["S3-16"]["title"]
     assert by_id["S3-05b"]["status"] == "DONE"
     assert by_id["S3-09"]["status"] == "DONE"
     assert by_id["S3-10"]["status"] == "DONE"

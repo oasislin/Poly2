@@ -313,11 +313,13 @@ class ForecastDistributionSnapshotV11:
         session_id: str,
         execution_mode: ExecutionMode,
         config_hash: str,
+        capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE",
     ) -> Dict[str, Any]:
         return {
-            "schema_version": "p17.v2",
+            "schema_version": "p17.v3",
             "session_id": session_id,
             "execution_mode": execution_mode,
+            "capture_replay_mode": capture_replay_mode,
             "config_hash": config_hash,
             "forecast_id": self.forecast_id,
             "issue_ts_utc": self.issue_ts_utc.isoformat(),
@@ -346,10 +348,18 @@ class ForecastDistributionSnapshotV11:
         }
 
     def to_p17_json_line(
-        self, *, session_id: str, execution_mode: ExecutionMode, config_hash: str
+        self,
+        *,
+        session_id: str,
+        execution_mode: ExecutionMode,
+        config_hash: str,
+        capture_replay_mode: Literal["NONE", "REPLAY_P13"] = "NONE",
     ) -> str:
         payload = self.to_p17_dict_without_hash(
-            session_id=session_id, execution_mode=execution_mode, config_hash=config_hash
+            session_id=session_id,
+            execution_mode=execution_mode,
+            config_hash=config_hash,
+            capture_replay_mode=capture_replay_mode,
         )
         payload["record_sha256"] = compute_record_sha256(payload)
         return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

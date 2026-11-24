@@ -344,6 +344,7 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
             {
                 "decision_id": chain.decision_id,
                 "session_id": str(p1.get("session_id") or ""),
+                "capture_replay_mode": p1.get("capture_replay_mode"),
                 "scan_ts_utc": str(p1.get("scan_ts_utc") or ""),
                 "station_id": str(p1.get("station_id") or ""),
                 "target_date": str(p1.get("target_date") or ""),
@@ -795,12 +796,14 @@ def _render_decision_chain_card(
     else:
         p9_body = f"<div>结算状态: PENDING_P9 ({_esc(_UNPERSISTED)})</div>"
 
+    replay_mode = row.get("capture_replay_mode")
+    replay_suffix = f" | mode={_esc(replay_mode)}" if replay_mode else ""
     return (
         '<details class="chain-card" open>'
         f"<summary><code>{_esc(row['decision_id'])}</code> | {_esc(row['station_id'])} "
         f"{_esc(row['target_date'])} ({_esc(row.get('target_type') or '-')}) | "
         f"bin=<strong>{_esc(row['bin_id'])}</strong> | {_esc(row['decision_outcome'])} "
-        f"| terminal={_esc(row['terminal_status'])} | filled=${_esc(row['filled_usd'])}</summary>"
+        f"| terminal={_esc(row['terminal_status'])} | filled=${_esc(row['filled_usd'])}{replay_suffix}</summary>"
         '<div class="stage-grid">'
         '<div class="stage-box">'
         "<h3>① 决策时点天气 (P17 · 非 P9 结算真值)</h3>"
