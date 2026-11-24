@@ -225,4 +225,5 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
    - **第一级 `<details class="city-card">`** 按 `station_id` 汇总：累计投入(含费) `sum(filled_usd + fee_paid_usd)`、累计已结算盈亏 `sum(realized_pnl_usd)`、未结算敞口 `sum(PENDING_P9 投入)`、已结算单数/胜场；
    - **第二级 `<details class="market-day-card">`** 按 `M7 §2.7` 五要素 `(session_id, station_id, target_date, target_type, market_id)` 独立核算每个盘口（同日存在多 `market_id/target_type` 时拆分子行并标注 `同日多盘口独立核算`；扫描未成交零仓位盘口标示 `空盘口（有决策未成交）`）；严格恪守“每日/每盘口独立”铁律，城市层禁止跨盘口概率平均、胜率加权或收益摊平。
 3. **按结算日累计已实现盈亏曲线（[`_build_daily_cumulative_pnl_series`](../../src/ui/m10_view.py) / [`_render_daily_pnl_svg`](../../src/ui/m10_view.py)）**：按 `settled_ts_utc[:10]`（缺失时回退 `target_date`）汇总每日 `realized_pnl_usd` 并按日历时序累加绘制静态 `<svg class="pnl-svg">` 折线与节点圆标；无结算日如实留空不插值补点，全未结算时不生成伪零线；对应专测集 [`tests/unit/ui/test_m10_s310_readonly_view.py`](../../tests/unit/ui/test_m10_s310_readonly_view.py) 共 13 项全绿。
+4. **历史记录占位语义注记（`pre-p1.v2 / pre-p17.v2`）**：`2026-11-24` 之前生成的历史 `p1.v1 / p17.v1` 记录因决策时点未持久化 `obs_temp_f / net_ev / lambda_l` 等增量字段，在区块 3 决策链卡片中永久显示 `"未落盘"` 占位符（依 `fail-honest` 原则永不事后伪造回填，防看卡歧义）。
 

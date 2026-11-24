@@ -493,3 +493,43 @@ def test_p1_v2_decision_time_attribution_and_fee_rate_official_raw_mock(monkeypa
     )
     assert call_count == 1  # zero retries
     assert json.loads(ev_fail_probe.to_json_line())["fee_rate_official_raw"] is None
+
+    # 3) Disabled probe stays null even when HTTP would succeed; enabled probe forwards clob_host + 0.5s timeout
+    captured_urls: list[str] = []
+
+    class _CustomHostOpener:
+        def open(self, req, timeout=0.5):
+            assert timeout == pytest.approx(0.5)
+            captured_urls.append(req.full_url)
+            return _FakeResp()
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *a, **kw: _CustomHostOpener())
+    decider_off = DeterministicDecider(
+        exec_config=default_stub_trading_config(),
+        enable_official_fee_rate_probe=False,
+        clob_host="https://custom-clob.example",
+        fee_rate_timeout_sec=0.5,
+    )
+    ev_off = decider_off.evaluate_bin(
+        orig_session_id="attr-sess", execution_mode="PAPER", scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0, station_id="KORD", target_date="2026-11-21", bin_id="bin-58-59",
+        market_id="mkt-1", yes_token_id="tok-skip", forecasts=[fc], policy_bundle=bundle,
+        quota=_sample_quota(), yes_frame=ask_hi.payload,
+    )
+    assert captured_urls == []
+    assert json.loads(ev_off.to_json_line())["fee_rate_official_raw"] is None
+
+    decider_custom = DeterministicDecider(
+        exec_config=default_stub_trading_config(),
+        enable_official_fee_rate_probe=True,
+        clob_host="https://custom-clob.example/",
+        fee_rate_timeout_sec=0.5,
+    )
+    ev_custom = decider_custom.evaluate_bin(
+        orig_session_id="attr-sess", execution_mode="PAPER", scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0, station_id="KORD", target_date="2026-11-21", bin_id="bin-58-59",
+        market_id="mkt-1", yes_token_id="tok-skip", forecasts=[fc], policy_bundle=bundle,
+        quota=_sample_quota(), yes_frame=ask_hi.payload,
+    )
+    assert captured_urls == ["https://custom-clob.example/fee-rate?token_id=tok-skip"]
+    assert json.loads(ev_custom.to_json_line())["fee_rate_official_raw"] == {"base_fee": 1000}
