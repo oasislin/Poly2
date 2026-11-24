@@ -52,6 +52,8 @@ class M10DashboardModel:
     partial_tail_count: int
     valid_lines: int
     missing_forecast_fk_count: int
+    city_cards: Tuple[Dict[str, Any], ...] = ()
+    daily_pnl_series: Tuple[Dict[str, Any], ...] = ()
 
 
 def _to_decimal(value: Any, default: Decimal = _ZERO) -> Decimal:
@@ -428,6 +430,167 @@ def _unique_non_empty(values: Iterable[Optional[str]]) -> Tuple[str, ...]:
     return tuple(seen)
 
 
+def _build_city_date_aggregations(
+    decision_rows: Sequence[Dict[str, Any]],
+    settlement_rows: Sequence[Dict[str, Any]],
+) -> Tuple[Dict[str, Any], ...]:
+    """Aggregate independent markets strictly by M7 §2.7 scope under each city.
+
+    Domain invariant: each daily/market scope is independent; city totals only sum
+    monetary amounts and counts (never cross-market probability or win-rate averaging).
+    """
+    decisions_by_scope: Dict[Tuple[str, str, str, str, str], List[Dict[str, Any]]] = {}
+    for row in decision_rows:
+        scope = (
+            str(row.get("session_id") or ""),
+            str(row.get("station_id") or ""),
+            str(row.get("target_date") or ""),
+            str(row.get("target_type") or ""),
+            str(row.get("market_id") or ""),
+        )
+        decisions_by_scope.setdefault(scope, []).append(row)
+
+    settle_by_scope: Dict[Tuple[str, str, str, str, str], Dict[str, Any]] = {}
+    for s in settlement_rows:
+        scope = (
+            str(s.get("session_id") or ""),
+            str(s.get("station_id") or ""),
+            str(s.get("target_date") or ""),
+            str(s.get("target_type") or ""),
+            str(s.get("market_id") or ""),
+        )
+        settle_by_scope[scope] = s
+
+    all_scopes = sorted(
+        set(decisions_by_scope.keys()) | set(settle_by_scope.keys()),
+        key=lambda sc: (sc[1], sc[2], sc[3], sc[4], sc[0]),
+    )
+
+    scopes_per_station_day: Dict[Tuple[str, str], int] = {}
+    for _, st_id, t_date, _, _ in all_scopes:
+        scopes_per_station_day[(st_id, t_date)] = scopes_per_station_day.get((st_id, t_date), 0) + 1
+
+    by_station: Dict[str, List[Dict[str, Any]]] = {}
+    for scope in all_scopes:
+        session_id, st_id, t_date, t_type, market_id = scope
+        scope_decs = decisions_by_scope.get(scope, [])
+        p9 = settle_by_scope.get(scope)
+
+        total_shares = sum((_to_decimal(d.get("filled_shares")) for d in scope_decs), _ZERO)
+        if scope_decs:
+            invested_usd = sum(
+                (_to_decimal(d.get("filled_usd")) + _to_decimal(d.get("fee_paid_usd")) for d in scope_decs),
+                _ZERO,
+            )
+        elif p9 is not None:
+            invested_usd = _to_decimal(p9.get("cost_basis_usd"))
+        else:
+            invested_usd = _ZERO
+
+        has_fill = total_shares > _ZERO or invested_usd > _ZERO
+        is_settled = p9 is not None
+        settlement_status: Literal["READY", "PENDING_P9"] = "READY" if is_settled else "PENDING_P9"
+        realized_pnl_usd: Optional[Decimal] = _to_decimal(p9.get("realized_pnl_usd")) if is_settled else None
+        unsettled_exposure_usd = _ZERO if is_settled else invested_usd
+
+        is_empty_market = bool(scope_decs) and not has_fill
+        reconciled = bool(p9.get("reconciled")) if p9 is not None else False
+        winning_bin_id = p9.get("winning_bin_id") if p9 is not None else None
+        payout_usd = _to_decimal(p9.get("payout_usd")) if p9 is not None else _ZERO
+
+        if not is_settled:
+            outcome = "未成交" if is_empty_market else "-"
+        elif not has_fill and not reconciled:
+            outcome = "未成交"
+        elif scope_decs:
+            won_bin = any(
+                _to_decimal(d.get("filled_shares")) > _ZERO and d.get("bin_id") == winning_bin_id
+                for d in scope_decs
+            )
+            outcome = "WIN" if (won_bin or payout_usd > _ZERO or (realized_pnl_usd or _ZERO) > _ZERO) else "LOSS"
+        else:
+            outcome = "WIN" if (realized_pnl_usd or _ZERO) > _ZERO else "LOSS"
+
+        market_row = {
+            "session_id": session_id,
+            "station_id": st_id,
+            "target_date": t_date,
+            "target_type": t_type,
+            "market_id": market_id,
+            "decision_count": len(scope_decs),
+            "filled_decision_count": sum(1 for d in scope_decs if _to_decimal(d.get("filled_shares")) > _ZERO),
+            "has_fill": has_fill,
+            "is_empty_market": is_empty_market,
+            "invested_usd": invested_usd,
+            "realized_pnl_usd": realized_pnl_usd,
+            "unsettled_exposure_usd": unsettled_exposure_usd,
+            "settlement_status": settlement_status,
+            "outcome": outcome,
+            "winning_bin_id": winning_bin_id,
+            "settlement_id": str(p9.get("settlement_id") or "") if p9 is not None else None,
+            "multi_market_same_day": scopes_per_station_day.get((st_id, t_date), 1) > 1,
+            "decision_ids": tuple(str(d.get("decision_id") or "") for d in scope_decs),
+        }
+        by_station.setdefault(st_id, []).append(market_row)
+
+    cards: List[Dict[str, Any]] = []
+    for st_id in sorted(by_station.keys()):
+        mrows = by_station[st_id]
+        total_invested = sum((m["invested_usd"] for m in mrows), _ZERO)
+        total_realized = sum(
+            (m["realized_pnl_usd"] for m in mrows if m["realized_pnl_usd"] is not None),
+            _ZERO,
+        )
+        unsettled_exposure = sum((m["unsettled_exposure_usd"] for m in mrows), _ZERO)
+        settled_count = sum(
+            1 for m in mrows if m["settlement_status"] == "READY" and (m["has_fill"] or m["outcome"] in ("WIN", "LOSS"))
+        )
+        win_count = sum(1 for m in mrows if m["outcome"] == "WIN")
+        cards.append(
+            {
+                "station_id": st_id,
+                "total_invested_usd": total_invested,
+                "total_realized_pnl_usd": total_realized,
+                "unsettled_exposure_usd": unsettled_exposure,
+                "settled_count": settled_count,
+                "win_count": win_count,
+                "market_rows": tuple(mrows),
+            }
+        )
+    return tuple(cards)
+
+
+def _build_daily_cumulative_pnl_series(
+    settlement_rows: Sequence[Dict[str, Any]],
+) -> Tuple[Dict[str, Any], ...]:
+    """Build chronological cumulative realized PnL points grouped strictly by settlement date.
+
+    Days with zero settlements are omitted without synthetic interpolation.
+    """
+    daily_totals: Dict[str, Decimal] = {}
+    for row in settlement_rows:
+        settle_day = str(row.get("settled_ts_utc") or "").strip()[:10]
+        if not settle_day:
+            settle_day = str(row.get("target_date") or "").strip()[:10]
+        if not settle_day:
+            continue
+        daily_totals[settle_day] = daily_totals.get(settle_day, _ZERO) + _to_decimal(row.get("realized_pnl_usd"))
+
+    points: List[Dict[str, Any]] = []
+    running = _ZERO
+    for day_str in sorted(daily_totals.keys()):
+        daily_pnl = daily_totals[day_str]
+        running += daily_pnl
+        points.append(
+            {
+                "settlement_date": day_str,
+                "daily_realized_pnl_usd": daily_pnl,
+                "cumulative_realized_pnl_usd": running,
+            }
+        )
+    return tuple(points)
+
+
 def build_m10_dashboard_model(
     *,
     audit_root: Path,
@@ -477,6 +640,8 @@ def build_m10_dashboard_model(
 
     decision_rows = _build_decision_rows(view.joined_chains)
     settlement_rows, total_realized_pnl_usd = _build_settlement_rows(view, decision_rows)
+    city_cards = _build_city_date_aggregations(decision_rows, settlement_rows)
+    daily_pnl_series = _build_daily_cumulative_pnl_series(settlement_rows)
 
     total_filled_usd = sum((row["filled_usd"] for row in decision_rows), _ZERO)
     total_fee_paid_usd = sum((row["fee_paid_usd"] for row in decision_rows), _ZERO)
@@ -511,6 +676,8 @@ def build_m10_dashboard_model(
         partial_tail_count=view.partial_tail_skipped_lines,
         valid_lines=view.valid_lines,
         missing_forecast_fk_count=view.missing_forecast_fk_count,
+        city_cards=city_cards,
+        daily_pnl_series=daily_pnl_series,
     )
 
 
@@ -644,6 +811,166 @@ def _render_decision_chain_card(
     )
 
 
+def _render_city_aggregation_cards(city_cards: Sequence[Mapping[str, Any]]) -> str:
+    if not city_cards:
+        return '<div class="empty">暂无城市/日期盘口聚合数据。</div>'
+    blocks: List[str] = []
+    for city in city_cards:
+        day_blocks: List[str] = []
+        for mrow in city.get("market_rows", ()):
+            pnl_text = (
+                f"${mrow['realized_pnl_usd']}"
+                if mrow.get("realized_pnl_usd") is not None
+                else "-"
+            )
+            status_cls = "pill-ready" if mrow.get("settlement_status") == "READY" else "pill-pending"
+            outcome = str(mrow.get("outcome") or "-")
+            if outcome == "WIN":
+                out_cls = "pill-win"
+            elif outcome == "LOSS":
+                out_cls = "pill-loss"
+            else:
+                out_cls = "pill-empty"
+            empty_tag = (
+                ' <span class="pill pill-empty">空盘口（有决策未成交）</span>'
+                if mrow.get("is_empty_market")
+                else ""
+            )
+            split_tag = (
+                ' <span class="pill pill-split">同日多盘口独立核算</span>'
+                if mrow.get("multi_market_same_day")
+                else ""
+            )
+            decs = ", ".join(str(x) for x in mrow.get("decision_ids", ())) or "-"
+            day_blocks.append(
+                '<details class="market-day-card">'
+                "<summary>"
+                f"{_esc(mrow.get('target_date'))} | "
+                f"{_esc(mrow.get('target_type') or '-')} | "
+                f"<code>{_esc(mrow.get('market_id') or '-')}</code> | "
+                f"投入(含费): ${_esc(mrow.get('invested_usd'))} | "
+                f"已结算盈亏: {_esc(pnl_text)} | "
+                f"未结算敞口: ${_esc(mrow.get('unsettled_exposure_usd'))} | "
+                f'<span class="pill {status_cls}">{_esc(mrow.get("settlement_status"))}</span> '
+                f'<span class="pill {out_cls}">{_esc(outcome)}</span>'
+                f"{empty_tag}{split_tag}"
+                "</summary>"
+                '<div class="market-day-detail">'
+                f"session=<code>{_esc(mrow.get('session_id') or '-')}</code> | "
+                f"决策数={_esc(mrow.get('decision_count'))} (成交={_esc(mrow.get('filled_decision_count'))}) | "
+                f"decisions=<code>{_esc(decs)}</code> | "
+                f"winning_bin={_esc(mrow.get('winning_bin_id') or '-')} | "
+                f"settlement_id=<code>{_esc(mrow.get('settlement_id') or '-')}</code>"
+                "</div>"
+                "</details>"
+            )
+        blocks.append(
+            '<details class="city-card" open>'
+            "<summary>"
+            f"<strong>{_esc(city.get('station_id'))}</strong> | "
+            f"累计投入(含费): ${_esc(city.get('total_invested_usd'))} | "
+            f"累计已结算盈亏: ${_esc(city.get('total_realized_pnl_usd'))} | "
+            f"未结算敞口: ${_esc(city.get('unsettled_exposure_usd'))} | "
+            f"已结算单数/胜场: {_esc(city.get('settled_count'))} / {_esc(city.get('win_count'))}"
+            "</summary>"
+            '<div class="city-card-body">'
+            + "\n".join(day_blocks)
+            + "</div>"
+            "</details>"
+        )
+    return "\n".join(blocks)
+
+
+def _render_daily_pnl_svg(series: Sequence[Mapping[str, Any]]) -> str:
+    if not series:
+        return '<div class="empty">暂无已结算数据，按结算日累计盈亏 SVG 曲线如实留空。</div>'
+
+    width, height = 760, 220
+    pad_l, pad_r, pad_t, pad_b = 72, 24, 20, 38
+    plot_w = width - pad_l - pad_r
+    plot_h = height - pad_t - pad_b
+
+    parsed_dates: List[Optional[date]] = []
+    for pt in series:
+        try:
+            parsed_dates.append(date.fromisoformat(str(pt["settlement_date"])))
+        except Exception:
+            parsed_dates.append(None)
+
+    y_vals = [float(pt["cumulative_realized_pnl_usd"]) for pt in series]
+    min_y = min(0.0, min(y_vals))
+    max_y = max(0.0, max(y_vals))
+    if max_y - min_y < 1e-9:
+        min_y -= 1.0
+        max_y += 1.0
+    else:
+        margin = (max_y - min_y) * 0.12
+        min_y -= margin
+        max_y += margin
+
+    def _y_px(val: float) -> float:
+        ratio = (val - min_y) / (max_y - min_y)
+        return pad_t + plot_h * (1.0 - ratio)
+
+    valid_days = [d for d in parsed_dates if d is not None]
+    use_calendar_spacing = len(valid_days) == len(series) and len(series) > 1
+    if use_calendar_spacing:
+        d0 = valid_days[0]
+        span_days = max(1, (valid_days[-1] - d0).days)
+        x_coords = [
+            pad_l + plot_w * ((d - d0).days / span_days)  # type: ignore[operator]
+            for d in valid_days
+        ]
+    elif len(series) == 1:
+        x_coords = [pad_l + plot_w * 0.5]
+    else:
+        x_coords = [pad_l + plot_w * (idx / (len(series) - 1)) for idx in range(len(series))]
+
+    y_coords = [_y_px(val) for val in y_vals]
+    zero_y = _y_px(0.0)
+    poly_points = " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(x_coords, y_coords))
+
+    ticks = [max_y, 0.0, min_y] if min_y < 0.0 < max_y else [max_y, (max_y + min_y) / 2.0, min_y]
+    y_tick_svg = "\n".join(
+        f'<line x1="{pad_l}" y1="{_y_px(tv):.1f}" x2="{width - pad_r}" y2="{_y_px(tv):.1f}" '
+        f'stroke="{"#64748b" if abs(tv) < 1e-9 else "#334155"}" '
+        f'stroke-dasharray="{"4 4" if abs(tv) < 1e-9 else "2 4"}" stroke-width="1" />'
+        f'<text x="{pad_l - 8}" y="{_y_px(tv) + 4:.1f}" text-anchor="end" fill="#94a3b8" font-size="11">${tv:.2f}</text>'
+        for tv in ticks
+    )
+
+    circles_svg = "\n".join(
+        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4.5" '
+        f'fill="{"#4ade80" if float(pt["cumulative_realized_pnl_usd"]) >= 0 else "#f87171"}" '
+        f'stroke="#0f172a" stroke-width="1.5" '
+        f'data-settlement-date="{_esc(pt["settlement_date"])}" '
+        f'data-cumulative-pnl="{_esc(pt["cumulative_realized_pnl_usd"])}" />'
+        f'<text x="{x:.1f}" y="{height - 14}" text-anchor="middle" fill="#cbd5e1" font-size="11">'
+        f'{_esc(pt["settlement_date"])}</text>'
+        f'<text x="{x:.1f}" y="{max(pad_t + 10, y - 9):.1f}" text-anchor="middle" fill="#f8fafc" font-size="10">'
+        f'${_esc(pt["cumulative_realized_pnl_usd"])}</text>'
+        for pt, x, y in zip(series, x_coords, y_coords)
+    )
+
+    polyline_svg = (
+        f'<polyline fill="none" stroke="#38bdf8" stroke-width="2.5" points="{poly_points}" />'
+        if len(series) >= 2
+        else ""
+    )
+
+    return (
+        f'<svg class="pnl-svg" viewBox="0 0 {width} {height}" width="100%" '
+        'role="img" aria-label="按结算日累计已实现盈亏曲线">'
+        f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{height - pad_b}" stroke="#64748b" stroke-width="1.2" />'
+        f'<line x1="{pad_l}" y1="{height - pad_b}" x2="{width - pad_r}" y2="{height - pad_b}" stroke="#64748b" stroke-width="1.2" />'
+        f"{y_tick_svg}"
+        f'<line x1="{pad_l}" y1="{zero_y:.1f}" x2="{width - pad_r}" y2="{zero_y:.1f}" stroke="#94a3b8" stroke-dasharray="4 4" stroke-width="1" />'
+        f"{polyline_svg}"
+        f"{circles_svg}"
+        "</svg>"
+    )
+
+
 def render_m10_dashboard_html(model: M10DashboardModel) -> str:
     """Render a zero-script, zero-CDN, strictly read-only `M10 v1` standalone HTML report."""
     rp = model.risk_panel
@@ -759,6 +1086,9 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
     if not p19_trs:
         p19_trs = '<tr><td colspan="9" class="empty">No P19 capital events recorded.</td></tr>'
 
+    city_cards_html = _render_city_aggregation_cards(model.city_cards)
+    daily_pnl_svg_html = _render_daily_pnl_svg(model.daily_pnl_series)
+
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -796,6 +1126,21 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
   .bin-picked .bin-fill {{ background: #fbbf24; }}
   .bin-pct {{ text-align: right; font-variant-numeric: tabular-nums; }}
   .reserved-live-slot {{ margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-style: italic; }}
+  details.city-card {{ background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-top: 10px; }}
+  details.city-card > summary {{ cursor: pointer; font-size: 14px; color: #f8fafc; }}
+  .city-card-body {{ margin-top: 8px; padding-left: 14px; border-left: 2px solid #334155; }}
+  details.market-day-card {{ background: #1e293b; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin-top: 6px; }}
+  details.market-day-card > summary {{ cursor: pointer; font-size: 13px; color: #e2e8f0; }}
+  .market-day-detail {{ margin-top: 6px; font-size: 12px; color: #94a3b8; }}
+  .pill {{ display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }}
+  .pill-ready {{ background: #14532d; color: #bbf7d0; }}
+  .pill-pending {{ background: #78350f; color: #fde68a; }}
+  .pill-win {{ background: #166534; color: #86efac; }}
+  .pill-loss {{ background: #7f1d1d; color: #fecaca; }}
+  .pill-empty {{ background: #334155; color: #cbd5e1; }}
+  .pill-split {{ background: #1e3a8a; color: #bfdbfe; }}
+  .pnl-svg {{ max-width: 760px; height: auto; background: #0f172a; border: 1px solid var(--border); border-radius: 6px; display: block; }}
+  .note-muted {{ font-size: 12px; color: var(--muted); margin: 0 0 8px; }}
 </style>
 </head>
 <body>
@@ -832,6 +1177,17 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
         <div class="kv"><div class="k">observed_config_hashes</div><div class="v"><code>{_esc(', '.join(model.config_hashes) or '-')}</code></div></div>
         <div class="kv"><div class="k">observed_model_hashes</div><div class="v"><code>{_esc(', '.join(model.model_hashes) or '-')}</code></div></div>
       </div>
+    </section>
+
+    <section class="card" aria-label="城市与日期独立盘口聚合">
+      <h2>城市 -&gt; 日期独立盘口聚合卡 (按 M7 §2.7 盘口独立核算)</h2>
+      <p class="note-muted">每日/每盘口独立结算；城市级仅汇总投入、已结算盈亏、未结算敞口与单数/胜场，不做跨盘口概率平均或胜率加权。</p>
+      {city_cards_html}
+    </section>
+
+    <section class="card" aria-label="按结算日累计盈亏曲线">
+      <h2>按结算日累计已实现盈亏曲线 (Static SVG · 无数据日留空不补点)</h2>
+      {daily_pnl_svg_html}
     </section>
 
     <section class="card">

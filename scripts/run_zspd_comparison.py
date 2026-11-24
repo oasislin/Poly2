@@ -41,6 +41,7 @@ from src.data_analysis.distribution_calibrator import (
     DistributionCalibrator,
     ReportGenerator,
 )
+from src.data_analysis.latency_outage_analyzer import LatencyOutageAnalyzer
 from scripts.probe_nws_wrh_availability import NwsAvailabilityProber
 
 logging.basicConfig(
@@ -270,12 +271,38 @@ def run_comparison_pipeline(
     )
     calibration_data["empirical_rounding_operator"] = rounding_meta
 
-    prober = NwsAvailabilityProber(station=station)
-    precision_meta = prober.audit_field_precision()
-    outage_res = prober.analyze_outage_and_latency(days_list=[days])
-    latency_meta = outage_res.get("update_latency", {})
-    outage_distributions = outage_res.get("hourly_outage_distributions", {})
-    uptime_meta = prober.record_uptime_metrics(num_requests=3)
+    if mock_mode:
+        analyzer = LatencyOutageAnalyzer()
+        dist = analyzer.compute_hourly_outage_distribution(
+            nws_records, days_count=days, timezone_str=timezone_str
+        )
+        precision_meta = {
+            "total_files_audited": 0,
+            "metric_sample_count": len(nws_records),
+            "metric_integer_pct": 1.0,
+            "english_sample_count": 0,
+            "english_pure_integer_pct": 0.0,
+        }
+        latency_meta = {
+            "station": station,
+            "sample_files": 0,
+            "median_lag_minutes": 0.0,
+            "p95_lag_minutes": 0.0,
+        }
+        outage_distributions = {f"{days}_days": dist.to_dict()}
+        uptime_meta = {
+            "station": station,
+            "total_requests_audited": 0,
+            "success_rate": 1.0,
+            "schema_drift_detected": False,
+        }
+    else:
+        prober = NwsAvailabilityProber(station=station)
+        precision_meta = prober.audit_field_precision()
+        outage_res = prober.analyze_outage_and_latency(days_list=[days])
+        latency_meta = outage_res.get("update_latency", {})
+        outage_distributions = outage_res.get("hourly_outage_distributions", {})
+        uptime_meta = prober.record_uptime_metrics(num_requests=3)
 
     # Export artifacts
     decomposer.export_to_csv(daily_diff_records, output_csv)

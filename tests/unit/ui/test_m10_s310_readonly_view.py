@@ -898,3 +898,312 @@ def test_m10_full_distribution_render_missing_p17_fallback_and_p9_card_link(tmp_
     assert "未落盘 (P17.bin_probs 缺失)" in html
     assert "sid-card-p9" in html
     assert "realized_pnl=$14.98" in html
+
+
+def test_m10_city_date_nested_aggregation_multi_market_split_and_totals(tmp_path: Path) -> None:
+    """City->Date two-level aggregation preserves M7 §2.7 market independence & exact totals equality."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    day1_dir = audit_root / "PAPER" / "2026-11-21"
+    day2_dir = audit_root / "PAPER" / "2026-11-22"
+    day3_dir = audit_root / "PAPER" / "2026-11-23"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    # KORD 2026-11-21: two independent markets on the same day (TMAX WIN, TMIN LOSS)
+    p1_tmax = _sample_p1(decision_id="dec-tmax", market_id="mkt-tmax", bin_id="bin-58-59", target_date="2026-11-21")
+    p1_tmin = _sample_p1(decision_id="dec-tmin", market_id="mkt-tmin", bin_id="bin-40-41", target_date="2026-11-21")
+    p1_tmin["target_type"] = "TMIN"
+    # KORD 2026-11-22: unfilled empty market (decision scanned, 0 fill)
+    p1_empty = _sample_p1(decision_id="dec-empty", market_id="mkt-empty", bin_id="bin-60-61", target_date="2026-11-22")
+    p1_empty["decision_outcome"] = "REJECT_CIRCUIT_OPEN"
+    # KORD 2026-11-23: PENDING_P9 unsettled exposure
+    p1_pend = _sample_p1(decision_id="dec-pend", market_id="mkt-pend", bin_id="bin-62-63", target_date="2026-11-23")
+    # KLGA 2026-11-23: separate city PENDING_P9
+    p1_klga = _sample_p1(decision_id="dec-klga", market_id="mkt-klga", bin_id="bin-54-55", target_date="2026-11-23")
+    p1_klga["station_id"] = "KLGA"
+
+    _write_signed_stream(day1_dir / "p1_scan_decisions.jsonl", [p1_tmax, p1_tmin])
+    _write_signed_stream(day2_dir / "p1_scan_decisions.jsonl", [p1_empty])
+    _write_signed_stream(day3_dir / "p1_scan_decisions.jsonl", [p1_pend, p1_klga])
+
+    att_tmax = _sample_p3_attempt(
+        attempt_id="att-tmax",
+        decision_id="dec-tmax",
+        market_id="mkt-tmax",
+        terminal_status="FILLED",
+        filled_shares="20.00",
+        filled_usd="5.00",
+        fee_paid_usd="0.02",
+        final_ts_utc="2026-11-21T14:00:01+00:00",
+    )
+    att_tmin = _sample_p3_attempt(
+        attempt_id="att-tmin",
+        decision_id="dec-tmin",
+        market_id="mkt-tmin",
+        terminal_status="FILLED",
+        filled_shares="10.00",
+        filled_usd="5.00",
+        fee_paid_usd="0.02",
+        final_ts_utc="2026-11-21T14:05:01+00:00",
+    )
+    att_tmin["target_type"] = "TMIN"
+    att_pend = _sample_p3_attempt(
+        attempt_id="att-pend",
+        decision_id="dec-pend",
+        market_id="mkt-pend",
+        terminal_status="FILLED",
+        filled_shares="12.00",
+        filled_usd="6.00",
+        fee_paid_usd="0.03",
+        final_ts_utc="2026-11-23T14:00:01+00:00",
+    )
+    att_klga = _sample_p3_attempt(
+        attempt_id="att-klga",
+        decision_id="dec-klga",
+        market_id="mkt-klga",
+        terminal_status="FILLED",
+        filled_shares="8.00",
+        filled_usd="4.00",
+        fee_paid_usd="0.02",
+        final_ts_utc="2026-11-23T14:01:01+00:00",
+    )
+    att_klga["station_id"] = "KLGA"
+
+    _write_signed_stream(day1_dir / "p3_execution_attempts.jsonl", [att_tmax, att_tmin])
+    _write_signed_stream(day3_dir / "p3_execution_attempts.jsonl", [att_pend, att_klga])
+
+    _write_signed_stream(
+        day2_dir / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-tmax",
+                "settled_ts_utc": "2026-11-22T06:00:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-21",
+                "target_type": "TMAX",
+                "market_id": "mkt-tmax",
+                "winning_bin_id": "bin-58-59",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 59,
+                "fallback_to_lowest_bin": False,
+            },
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-tmin",
+                "settled_ts_utc": "2026-11-22T06:05:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-21",
+                "target_type": "TMIN",
+                "market_id": "mkt-tmin",
+                "winning_bin_id": "bin-42-43",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 42,
+                "fallback_to_lowest_bin": False,
+            },
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    by_city = {c["station_id"]: c for c in model.city_cards}
+    assert set(by_city.keys()) == {"KLGA", "KORD"}
+
+    kord = by_city["KORD"]
+    kord_rows = kord["market_rows"]
+    assert len(kord_rows) == 4  # 2026-11-21 TMAX, 2026-11-21 TMIN, 2026-11-22 empty, 2026-11-23 pending
+    assert kord["total_invested_usd"] == sum((r["invested_usd"] for r in kord_rows), Decimal("0")) == Decimal("16.07")
+    assert kord["total_realized_pnl_usd"] == sum(
+        (r["realized_pnl_usd"] for r in kord_rows if r["realized_pnl_usd"] is not None),
+        Decimal("0"),
+    ) == Decimal("9.96")  # (+14.98) + (-5.02)
+    assert kord["unsettled_exposure_usd"] == sum((r["unsettled_exposure_usd"] for r in kord_rows), Decimal("0")) == Decimal("6.03")
+    assert kord["settled_count"] == 2
+    assert kord["win_count"] == 1
+
+    # Verify empty unfilled market row & same-day multi-market split flag
+    row_by_mkt = {r["market_id"]: r for r in kord_rows}
+    assert row_by_mkt["mkt-tmax"]["multi_market_same_day"] is True
+    assert row_by_mkt["mkt-tmin"]["multi_market_same_day"] is True
+    assert row_by_mkt["mkt-tmax"]["outcome"] == "WIN"
+    assert row_by_mkt["mkt-tmin"]["outcome"] == "LOSS"
+    assert row_by_mkt["mkt-empty"]["is_empty_market"] is True
+    assert row_by_mkt["mkt-empty"]["invested_usd"] == Decimal("0")
+    assert row_by_mkt["mkt-empty"]["unsettled_exposure_usd"] == Decimal("0")
+    assert row_by_mkt["mkt-empty"]["outcome"] == "未成交"
+    assert row_by_mkt["mkt-pend"]["settlement_status"] == "PENDING_P9"
+
+    klga = by_city["KLGA"]
+    assert klga["total_invested_usd"] == Decimal("4.02")
+    assert klga["total_realized_pnl_usd"] == Decimal("0")
+    assert klga["unsettled_exposure_usd"] == Decimal("4.02")
+    assert klga["settled_count"] == 0
+    assert klga["win_count"] == 0
+
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert '<details class="city-card" open>' in html
+    assert '<details class="market-day-card">' in html
+    assert "空盘口（有决策未成交）" in html
+    assert "同日多盘口独立核算" in html
+    assert "未落盘" not in html or "未落盘 (P17.bin_probs 缺失)" in html  # placeholders intact when P17 absent
+
+
+def test_m10_svg_daily_cumulative_pnl_curve_omits_gap_days(tmp_path: Path) -> None:
+    """SVG daily cumulative PnL curve aggregates by settlement day and omits gap days without synthesis."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    p1_dir = audit_root / "PAPER" / "2026-11-20"
+    p9_dir_1 = audit_root / "PAPER" / "2026-11-21"
+    p9_dir_2 = audit_root / "PAPER" / "2026-11-22"
+    p9_dir_3 = audit_root / "PAPER" / "2026-11-24"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    p1s = [
+        _sample_p1(decision_id="d1", market_id="m1", bin_id="b-win", target_date="2026-11-20"),
+        _sample_p1(decision_id="d2", market_id="m2", bin_id="b-lose", target_date="2026-11-21"),
+        _sample_p1(decision_id="d3", market_id="m3", bin_id="b-win3", target_date="2026-11-23"),
+    ]
+    _write_signed_stream(p1_dir / "p1_scan_decisions.jsonl", p1s)
+
+    atts = [
+        _sample_p3_attempt(
+            attempt_id="a1",
+            decision_id="d1",
+            market_id="m1",
+            terminal_status="FILLED",
+            filled_shares="20.00",
+            filled_usd="5.00",
+            fee_paid_usd="0.02",
+            final_ts_utc="2026-11-20T14:00:01+00:00",
+        ),
+        _sample_p3_attempt(
+            attempt_id="a2",
+            decision_id="d2",
+            market_id="m2",
+            terminal_status="FILLED",
+            filled_shares="10.00",
+            filled_usd="5.00",
+            fee_paid_usd="0.02",
+            final_ts_utc="2026-11-21T14:00:01+00:00",
+        ),
+        _sample_p3_attempt(
+            attempt_id="a3",
+            decision_id="d3",
+            market_id="m3",
+            terminal_status="FILLED",
+            filled_shares="15.00",
+            filled_usd="4.95",
+            fee_paid_usd="0.05",
+            final_ts_utc="2026-11-23T14:00:01+00:00",
+        ),
+    ]
+    _write_signed_stream(p1_dir / "p3_execution_attempts.jsonl", atts)
+
+    # Settlements on 2026-11-20, 2026-11-22 (gap 11-21), 2026-11-24 (gap 11-23)
+    _write_signed_stream(
+        p9_dir_1 / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-svg-1",
+                "settled_ts_utc": "2026-11-20T22:00:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-20",
+                "target_type": "TMAX",
+                "market_id": "m1",
+                "winning_bin_id": "b-win",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 59,
+                "fallback_to_lowest_bin": False,
+            }
+        ],
+    )
+    _write_signed_stream(
+        p9_dir_2 / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-svg-2",
+                "settled_ts_utc": "2026-11-22T06:00:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-21",
+                "target_type": "TMAX",
+                "market_id": "m2",
+                "winning_bin_id": "b-other",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 60,
+                "fallback_to_lowest_bin": False,
+            }
+        ],
+    )
+    _write_signed_stream(
+        p9_dir_3 / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-svg-3",
+                "settled_ts_utc": "2026-11-24T06:00:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-23",
+                "target_type": "TMAX",
+                "market_id": "m3",
+                "winning_bin_id": "b-win3",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 61,
+                "fallback_to_lowest_bin": False,
+            }
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert [(p["settlement_date"], p["cumulative_realized_pnl_usd"]) for p in model.daily_pnl_series] == [
+        ("2026-11-20", Decimal("14.98")),
+        ("2026-11-22", Decimal("9.96")),
+        ("2026-11-24", Decimal("19.96")),
+    ]
+
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    svg_start = html.index('<svg class="pnl-svg"')
+    svg_end = html.index("</svg>", svg_start) + len("</svg>")
+    svg_block = html[svg_start:svg_end]
+    assert "<polyline" in svg_block
+    assert svg_block.count("<circle ") == 3
+    assert 'data-settlement-date="2026-11-20"' in svg_block
+    assert 'data-settlement-date="2026-11-22"' in svg_block
+    assert 'data-settlement-date="2026-11-24"' in svg_block
+    assert "2026-11-21" not in svg_block
+    assert "2026-11-23" not in svg_block
+
+
+def test_m10_svg_empty_settlements_renders_blank_placeholder(tmp_path: Path) -> None:
+    """When zero settlements exist, cumulative PnL SVG renders no fake line."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert model.daily_pnl_series == ()
+    assert model.city_cards == ()
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert '<svg class="pnl-svg"' not in html
+    assert "暂无已结算数据，按结算日累计盈亏 SVG 曲线如实留空" in html
+

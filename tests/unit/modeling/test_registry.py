@@ -432,4 +432,27 @@ class TestModelRegistryJSONAndManifest:
         ret = main(["--dry-run", "--stations", "KORD", "KLGA", "--model-dir", "data/models"])
         assert ret == 0
 
+    def test_save_scorecard_active10_dense_grid_respects_anchor_bounds(self, temp_registry_dir):
+        """Regression guard: save_scorecard(build_dense_grid=True) must not request 6h below Active-10 anchors."""
+        registry = ModelRegistry(base_dir=temp_registry_dir)
+        diag = ModelTrainingDiagnostics(
+            success=True, params=(0.1, 1.0, 0.2, 0.8),
+            crps_in_sample=1.0, crps_raw_ensemble=1.5, crps_climatology=2.0,
+            crpss_vs_raw=0.33, crpss_vs_clim=0.5, n_iterations=10, n_evaluations=15,
+            grad_norm=1e-6, restarts_used=0, sample_count=100,
+        )
+        dec = DegradationDecision(level=1, is_degraded=False, reason="Healthy")
+        models = {}
+        for lead in (18, 42, 66):
+            models[("KLGA", "Summer", "max", lead)] = (GaussianEMOS(a=0.1 * lead, b=1.0, c=0.2, d=0.8), diag, dec)
+        for lead in (24, 48, 72):
+            models[("KORD", "Winter", "max", lead)] = (GaussianEMOS(a=0.1 * lead, b=1.0, c=0.2, d=0.8), diag, dec)
+
+        registry.save_scorecard(MatrixScorecard(models=models), build_dense_grid=True)
+        inventory = registry.list_inventory()
+        klga_leads = set(inventory[inventory["station_id"] == "KLGA"]["lead_hours"].astype(int))
+        kord_leads = set(inventory[inventory["station_id"] == "KORD"]["lead_hours"].astype(int))
+        assert klga_leads == {18, 24, 30, 36, 42, 48, 54, 60, 66}
+        assert kord_leads == {24, 30, 36, 42, 48, 54, 60, 66, 72}
+
 

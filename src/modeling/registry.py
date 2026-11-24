@@ -413,10 +413,14 @@ class ModelRegistry:
                 anchor_dict[key] = {}
             anchor_dict[key][lead] = model
 
-        # 2. Build and save dense 6h-grid models across 6h to 54h
+        # 2. Build and save dense 6h-grid models bounded by trained anchors
         if build_dense_grid:
-            all_leads = [6, 12, 18, 24, 30, 36, 42, 48, 54]
             for (station, season, target_type), anchors in anchor_dict.items():
+                if not anchors:
+                    continue
+                min_lead = min(anchors.keys())
+                max_lead = max(anchors.keys())
+                all_leads = list(range(min_lead, max_lead + 1, 6))
                 dense_grid = self.interpolator.build_full_grid(
                     target_type=target_type,
                     anchor_models=anchors,

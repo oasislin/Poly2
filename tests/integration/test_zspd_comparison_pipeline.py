@@ -18,7 +18,14 @@ from scripts.run_zspd_comparison import run_comparison_pipeline
 class TestZspdComparisonPipelineIntegration:
     """Test end-to-end comparison pipeline with mock data."""
 
-    def test_pipeline_execution_mocked(self, tmp_path):
+    def test_pipeline_execution_mocked(self, tmp_path, monkeypatch):
+        import scripts.run_zspd_comparison as cmp_mod
+
+        def _forbid_live_prober(*args, **kwargs):
+            raise AssertionError("mock_mode=True must never instantiate live NwsAvailabilityProber")
+
+        monkeypatch.setattr(cmp_mod, "NwsAvailabilityProber", _forbid_live_prober)
+
         out_csv = tmp_path / "zspd_daily_diff.csv"
         out_json = tmp_path / "zspd_metar_noise_calibration.json"
         out_report = tmp_path / "zspd_temperature_comparison_report.md"

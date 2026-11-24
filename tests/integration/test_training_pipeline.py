@@ -83,7 +83,7 @@ class TestTrainingPipelineIntegration:
             storage_manager=storage,
             climatology_calculator=clim_calc,
             model_registry=registry,
-            stations=["ZSPD", "KDEN"],
+            stations=["KMIA", "KSEA"],
             train_start_year=2016,
             train_end_year=2018,
             val_start_year=2019,
