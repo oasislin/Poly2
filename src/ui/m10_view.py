@@ -161,10 +161,13 @@ def _extract_weather_stage(
     p17: Optional[Mapping[str, Any]],
 ) -> Dict[str, Any]:
     src = p17 if p17 is not None else {}
+    obs_temp = src.get("obs_temp_f") if src.get("obs_temp_f") is not None else src.get("latest_obs_temp_f")
+    obs_ts = src.get("obs_ts_utc") if src.get("obs_ts_utc") is not None else src.get("latest_obs_ts_utc")
+    obs_src = src.get("obs_source") if src.get("obs_source") is not None else src.get("obs_source_mode")
     return {
-        "latest_obs_temp_f": src.get("latest_obs_temp_f"),
-        "latest_obs_ts_utc": src.get("latest_obs_ts_utc"),
-        "obs_source_mode": src.get("obs_source_mode"),
+        "latest_obs_temp_f": obs_temp,
+        "latest_obs_ts_utc": obs_ts,
+        "obs_source_mode": obs_src,
         "m_now_f": src.get("m_now_f"),
         "m_now_int_f": src.get("m_now_int_f"),
         "prior_mu0": src.get("prior_mu0"),
@@ -212,16 +215,20 @@ def _extract_prob_edge_stage(
     selected_p_model = p1.get("selected_bin_p_model")
     if selected_p_model is None:
         selected_p_model = next((b["p_model"] for b in dist_bins if b["is_selected"]), None)
-    i_val = p1.get("i_value") if p1.get("i_value") is not None else p1.get("best_ask_net_ev")
+    net_ev = p1.get("net_ev")
+    if net_ev is None:
+        net_ev = p1.get("best_ask_net_ev") if p1.get("best_ask_net_ev") is not None else p1.get("i_value")
+    q_eff = p1.get("q_eff") if p1.get("q_eff") is not None else p1.get("best_ask_q_eff")
+    fee_applied = p1.get("fee_rate_applied") if p1.get("fee_rate_applied") is not None else p1.get("applied_fee_rate")
     return {
         "selected_bin_p_model": selected_p_model,
         "best_ask_price": p1.get("best_ask_price"),
         "best_ask_edge": p1.get("best_ask_edge"),
         "m_threshold": p1.get("m_threshold"),
-        "applied_fee_rate": p1.get("applied_fee_rate"),
-        "best_ask_q_eff": p1.get("best_ask_q_eff"),
-        "best_ask_net_ev": p1.get("best_ask_net_ev"),
-        "i_value": i_val,
+        "applied_fee_rate": fee_applied,
+        "best_ask_q_eff": q_eff,
+        "best_ask_net_ev": net_ev,
+        "i_value": net_ev,
     }
 
 
@@ -234,7 +241,7 @@ def _extract_sizing_stage(
     g_cap = _to_decimal_or_none(p1.get("g_cap_usd"))
     headroom = _to_decimal_or_none(p1.get("headroom_d"))
     target_slice = _to_decimal_or_none(p1.get("target_slice_usd"))
-    reject_reason = p1.get("gateway_reject_reason")
+    reject_reason = p1.get("reject_reason") if p1.get("reject_reason") is not None else p1.get("gateway_reject_reason")
     if reject_reason is None:
         reject_reason = next(
             (str(a["reject_or_abort_reason"]) for a in attempt_recs if a.get("reject_or_abort_reason")),

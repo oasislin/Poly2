@@ -551,7 +551,7 @@ def test_p17_jsonl_serialization_and_120_case_p5_four_invariant_certification() 
     )
     assert verify_p17_json_line(p17_line) is True
     p17_obj = json.loads(p17_line)
-    assert p17_obj["schema_version"] == "p17.v1"
+    assert p17_obj["schema_version"] == "p17.v2"
     assert "p5_schema_version" not in p17_obj
     # No .5°F fields anywhere in bin_probs
     assert all("lower_bound_f" not in b and "upper_bound_f" not in b for b in p17_obj["bin_probs"])
@@ -660,3 +660,89 @@ def test_truncated_distribution_and_discrete_bin_engine_integer_wiring() -> None
     dist_min = TruncatedDistribution(base_distribution=base, target_type="min", extreme_m=60.0)
     with pytest.raises(NotImplementedError, match="W3"):
         dist_min.hurdle_left_limit_cdf(60.0, sigma_rem=1.8)
+
+
+def test_p17_v2_instant_obs_isolated_from_m_now_and_missing_p11() -> None:
+    """`p17.v2` captures decision-time instant observation triple isolated from `m_now_f` and `P9`."""
+    from datetime import timedelta
+
+    engine = ForecastDistributionEngine(
+        freshness_policy=_fresh_policy(),
+        eta_provider=ConstantEtaProvider(eta_s=0.35, provenance="TEST_P17_V2"),
+        mu_r_hook=SpecV2BaselineMuRHook(),
+    )
+    ladder = build_integer_bin_ladder(first_interior_start_f=70, num_interior_bins=4, bin_width_f=2)
+    prior = PriorAffineFamilyModel(family="gaussian", mu0=75.0, sigma0=3.0)
+    issue_ts = _dt("2026-07-15T20:00:00Z")
+    obs_ts = _dt("2026-07-15T19:50:00Z")
+
+    p11_obs = StationDayState(
+        schema_version="p11.v1",
+        state_id="st-p17-v2",
+        as_of_ts_utc=issue_ts,
+        station_id="KORD",
+        station_timezone="America/Chicago",
+        target_date=date(2026, 7, 15),
+        day_start_utc=_dt("2026-07-15T05:00:00Z"),
+        settle_close_utc=_dt("2026-07-16T05:00:00Z"),
+        m_now_exact_f=Decimal("76.8"),
+        m_now_int_f=77,
+        m_now_min_exact_f=Decimal("64.2"),
+        m_now_min_int_f=64,
+        oracle_compliant=True,
+        oracle_source_tier="AWC_METAR_TGROUP",
+        latest_obs_utc=obs_ts,
+        latest_dispatch_ts_utc=obs_ts + timedelta(minutes=2),
+        latest_instant_temp_f=Decimal("71.4"),
+        physical_age_sec=600.0,
+        dispatch_age_sec=480.0,
+        dispatch_age_available=True,
+        freshness_ok=True,
+        freshness_policy_provenance="TEST_POLICY",
+        routine_obs_count=15,
+        cor_overwrites_count=0,
+        specis_seen_count=0,
+        gap_flags=(),
+    )
+
+    snap, _ = engine.build_snapshot(
+        station_id="KORD",
+        target_date=date(2026, 7, 15),
+        target_type="TMAX",
+        issue_ts_utc=issue_ts,
+        settle_close_utc=_dt("2026-07-16T05:00:00Z"),
+        gefs_lead_hours=18,
+        model_hash="mh-v2",
+        prior=prior,
+        bins=ladder,
+        p11_state=p11_obs,
+        sigma_delta_sample=0.9,
+    )
+    p17_line = snap.to_p17_json_line(session_id="sess-v2", execution_mode="PAPER", config_hash="cfg-v2")
+    assert verify_p17_json_line(p17_line) is True
+    p17 = json.loads(p17_line)
+    assert p17["schema_version"] == "p17.v2"
+    assert p17["obs_temp_f"] == pytest.approx(71.4)
+    assert p17["m_now_f"] == pytest.approx(76.8)
+    assert p17["obs_temp_f"] != p17["m_now_f"]
+    assert p17["obs_ts_utc"] == obs_ts.isoformat()
+    assert p17["obs_source"] == "AWC_METAR_TGROUP"
+
+    # When P11 is absent, obs_* triple stays None/null honestly
+    snap_none, _ = engine.build_snapshot(
+        station_id="KORD",
+        target_date=date(2026, 7, 15),
+        target_type="TMAX",
+        issue_ts_utc=issue_ts,
+        settle_close_utc=_dt("2026-07-16T05:00:00Z"),
+        gefs_lead_hours=18,
+        model_hash="mh-v2",
+        prior=prior,
+        bins=ladder,
+        p11_state=None,
+    )
+    p17_empty = json.loads(snap_none.to_p17_json_line(session_id="sess-v2", execution_mode="PAPER", config_hash="cfg-v2"))
+    assert p17_empty["schema_version"] == "p17.v2"
+    assert p17_empty["obs_temp_f"] is None
+    assert p17_empty["obs_ts_utc"] is None
+    assert p17_empty["obs_source"] is None

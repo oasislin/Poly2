@@ -218,9 +218,9 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
 
 ## §8 `Batch 2a` 业务视图增量规则（决策链卡片、城市→日期二级聚合卡与静态 SVG 累计盈亏曲线）
 
-> 本节记录依 `P8-WO-20261123-M10-BIZCHAIN-EXEC1` 与 `P8-WO-20261123-M10-BIZCHAIN-EXEC2` 合入的只读展示增量，全部计算均保持“仅展示与严格求和、绝不重算上游预测/I 值、零 JS / 零 CDN”。
+> 本节记录依 `P8-WO-20261123-M10-BIZCHAIN-EXEC1`、`P8-WO-20261123-M10-BIZCHAIN-EXEC2` 与 `P8-WO-20261124-M10-BIZCHAIN-EXEC3` 合入的只读展示增量与上游捕获衔接，全部计算均保持“仅展示与严格求和、绝不重算上游预测/`edge`/`net_ev`、零 JS / 零 CDN”。
 
-1. **区块 3 六段式决策链卡片（[`_render_decision_chain_card`](../../src/ui/m10_view.py)）**：纯 CSS `<details class="chain-card">` 逐单展示 ① 决策时点天气、② `P17.bin_probs` 全档条与命中档高亮、③ 所选档概率 / `edge` 指标、④ `G -> D -> target_slice_usd -> sum(filled_usd)` 三段精确 `Decimal` 差、⑤ `P13` 盘口快照与 `LIVE` 置灰预留槽、⑥ `P9` 结算回填；缺失上游字段统一显示 `"未落盘"`。
+1. **区块 3 六段式决策链卡片（[`_render_decision_chain_card`](../../src/ui/m10_view.py)）**：纯 CSS `<details class="chain-card">` 逐单展示 ① 决策时点天气（`p17.v2`: `obs_temp_f / obs_ts_utc / obs_source`）、② `P17.bin_probs` 全档条与命中档高亮、③ 所选档概率与 `edge / net_ev` 指标（`p1.v2`: `selected_bin_p_model / best_ask_edge / net_ev / q_eff / fee_rate_applied`，附 `fee_rate_official_raw`）、④ `G -> D -> target_slice_usd -> sum(filled_usd)` 三段精确 `Decimal` 差（`p1.v2`: `lambda_l / b_eff_headroom_usd / pov_cap_usd / gate_result / reject_reason`）、⑤ `P13` 盘口快照与 `LIVE` 置灰预留槽、⑥ `P9` 结算回填；缺失上游字段（如历史 `p1.v1/p17.v1`）统一显示 `"未落盘"`。
 2. **城市 -> 日期独立盘口二级聚合卡（[`_build_city_date_aggregations`](../../src/ui/m10_view.py) / [`_render_city_aggregation_cards`](../../src/ui/m10_view.py)）**：
    - **第一级 `<details class="city-card">`** 按 `station_id` 汇总：累计投入(含费) `sum(filled_usd + fee_paid_usd)`、累计已结算盈亏 `sum(realized_pnl_usd)`、未结算敞口 `sum(PENDING_P9 投入)`、已结算单数/胜场；
    - **第二级 `<details class="market-day-card">`** 按 `M7 §2.7` 五要素 `(session_id, station_id, target_date, target_type, market_id)` 独立核算每个盘口（同日存在多 `market_id/target_type` 时拆分子行并标注 `同日多盘口独立核算`；扫描未成交零仓位盘口标示 `空盘口（有决策未成交）`）；严格恪守“每日/每盘口独立”铁律，城市层禁止跨盘口概率平均、胜率加权或收益摊平。

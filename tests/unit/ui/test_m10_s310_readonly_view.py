@@ -1053,6 +1053,10 @@ def test_m10_city_date_nested_aggregation_multi_market_split_and_totals(tmp_path
     assert "空盘口（有决策未成交）" in html
     assert "同日多盘口独立核算" in html
     assert "未落盘" not in html or "未落盘 (P17.bin_probs 缺失)" in html  # placeholders intact when P17 absent
+    # Domain invariant: city-level summaries only sum amounts/counts (never win-rate % or probability blend)
+    city_sum_start = html.index('<details class="city-card" open><summary>')
+    city_sum_end = html.index("</summary>", city_sum_start)
+    assert "%" not in html[city_sum_start:city_sum_end]
 
 
 def test_m10_svg_daily_cumulative_pnl_curve_omits_gap_days(tmp_path: Path) -> None:
@@ -1206,4 +1210,276 @@ def test_m10_svg_empty_settlements_renders_blank_placeholder(tmp_path: Path) -> 
     _assert_strictly_readonly_html(html)
     assert '<svg class="pnl-svg"' not in html
     assert "暂无已结算数据，按结算日累计盈亏 SVG 曲线如实留空" in html
+
+
+def test_m10_svg_same_settlement_day_summation_and_negative_cumulative_pnl(tmp_path: Path) -> None:
+    """Multiple P9 settlements on the same settlement day aggregate into one SVG dot & handle negative PnL."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    p1_dir = audit_root / "PAPER" / "2026-11-22"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    _write_signed_stream(
+        p1_dir / "p1_scan_decisions.jsonl",
+        [
+            _sample_p1(decision_id="d-s1", market_id="m-s1", bin_id="b-lose", target_date="2026-11-21"),
+            _sample_p1(decision_id="d-s2", market_id="m-s2", bin_id="b-lose", target_date="2026-11-21"),
+        ],
+    )
+    _write_signed_stream(
+        p1_dir / "p3_execution_attempts.jsonl",
+        [
+            _sample_p3_attempt(
+                attempt_id="a-s1",
+                decision_id="d-s1",
+                market_id="m-s1",
+                terminal_status="FILLED",
+                filled_shares="10.00",
+                filled_usd="5.00",
+                fee_paid_usd="0.02",
+                final_ts_utc="2026-11-21T14:00:01+00:00",
+            ),
+            _sample_p3_attempt(
+                attempt_id="a-s2",
+                decision_id="d-s2",
+                market_id="m-s2",
+                terminal_status="FILLED",
+                filled_shares="8.00",
+                filled_usd="4.00",
+                fee_paid_usd="0.02",
+                final_ts_utc="2026-11-21T14:05:01+00:00",
+            ),
+        ],
+    )
+    _write_signed_stream(
+        p1_dir / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-same-1",
+                "settled_ts_utc": "2026-11-22T06:00:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-21",
+                "target_type": "TMAX",
+                "market_id": "m-s1",
+                "winning_bin_id": "b-other",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 60,
+                "fallback_to_lowest_bin": False,
+            },
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-same-2",
+                "settled_ts_utc": "2026-11-22T06:05:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-21",
+                "target_type": "TMAX",
+                "market_id": "m-s2",
+                "winning_bin_id": "b-other",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 60,
+                "fallback_to_lowest_bin": False,
+            },
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert len(model.daily_pnl_series) == 1
+    assert model.daily_pnl_series[0]["settlement_date"] == "2026-11-22"
+    assert model.daily_pnl_series[0]["daily_realized_pnl_usd"] == Decimal("-9.04")
+    assert model.daily_pnl_series[0]["cumulative_realized_pnl_usd"] == Decimal("-9.04")
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert 'data-settlement-date="2026-11-22"' in html
+    assert 'data-cumulative-pnl="-9.04"' in html
+
+
+def test_m10_p1_v2_p17_v2_autofill_and_v1_backward_compat(tmp_path: Path) -> None:
+    """Mixed v1+v2 M7 streams parse cleanly; real M2 p17.v2 & M4 p1.v2 outputs auto-fill M10 placeholders."""
+    from src.data_acquisition.settlement_metar_stream import FreshnessPolicy, StationDayState
+    from src.decision.engine import QuotaSnapshot
+    from src.prediction.dynamic_corrector import SpecV2BaselineMuRHook
+    from src.prediction.forecast_distribution_engine import (
+        ConstantEtaProvider,
+        ForecastDistributionEngine,
+        PriorAffineFamilyModel,
+        build_integer_bin_ladder,
+    )
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    day_v1 = audit_root / "PAPER" / "2026-11-22"
+    day_v2 = audit_root / "PAPER" / "2026-11-23"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    # 1) Legacy v1 streams
+    _write_signed_stream(
+        day_v1 / "p17_forecast_snapshots.jsonl",
+        [{"schema_version": "p17.v1", "execution_mode": "PAPER", "session_id": "sess-q6", "station_id": "KORD", "forecast_id": "fc-legacy", "model_hash": "mh-1", "config_hash": "ch-1"}],
+    )
+    p1_v1 = _sample_p1(decision_id="dec-legacy-v1", target_date="2026-11-22", forecast_id="fc-legacy")
+    _write_signed_stream(day_v1 / "p1_scan_decisions.jsonl", [p1_v1])
+
+    # 2) Real M2 (p17.v2) + Real M4 (p1.v2) producer outputs
+    t0 = datetime(2026, 11, 23, 14, 0, 0, tzinfo=timezone.utc)
+    obs_ts = t0 - timedelta(minutes=8)
+    fc_engine = ForecastDistributionEngine(
+        freshness_policy=FreshnessPolicy(
+            physical_age_limit_sec=3600.0,
+            dispatch_age_limit_sec=3600.0,
+            provenance="TEST_EXEC3",
+        ),
+        eta_provider=ConstantEtaProvider(eta_s=0.35, provenance="TEST_EXEC3"),
+        mu_r_hook=SpecV2BaselineMuRHook(),
+    )
+    ladder = build_integer_bin_ladder(first_interior_start_f=56, num_interior_bins=4, bin_width_f=2)
+    p11_state = StationDayState(
+        schema_version="p11.v1",
+        state_id="st-exec3",
+        as_of_ts_utc=t0 - timedelta(minutes=5),
+        station_id="KORD",
+        station_timezone="America/Chicago",
+        target_date=date(2026, 11, 23),
+        day_start_utc=datetime(2026, 11, 23, 6, 0, tzinfo=timezone.utc),
+        settle_close_utc=t0 + timedelta(hours=10),
+        m_now_exact_f=Decimal("58.4"),
+        m_now_int_f=58,
+        m_now_min_exact_f=Decimal("44.0"),
+        m_now_min_int_f=44,
+        oracle_compliant=True,
+        oracle_source_tier="AWC_METAR_TGROUP",
+        latest_obs_utc=obs_ts,
+        latest_dispatch_ts_utc=obs_ts + timedelta(minutes=1),
+        latest_instant_temp_f=Decimal("55.6"),
+        physical_age_sec=480.0,
+        dispatch_age_sec=420.0,
+        dispatch_age_available=True,
+        freshness_ok=True,
+        freshness_policy_provenance="TEST_POLICY",
+        routine_obs_count=10,
+        cor_overwrites_count=0,
+        specis_seen_count=0,
+        gap_flags=(),
+    )
+    snap, _ = fc_engine.build_snapshot(
+        station_id="KORD",
+        target_date=date(2026, 11, 23),
+        target_type="TMAX",
+        issue_ts_utc=t0 - timedelta(minutes=5),
+        settle_close_utc=t0 + timedelta(hours=10),
+        gefs_lead_hours=18,
+        model_hash="mh-v2",
+        prior=PriorAffineFamilyModel(family="gaussian", mu0=60.0, sigma0=3.0),
+        bins=ladder,
+        p11_state=p11_state,
+    )
+    p17_obj = json.loads(snap.to_p17_json_line(session_id="sess-v2", execution_mode="PAPER", config_hash="ch-v2"))
+    day_v2.mkdir(parents=True, exist_ok=True)
+    with (day_v2 / "p17_forecast_snapshots.jsonl").open("w", encoding="utf-8") as fh:
+        fh.write(snap.to_p17_json_line(session_id="sess-v2", execution_mode="PAPER", config_hash="ch-v2") + "\n")
+
+    policy = build_execution_policy_bundle(
+        policy_version="p6.v3",
+        signed_at_utc=t0 - timedelta(hours=1),
+        is_overdue=False,
+        w0_intent=0.10,
+        min_order_usd_eff=2.0,
+        p=1.5,
+        tau_max_h=24.0,
+        station_cap_usd=60.0,
+        concurrent_days=2,
+        w_provenance="TEST_EXEC3",
+        phi_policy=PhiPolicy(rho_0=Decimal("0.40"), k_slope=Decimal("0"), rho_min=Decimal("0.20"), rho_max=Decimal("0.60")),
+        k0_threshold_coef=1.0,
+        sigma_delta_frozen=SigmaDeltaFrozen(0.01, "TEST", "cyc-exec3"),
+        friction_median=0.005,
+        m_floor=0.01,
+        yellow_multiplier=0.5,
+    )
+    ask_yes, _ = build_p4_v11_stub_envelope(
+        session_id="sess-v2",
+        seq_id=1,
+        frame_seq=1,
+        token_id="tok-exec3",
+        market_id="mkt-exec3",
+        condition_id="c-exec3",
+        station_id="KORD",
+        target_date="2026-11-23",
+        bin_label="58-59°F",
+        outcome="YES",
+        regime="ask_only",
+        recv_ts_utc=t0 - timedelta(seconds=1),
+        asks=((0.20, 100.0),),
+        bids=(),
+    )
+    slot = P16SubscriptionSlot()
+    slot.publish(LightLevelEvent("p16-y-exec3", "YELLOW", "YELLOW_DRIFT", t0 - timedelta(minutes=2), "KORD"))
+    decider = DeterministicDecider(
+        exec_config=default_stub_trading_config(),
+        p16_slot=slot,
+        fee_rate_fetcher=lambda _tok: {"base_fee": 1000},
+    )
+    target_bin_id = next(bp["bin_id"] for bp in p17_obj["bin_probs"] if bp["lower_int_f"] == 58)
+    ev_v2 = decider.evaluate_bin(
+        orig_session_id="sess-v2",
+        execution_mode="PAPER",
+        scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0,
+        station_id="KORD",
+        target_date="2026-11-23",
+        bin_id=target_bin_id,
+        market_id="mkt-exec3",
+        yes_token_id="tok-exec3",
+        forecasts=[snap],
+        policy_bundle=policy,
+        quota=QuotaSnapshot(
+            station_id="KORD",
+            market_id="mkt-exec3",
+            free_usd=1000.0,
+            station_active_locked_usd=0.0,
+            market_held_usd=0.0,
+            station_cap_usd=60.0,
+            station_realized_loss_usd=0.0,
+            station_loss_gate_tripped=False,
+            account_drawdown_brake_tripped=False,
+            b_eff_headroom_usd=22.0,
+        ),
+        yes_frame=ask_yes.payload,
+    )
+    with (day_v2 / "p1_scan_decisions.jsonl").open("w", encoding="utf-8") as fh:
+        fh.write(ev_v2.to_json_line() + "\n")
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert model.render_status == "OK"
+    assert model.corrupt_count == 0
+    assert len(model.decision_rows) == 2
+
+    rows_by_id = {r["decision_id"]: r for r in model.decision_rows}
+    r_v2 = rows_by_id[ev_v2.decision_id]
+    assert r_v2["weather_stage"]["latest_obs_temp_f"] == pytest.approx(55.6)
+    assert r_v2["weather_stage"]["obs_source_mode"] == "AWC_METAR_TGROUP"
+    assert r_v2["prob_edge_stage"]["best_ask_net_ev"] == pytest.approx(ev_v2.net_ev)
+    assert r_v2["prob_edge_stage"]["best_ask_q_eff"] == pytest.approx(ev_v2.q_eff)
+    assert r_v2["prob_edge_stage"]["applied_fee_rate"] == pytest.approx(ev_v2.fee_rate_applied)
+    assert r_v2["sizing_stage"]["lambda_l"] == pytest.approx(0.5)
+    assert r_v2["sizing_stage"]["b_eff_headroom_usd"] == pytest.approx(22.0)
+    assert r_v2["sizing_stage"]["pov_cap_usd"] == pytest.approx(ev_v2.pov_cap_usd)
+    assert r_v2["sizing_stage"]["reject_reason"] == "NONE"
+
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert "瞬时观测温: 55.6 °F" in html
+    assert "源=AWC_METAR_TGROUP" in html
+    assert "λ(L)=0.5" in html
+    assert "b_eff_headroom=$22.0" in html
+    assert f"pov_cap=${ev_v2.pov_cap_usd}" in html
+    assert "瞬时观测温: 未落盘" in html  # legacy v1 row stays fail-honest alongside v2 row
+
 

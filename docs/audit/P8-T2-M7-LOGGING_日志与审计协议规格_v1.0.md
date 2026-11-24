@@ -1,9 +1,9 @@
-# P8-T2-M7-LOGGING：日志与审计模块（`M7`）协议本体及落盘规范（`v1.1` · 已对齐 `S2-04 P10` 冻结）
+# P8-T2-M7-LOGGING：日志与审计模块（`M7`）协议本体及落盘规范（`v1.2` · 已对齐 `Batch 1 p1.v2 / p17.v2` 决策时点捕获）
 
-- **任务单与治理编号**：`S1-03`（`T2` 落盘规范）+ **`S2-04`（`P10` 正文冻结）**｜归属模块：**`M7`（日志审计）↔ `M10`（只读前台）**
+- **任务单与治理编号**：`S1-03`（`T2` 落盘规范）+ **`S2-04`（`P10` 正文冻结）** + **`P8-WO-20261124-M10-BIZCHAIN-EXEC3`（`p1.v2 / p17.v2` 升版）**｜归属模块：**`M7`（日志审计）↔ `M2/M4/M10`**
 - **法定锚点**：[`P8-KERNEL-CONSENSUS v1.1 §六 E/F`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`项目方案 (v3.0) §8.1 / §8.2 / §8.3`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策)
 - **文件增殖判据核验（[`AGENTS.md`](../../AGENTS.md)）**：全仓此前不存在承载 `M7` JSONL 六条流完整字段字典、目录分片规范及 `P10` 只读渲染兼容约定的独立支撑文档；若强制塞入 [`P8-KERNEL-CONSENSUS`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) 或 [`P8-CAPITAL-CONFIG`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) 将导致战略共识/资金配置与数据工程 schema 职责混杂，故按判据合规新建本支撑文档。
-- **版本与表述纪律**：**`v1.1`（已对齐 `S2-04 P10` 冻结 · `2026-11-21` 当前决策 / 首期选择；月度复检可替换）**；本文件确立 `M7` 日志 schema、校验和、目录结构及 `P10` 只读查询契约，不预先编写 `M10` 前台代码，不触碰 `src/pricing/` 锁定文件。
+- **版本与表述纪律**：**`v1.2`（`2026-11-24` 对齐 `p1.v2 / p17.v2`；向下完全兼容 `p1.v1 / p17.v1`）**；本文件确立 `M7` 日志 schema、校验和、目录结构及 `P10` 只读查询契约，不触碰 `src/pricing/` 与 `src/execution/` 双冻结区。
 
 ---
 
@@ -32,7 +32,7 @@
 
 | 字段名 | 类型 | 必填 | 说明与约束 |
 | :--- | :--- | :---: | :--- |
-| `schema_version` | `str` | ✓ | 固定 `"p1.v1"` |
+| `schema_version` | `str` | ✓ | 现行 `"p1.v2"`（读取端向下兼容历史 `"p1.v1"`） |
 | `decision_id` | `str` | ✓ | 全局唯一 UUIDv7 / ULID（`P3` 之外键锚） |
 | `session_id` | `str` | ✓ | 运行会话唯一 ID |
 | `execution_mode` | `Literal["PAPER", "LIVE"]` | ✓ | 强隔离标识 |
@@ -50,17 +50,27 @@
 | `policy_overdue` | `bool` | ✓ | 透传 `P6.is_overdue` 状态（`B6` 催办标） |
 | `forecast_id` | `str` | ✓ | **外键指向 `P17`**，零冗余搬运全档分布数组 |
 | `book_frame_ref` | `int` | ✓ | **`N2` 外键指向 `P4.frame_seq`**（盘口侧精确重放闭合键） |
+| `selected_bin_p_model` | `Optional[float]` | ✗ | `p1.v2` 新增：决策时点命中档位概率 `bin_match.p_model` |
 | `best_ask_price` | `Optional[float]` | ✗ | 当帧卖一价；无卖盘时 `None` |
-| `best_ask_edge` | `Optional[float]` | ✗ | 由 `edge_math.evaluate_book_edges` 产出（相对无量纲）；无卖盘 `None` |
+| `best_ask_edge` | `Optional[float]` | ✗ | 由 `edge_math.evaluate_book_edges` 产出（每美元收益率，相对无量纲）；无卖盘 `None` |
+| `net_ev` | `Optional[float]` | ✗ | `p1.v2` 新增：由 `edge_math.compute_level_edge` 产出之卖一档每份期望净利（`$/份 = p_model - q_eff`） |
+| `q_eff` | `Optional[float]` | ✗ | `p1.v2` 新增：卖一档含费实付价 `p * (1 + fee_rate_applied * (1 - p))` |
+| `fee_rate_applied` | `Optional[float]` | ✗ | `p1.v2` 新增：决策时点实际代入 `edge_math` 之费率系数快照（来自 `P4.fee_rate`） |
+| `fee_rate_official_raw` | `Optional[Any]` | ✗ | `p1.v2` 新增：决策时点只读 `GET CLOB /fee-rate?token_id=...` 原始返回（如 `{"base_fee": 1000}`）；超时/失败/未启用探针时如实记 `null`（绝不重试阻塞主链） |
 | `m_threshold` | `float` | ✓ | `P6.RiskGatePolicy.m_threshold`（含费相对门限） |
 | `tau_hours` | `float` | ✓ | `(T_settle_close_utc - scan_ts_utc) / 3600`（`>= 0.0`） |
 | `b_budget_usd` | `float` | ✓ | 派生单市场日预算（来自 `P6.WPolicy.b_budget_usd`） |
 | `w_tau` | `float` | ✓ | `w(tau)` 时间骨架输出 `[w0, 1.0]` |
 | `s_edge` | `float` | ✓ | `s(edge)` 机会缩放输出 `[0.0, 1.0]` |
-| `g_cap_usd` | `float` | ✓ | `b_budget_usd * w_tau * s_edge` |
+| `lambda_l` | `Optional[float]` | ✗ | `p1.v2` 新增：决策时点 `P16` 信号灯乘数 `lambda(L)`（`GREEN/None=1.0`, `YELLOW=yellow_multiplier`, `RED=0.0`） |
+| `g_cap_usd` | `float` | ✓ | `b_budget_usd * w_tau * (s_edge * lambda_l)` |
 | `held_usd` | `float` | ✓ | 经 `P7` 查询之当前已持仓市值 + 冻结中敞口 |
-| `headroom_d` | `float` | ✓ | 可用增仓差额 `D`（受 `g_cap_usd - held_usd` 及 `M6` `B_eff` 兜底制约） |
+| `b_eff_headroom_usd` | `Optional[float]` | ✗ | `p1.v2` 新增：决策时点 `P7 QuotaSnapshot.b_eff_headroom_usd`（账面风控可用额度上限） |
+| `headroom_d` | `float` | ✓ | 可用增仓差额 `D`（`max(0, min(g_cap_usd - held_usd, b_eff_headroom_usd))`） |
+| `pov_cap_usd` | `Optional[float]` | ✗ | `p1.v2` 新增：决策时点按 `PhiPolicy` 沿合格买档计算的 PoV 流动性额度上限（Decimal 精确对齐 `executor`） |
 | `decision_outcome` | 枚举（见下） | ✓ | **互斥五枚举** |
+| `gate_result` | `Optional[str]` | ✗ | `p1.v2` 新增：决策闸门判定结果（与 `decision_outcome` 对齐，如 `"ORDERED"` / `"SKIP_EDGE_BELOW_M"`） |
+| `reject_reason` | `Optional[str]` | ✗ | `p1.v2` 新增：拦截/拒单归因码（如 `"SKIP_EDGE_BELOW_M"` / `"P16_RED_LIGHT_BLOCKED"` / `"BELOW_MIN_ORDER"`；`ORDERED` 时记 `"NONE"`） |
 | `target_slice_usd` | `float` | ✓ | 当 `ORDERED` 时为 `P2` 计划切片额（`> 0`）；否则恒 `0.0` |
 | `scaler_policy_id` | `str` | ✓ | 当前 `s(edge)` 策略 ID（`D-6` 前强制 `"provisional_identity_v0"`） |
 | `scaler_provisional` | `bool` | ✓ | `D-6` 前恒 `True` |
@@ -69,6 +79,11 @@
 | `p16_event_id` | `Optional[str]` | ✗ | 关联 `P16` 事件外键（无灯级事件时 `None`） |
 | `degradation_reason` | `Optional[str]` | ✗ | 单侧无卖盘 / 预报或盘口超龄 / 风控阻断原因码 |
 | `record_sha256` | `str` | ✓ | 整行完整性摘要 |
+
+- **费率实证钉死三条款（`P8-WO-20261124-M10-BIZCHAIN-EXEC3` 固化）**：
+  1. **端点原始快照**：决策时点 `P1`（`M4` [`engine.py`](../../src/decision/engine.py) `fetch_clob_fee_rate_official_raw`）只读查询 `CLOB /fee-rate?token_id=...` 并原样记入 `fee_rate_official_raw`（单次 best-effort 带短超时、零重试、异常/离线如实记 `null`，绝不阻塞下单或扫描主链）；
+  2. **官方公式与场所分歧锚点**：全系统有效成本与挂单计费统一以 Polymarket 官方文档 [`docs.polymarket.com/trading/fees.md`](https://docs.polymarket.com/trading/fees.md) 为法定公式锚点——**`fee = C · feeRate · p · (1 − p)`（taker-only）**（对应 `q_eff = p · [1 + feeRate · (1 − p)]`，参见 [`P8-FACTS-LEDGER FACT-001`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#L36-L43)）；同时明记链上合约 `CalculatorHelper.sol` 中 `min(p, 1 − p)` 签名保护上限公式与 CLOB `/fee-rate` 返回（如 `base_fee: 1000`）同 Gamma `feeSchedule.rate` 之间的数值分歧属场所侧已记录开放问题（[`Polymarket/py-clob-client#326`](https://github.com/Polymarket/py-clob-client/issues/326)），严禁将 `base_fee` 整数直接作 `feeRate` 代入 `edge_math`；
+  3. **`S3-15` 前实单费用对账校准条款**：进入 `S3-15` 真钱试单三探针与实盘前，必须对照 CLOB 实际成交回执实扣手续费与公式 `fee = C · feeRate · p · (1 − p)` 逐笔核对零残差，形成校准证据后方可放行 `S3-12 GATE-LIVE`（本规格条款本轮仅成文钉死，不提前触发实单）。
 
 - **`decision_outcome` 互斥五枚举与空转率计算式**：
   - `"ORDERED"`：所有门槛通过，向 `M5` 下发 `P2 plan_slice`；
@@ -125,7 +140,7 @@
 ### 2.3 `P17 ForecastSnapshotLog`（`M2 → M7`）
 
 - **语义**：每次预测引擎推理（每站 × 每目标日 × 每次信息钟/触发更新）异步持久化一条 **`P5 ForecastDistributionSnapshot` 全量记录**；既是 `P1.forecast_id` 的外键宿主机，也是 **`P8` 校准样本流的唯一合法源头**（严禁 `M2` 旁路直写 `M8`）。
-- **核心字段**：完整包含 [`P5 v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) 字段（`forecast_id`, `issue_ts_utc`, `station_id`, `target_date`, `target_type`, `gefs_lead_hours`, `tau_hours`, `settle_close_utc`, `model_hash`, `prior_mu0`, `prior_sigma0`, `family`, `m_now_f`, `m_now_int_f`, `oracle_compliant`, `upstream_obs_fresh`, `is_bridge_active`, `p_stay_phys`, `p_bin_stay`, `bin_probs` 整数边界列表 `lower_int_f/upper_int_f`、`sigma_delta_sample`），附加 `schema_version="p17.v1"`, `session_id`, `execution_mode`, `config_hash`, `record_sha256`。
+- **核心字段**：完整包含 [`P5 v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版) 字段（`forecast_id`, `issue_ts_utc`, `station_id`, `target_date`, `target_type`, `gefs_lead_hours`, `tau_hours`, `settle_close_utc`, `model_hash`, `prior_mu0`, `prior_sigma0`, `family`, `m_now_f`, `m_now_int_f`, `oracle_compliant`, `upstream_obs_fresh`, `is_bridge_active`, `p_stay_phys`, `p_bin_stay`, `bin_probs` 整数边界列表 `lower_int_f/upper_int_f`、`sigma_delta_sample`），并自 **`p17.v2`（`2026-11-24`）** 起新增决策时点瞬时观测隔离三元组 **`obs_temp_f: Optional[float]`、`obs_ts_utc: Optional[str]`、`obs_source: Optional[str]`**（与日内单调极值 `m_now_f` 及 `P9` 次日终态官方结算温度 `settled_temp_f_exact/int` 三重物理隔离，绝不混用），附加 `schema_version="p17.v2"`（读取端向下兼容历史 `"p17.v1"`）, `session_id`, `execution_mode`, `config_hash`, `record_sha256`。
 
 ---
 
@@ -202,7 +217,7 @@ data/
 
 1. **零独立数据库**：依据 [`项目方案 v3.0 §8.1`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策) 架构铁律，`M10` 不建立 SQLite/Postgres 业务状态库，所有视图（决策链路穿透、挂单/成交滑点审计、资金曲线、盘口回放检查）一律从 `data/audit_logs/` 与 `data/market_recordings/` 只读读取聚合；
 2. **正式查询契约（`P10Query` / `P10SessionView`）**：
-   - **过滤参数**：支持按 `execution_mode: Literal["PAPER", "LIVE"]`（必填，严禁跨模式混查）、`date_range: tuple[date, date]`、`session_id: Optional[str]`、`station_id: Optional[str]`、`target_date: Optional[str]` 检索，底层只扫描对应分片目录下 `p1_scan_decisions.jsonl`、`p3_execution_attempts.jsonl`、`p12_weather_coverage.jsonl`、`p17_forecast_snapshots.jsonl`、`p19_capital_events.jsonl`；
+   - **过滤参数**：支持按 `execution_mode: Literal["PAPER", "LIVE"]`（必填，严禁跨模式混查）、`date_range: tuple[date, date]`、`session_id: Optional[str]`、`station_id: Optional[str]`、`target_date: Optional[str]` 检索，底层只扫描对应分片目录下 `p1_scan_decisions.jsonl`、`p3_execution_attempts.jsonl`、`p12_weather_coverage.jsonl`、`p17_forecast_snapshots.jsonl`、`p19_capital_events.jsonl`（**向后兼容约定**：同一读取器须无差别支持混合历史 `p1.v1 / p17.v1` 与新版 `p1.v2 / p17.v2` 记录，`v1` 缺失新增可选字段时由 `M10` 诚实展示 `"未落盘"`/`None`）；
    - **统一联结键**：全部流共享 `(execution_mode, session_id, station_id, target_date)`；跨表钻取通过 `P1.decision_id == P3.decision_id`、`P1.forecast_id == P17.forecast_id`、`P1.book_frame_ref == P13.payload.frame_seq`（同 `(session_id, token_id)`）及 `P19.related_ref_id` 完成；
    - **一致性与损坏率统计面板**：每条已完整换行记录必须调用 `verify_record_sha256_line` 验证 `record_sha256`，返回 `valid_lines`、`corrupt_lines`（逐行记录文件与行号）与 `partial_tail_skipped_lines`。
 3. **空/坏/未完日志降级渲染规则**：

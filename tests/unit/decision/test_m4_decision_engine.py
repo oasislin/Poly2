@@ -365,23 +365,25 @@ def test_p16_red_blocks_new_entries_and_yellow_held_over_cap_stops_adding() -> N
 
 def test_p16_none_default_bitwise_regression_equivalence_and_bounds() -> None:
     t0 = datetime(2026, 11, 21, 14, 0, 0, tzinfo=timezone.utc)
-    # 阶段二新基线起点（P8-WO-20261123-S306-STAGE2-EXEC：yellow_multiplier 纳入 _compute_policy_config_hash；
-    # 阶段一旧基线 config_hash="97885953b1ce2260" / record_sha256="ed9fd44e..." 随本批退役）
+    # 阶段二新基线（P8-WO-20261124-M10-BIZCHAIN-EXEC3 升版 p1.v2 决策时点全量字段捕获；
+    # 前代 p1.v1 基线 record_sha256="e9849fe5..." 随 p1.v2 退役）
     expected_baseline_jsonl = (
-        '{"b_budget_usd":250.0,"best_ask_edge":1.183622828784119,"best_ask_price":0.25,'
-        '"bin_id":"bin-58-59","book_frame_ref":1,"config_hash":"8173bc6e03015b22",'
+        '{"b_budget_usd":250.0,"b_eff_headroom_usd":250.0,"best_ask_edge":1.183622828784119,'
+        '"best_ask_price":0.25,"bin_id":"bin-58-59","book_frame_ref":1,"config_hash":"8173bc6e03015b22",'
         '"decision_id":"9b306f27-0fe1-5c37-be8c-a341de55173f","decision_outcome":"ORDERED",'
-        '"degradation_reason":null,"execution_mode":"PAPER","forecast_id":"fc-20ae8269c7f54f31",'
-        '"g_cap_usd":125.24384332715898,"headroom_d":125.24384332715898,"held_usd":0.0,'
+        '"degradation_reason":null,"execution_mode":"PAPER","fee_rate_applied":0.01,'
+        '"fee_rate_official_raw":null,"forecast_id":"fc-20ae8269c7f54f31","g_cap_usd":125.24384332715898,'
+        '"gate_result":"ORDERED","headroom_d":125.24384332715898,"held_usd":0.0,"lambda_l":1.0,'
         '"light_status":null,"m_threshold":0.05,"market_id":"mkt-1","model_hash":"stub-model-hash-v1",'
-        '"p16_event_id":null,"policy_overdue":false,"policy_version":"p6.base.v1",'
-        '"record_sha256":"e9849fe52d605550f7c2f998e3f6ba5f28ab763ce25082895012fa1fd7feff96",'
-        '"s_edge":1.0,"scaler_policy_id":"provisional_identity_v0",'
+        '"net_ev":0.29812500000000003,"p16_event_id":null,"policy_overdue":false,'
+        '"policy_version":"p6.base.v1","pov_cap_usd":24.3,"q_eff":0.251875,'
+        '"record_sha256":"8cd53f9613b983b5a4eeac30da2ebf6236df5ffafd86325407f0ff80342cdbf5",'
+        '"reject_reason":"NONE","s_edge":1.0,"scaler_policy_id":"provisional_identity_v0",'
         '"scaler_provenance":"PROVISIONAL_UNTIL_D6","scaler_provisional":true,'
         '"scan_clock":"PRICE_CLOCK","scan_ts_utc":"2026-11-21T14:00:00+00:00",'
-        '"schema_version":"p1.v1","session_id":"base-sess","station_id":"KORD",'
-        '"target_date":"2026-11-21","target_slice_usd":24.2984,"target_type":"TMAX",'
-        '"tau_hours":10.0,"token_id":"tok-y","w_tau":0.500975373308636}'
+        '"schema_version":"p1.v2","selected_bin_p_model":0.55,"session_id":"base-sess",'
+        '"station_id":"KORD","target_date":"2026-11-21","target_slice_usd":24.2984,'
+        '"target_type":"TMAX","tau_hours":10.0,"token_id":"tok-y","w_tau":0.500975373308636}'
     )
     bundle_none = build_execution_policy_bundle(
         policy_version="p6.base.v1", signed_at_utc=t0 - timedelta(hours=2), is_overdue=False,
@@ -405,7 +407,89 @@ def test_p16_none_default_bitwise_regression_equivalence_and_bounds() -> None:
         quota=_sample_quota(), yes_frame=ask_yes.payload, include_no_side=False,
     )
     assert ev.to_json_line() == expected_baseline_jsonl
+    assert '"i_value"' not in ev.to_json_line()
     with pytest.raises(ValueError, match="yellow_multiplier"):
         _sample_policy_bundle(t0, yellow_multiplier=1.1)
     with pytest.raises(ValueError, match="yellow_multiplier"):
         _sample_policy_bundle(t0, yellow_multiplier=-0.1)
+
+
+def test_p1_v2_decision_time_attribution_and_fee_rate_official_raw_mock(monkeypatch) -> None:
+    """`p1.v2` persists signal/sizing attribution (no `i_value`), SKIP reason, and best-effort `/fee-rate`."""
+    from src.decision.engine import fetch_clob_fee_rate_official_raw
+    import urllib.request
+
+    t0 = datetime(2026, 11, 21, 14, 0, 0, tzinfo=timezone.utc)
+    bundle = _sample_policy_bundle(t0, yellow_multiplier=0.5)
+    fc = build_stub_forecast_v11(issue_ts_utc=t0 - timedelta(minutes=15), settle_close_utc=t0 + timedelta(hours=10))
+    ask_hi, _ = build_p4_v11_stub_envelope(
+        session_id="attr-sess", seq_id=1, frame_seq=1, token_id="tok-skip", market_id="mkt-1",
+        condition_id="c1", station_id="KORD", target_date="2026-11-21", bin_label="58-59°F",
+        outcome="YES", regime="ask_only", recv_ts_utc=t0 - timedelta(seconds=1),
+        asks=((0.85, 100.0),), bids=(),
+    )
+
+    # 1) Best-effort /fee-rate offline mock HTTP response
+    class _FakeResp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self) -> bytes:
+            return b'{"base_fee": 1000}'
+
+    class _FakeOpener:
+        def open(self, req, timeout=0.5):
+            assert "/fee-rate?token_id=tok-skip" in req.full_url
+            assert timeout == pytest.approx(0.25)
+            return _FakeResp()
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *a, **kw: _FakeOpener())
+    assert fetch_clob_fee_rate_official_raw("tok-skip", timeout_sec=0.25) == {"base_fee": 1000}
+
+    decider_ok = DeterministicDecider(
+        exec_config=default_stub_trading_config(),
+        enable_official_fee_rate_probe=True,
+        fee_rate_timeout_sec=0.25,
+    )
+    ev_skip = decider_ok.evaluate_bin(
+        orig_session_id="attr-sess", execution_mode="PAPER", scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0, station_id="KORD", target_date="2026-11-21", bin_id="bin-58-59",
+        market_id="mkt-1", yes_token_id="tok-skip", forecasts=[fc], policy_bundle=bundle,
+        quota=_sample_quota(b_eff_headroom_usd=40.0), yes_frame=ask_hi.payload,
+    )
+    p1_skip = json.loads(ev_skip.to_json_line())
+    assert p1_skip["schema_version"] == "p1.v2"
+    assert p1_skip["selected_bin_p_model"] == pytest.approx(0.55)
+    assert p1_skip["fee_rate_applied"] == pytest.approx(0.01)
+    assert p1_skip["q_eff"] == pytest.approx(0.85 * (1.0 + 0.01 * 0.15))
+    assert p1_skip["net_ev"] == pytest.approx(0.55 - p1_skip["q_eff"])
+    assert p1_skip["b_eff_headroom_usd"] == pytest.approx(40.0)
+    assert p1_skip["lambda_l"] == pytest.approx(1.0)
+    assert p1_skip["gate_result"] == "SKIP_EDGE_BELOW_M"
+    assert p1_skip["reject_reason"] == "SKIP_EDGE_BELOW_M"
+    assert p1_skip["fee_rate_official_raw"] == {"base_fee": 1000}
+    assert "i_value" not in p1_skip
+
+    # 2) Failing /fee-rate probe must never retry or block the main scan path
+    call_count = 0
+
+    class _TimeoutOpener:
+        def open(self, req, timeout=0.5):
+            nonlocal call_count
+            call_count += 1
+            raise TimeoutError("simulated timeout")
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *a, **kw: _TimeoutOpener())
+    ev_fail_probe = decider_ok.evaluate_bin(
+        orig_session_id="attr-sess", execution_mode="PAPER", scan_clock="PRICE_CLOCK",
+        scan_ts_utc=t0, station_id="KORD", target_date="2026-11-21", bin_id="bin-58-59",
+        market_id="mkt-1", yes_token_id="tok-skip", forecasts=[fc], policy_bundle=bundle,
+        quota=_sample_quota(), yes_frame=ask_hi.payload,
+    )
+    assert call_count == 1  # zero retries
+    assert json.loads(ev_fail_probe.to_json_line())["fee_rate_official_raw"] is None

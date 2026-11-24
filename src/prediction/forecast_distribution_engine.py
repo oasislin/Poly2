@@ -303,6 +303,9 @@ class ForecastDistributionSnapshotV11:
     p_bin_stay: Optional[float]
     bin_probs: Tuple[BinProbV11, ...]
     sigma_delta_sample: float
+    obs_temp_f: Optional[float] = None
+    obs_ts_utc: Optional[datetime] = None
+    obs_source: Optional[str] = None
 
     def to_p17_dict_without_hash(
         self,
@@ -312,7 +315,7 @@ class ForecastDistributionSnapshotV11:
         config_hash: str,
     ) -> Dict[str, Any]:
         return {
-            "schema_version": "p17.v1",
+            "schema_version": "p17.v2",
             "session_id": session_id,
             "execution_mode": execution_mode,
             "config_hash": config_hash,
@@ -330,6 +333,9 @@ class ForecastDistributionSnapshotV11:
             "family": self.family,
             "m_now_f": self.m_now_f,
             "m_now_int_f": self.m_now_int_f,
+            "obs_temp_f": self.obs_temp_f,
+            "obs_ts_utc": self.obs_ts_utc.isoformat() if self.obs_ts_utc is not None else None,
+            "obs_source": self.obs_source,
             "oracle_compliant": self.oracle_compliant,
             "upstream_obs_fresh": self.upstream_obs_fresh,
             "is_bridge_active": self.is_bridge_active,
@@ -723,6 +729,21 @@ class ForecastDistributionEngine:
         )
         m_exact, m_int_f, x_t = _extract_p11_target_observables(selected, target_type)
         m_now_f = float(m_exact) if m_exact is not None else None
+        obs_temp_f = (
+            float(selected.latest_instant_temp_f)
+            if (selected is not None and selected.latest_instant_temp_f is not None)
+            else None
+        )
+        obs_ts_utc = (
+            ensure_utc_datetime(selected.latest_obs_utc, field_name="p11.latest_obs_utc")
+            if (selected is not None and selected.latest_obs_utc is not None)
+            else None
+        )
+        obs_source = (
+            str(selected.oracle_source_tier)
+            if (selected is not None and selected.oracle_source_tier)
+            else None
+        )
         oracle_ok = bool(selected.oracle_compliant) if selected is not None else True
         bridge_allowed = bool(selected is not None and oracle_ok and fresh and m_now_f is not None and m_int_f is not None)
         bridge_out = self._bridge.build(
@@ -736,6 +757,7 @@ class ForecastDistributionEngine:
         snapshot = self._assemble_snapshot(
             code, target_date, target_type, issue_ts, close_ts, gefs_lead_hours, model_hash,
             prior, m_now_f, m_int_f, oracle_ok, fresh, bridge_out, bin_probs, p_bin_stay, sigma_delta_sample,
+            obs_temp_f=obs_temp_f, obs_ts_utc=obs_ts_utc, obs_source=obs_source,
         )
         report = validate_p5_v11_invariants(snapshot)
         if validate_invariants and not report.all_passed:
@@ -760,6 +782,10 @@ class ForecastDistributionEngine:
         bin_probs: Tuple[BinProbV11, ...],
         p_bin_stay: Optional[float],
         sigma_delta_sample: float,
+        *,
+        obs_temp_f: Optional[float] = None,
+        obs_ts_utc: Optional[datetime] = None,
+        obs_source: Optional[str] = None,
     ) -> ForecastDistributionSnapshotV11:
         forecast_key = "|".join([
             code, target_date.isoformat(), target_type, issue_ts.isoformat(), model_hash,
@@ -788,6 +814,9 @@ class ForecastDistributionEngine:
             p_bin_stay=p_bin_stay,
             bin_probs=bin_probs,
             sigma_delta_sample=float(sigma_delta_sample),
+            obs_temp_f=obs_temp_f,
+            obs_ts_utc=obs_ts_utc,
+            obs_source=obs_source,
         )
 
 

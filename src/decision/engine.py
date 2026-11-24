@@ -15,19 +15,21 @@ from datetime import datetime
 from decimal import Decimal
 import json
 from typing import Any, Callable, Dict, Literal, Mapping, Optional, Protocol, Sequence, Tuple
+import urllib.parse
+import urllib.request
 import uuid
 
 from src.data_acquisition.passive_book_recorder import MarketBookSnapshot
-from src.execution.executor import PhiPolicy, SlicePlan, TradingExecutionConfig, plan_slice
+from src.execution.executor import PhiPolicy, SlicePlan, TradingExecutionConfig, compute_rho, plan_slice
 from src.execution.orderbook_views import (
     DualSideBookPair,
     MergedYesAskView,
     build_merged_yes_ask_view,
 )
 from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
-from src.pricing.edge_math import evaluate_book_edges
+from src.pricing.edge_math import compute_level_edge, evaluate_book_edges
 from src.utils.causal_utils import CausalInputError, compute_record_sha256, ensure_utc_datetime
-from src.utils.decimal_guard import to_guarded_decimal
+from src.utils.decimal_guard import exact_decimal_context, to_guarded_decimal
 
 ScanClock = Literal["INFO_CLOCK", "PRICE_CLOCK"]
 ExecutionMode = Literal["PAPER", "LIVE"]
@@ -344,6 +346,16 @@ class ScanDecisionEvent:
     p16_event_id: Optional[str] = None
     degradation_reason: Optional[str] = None
     slice_plan: Optional[SlicePlan] = None
+    selected_bin_p_model: Optional[float] = None
+    net_ev: Optional[float] = None
+    q_eff: Optional[float] = None
+    fee_rate_applied: Optional[float] = None
+    lambda_l: Optional[float] = None
+    b_eff_headroom_usd: Optional[float] = None
+    pov_cap_usd: Optional[float] = None
+    gate_result: Optional[str] = None
+    reject_reason: Optional[str] = None
+    fee_rate_official_raw: Optional[Any] = None
 
     def to_dict_without_hash(self) -> Dict[str, Any]:
         return {
@@ -365,17 +377,27 @@ class ScanDecisionEvent:
             "policy_overdue": self.policy_overdue,
             "forecast_id": self.forecast_id,
             "book_frame_ref": self.book_frame_ref,
+            "selected_bin_p_model": self.selected_bin_p_model,
             "best_ask_price": self.best_ask_price,
             "best_ask_edge": self.best_ask_edge,
+            "net_ev": self.net_ev,
+            "q_eff": self.q_eff,
+            "fee_rate_applied": self.fee_rate_applied,
+            "fee_rate_official_raw": self.fee_rate_official_raw,
             "m_threshold": self.m_threshold,
             "tau_hours": self.tau_hours,
             "b_budget_usd": self.b_budget_usd,
             "w_tau": self.w_tau,
             "s_edge": self.s_edge,
+            "lambda_l": self.lambda_l,
             "g_cap_usd": self.g_cap_usd,
             "held_usd": self.held_usd,
+            "b_eff_headroom_usd": self.b_eff_headroom_usd,
             "headroom_d": self.headroom_d,
+            "pov_cap_usd": self.pov_cap_usd,
             "decision_outcome": self.decision_outcome,
+            "gate_result": self.gate_result or self.decision_outcome,
+            "reject_reason": self.reject_reason,
             "target_slice_usd": self.target_slice_usd,
             "scaler_policy_id": self.scaler_policy_id,
             "scaler_provisional": self.scaler_provisional,
@@ -527,6 +549,55 @@ def compute_deterministic_decision_id(
     return str(uuid.uuid5(_DECISION_UUID_NAMESPACE, key))
 
 
+def fetch_clob_fee_rate_official_raw(
+    token_id: str,
+    *,
+    clob_host: str = "https://clob.polymarket.com",
+    timeout_sec: float = 0.5,
+) -> Optional[Any]:
+    """Best-effort read-only GET `/fee-rate?token_id=...`; zero retries, returns `None` on failure."""
+    if not token_id:
+        return None
+    query = urllib.parse.urlencode({"token_id": token_id})
+    url = f"{clob_host.rstrip('/')}/fee-rate?{query}"
+    req = urllib.request.Request(url, method="GET", headers={"Accept": "application/json"})
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(req, timeout=float(timeout_sec)) as resp:
+            if getattr(resp, "status", 200) != 200:
+                return None
+            raw = resp.read().decode("utf-8")
+        return json.loads(raw)
+    except Exception:
+        return None
+
+
+def _compute_pov_cap_usd(
+    view: MergedYesAskView,
+    qualified_levels: Sequence[Any],
+    m_threshold: float,
+    phi_policy: PhiPolicy,
+) -> float:
+    """Mirror `executor._allocate_pov_legs` PoV cap computation read-only in Decimal domain."""
+    if not qualified_levels or not view.legged_levels:
+        return 0.0
+    max_qual = to_guarded_decimal(qualified_levels[-1].price, name="max_qual_price", max_sig_digits=18)
+    edge_by_price = {
+        to_guarded_decimal(ql.price, name="ql.price", max_sig_digits=18): to_guarded_decimal(
+            ql.edge, name="ql.edge", max_sig_digits=18
+        )
+        for ql in qualified_levels
+    }
+    m_dec = to_guarded_decimal(m_threshold, name="m_threshold", max_sig_digits=18)
+    qual_legs = [lvl for lvl in view.legged_levels if lvl.implied_yes_price <= max_qual]
+    with exact_decimal_context():
+        pov_cap = Decimal("0")
+        for leg in qual_legs:
+            rho_j = compute_rho(edge_by_price[leg.implied_yes_price], m_dec, phi_policy)
+            pov_cap += leg.size_shares * rho_j * leg.implied_yes_price
+    return float(pov_cap)
+
+
 @dataclass(frozen=True)
 class _DecisionContext:
     decision_id: str
@@ -551,6 +622,9 @@ class _DecisionContext:
     w_tau: float
     light_status: Optional[LightLevel]
     p16_event_id: Optional[str]
+    lambda_l: float
+    b_eff_headroom_usd: float
+    fee_rate_official_raw: Optional[Any]
 
 
 class DeterministicDecider:
@@ -562,11 +636,33 @@ class DeterministicDecider:
         exec_config: TradingExecutionConfig,
         scaler: Optional[OpportunityScaler] = None,
         p16_slot: Optional[P16SubscriptionSlot] = None,
+        fee_rate_fetcher: Optional[Callable[[str], Optional[Any]]] = None,
+        enable_official_fee_rate_probe: bool = False,
+        clob_host: str = "https://clob.polymarket.com",
+        fee_rate_timeout_sec: float = 0.5,
     ) -> None:
         self.exec_config = exec_config
         self.scaler: OpportunityScaler = scaler if scaler is not None else IdentityScaler()
         self.assembler = CausalSnapshotAssembler(exec_config)
         self.p16_slot = p16_slot if p16_slot is not None else P16SubscriptionSlot()
+        self._fee_rate_fetcher = fee_rate_fetcher
+        self._enable_official_fee_rate_probe = bool(enable_official_fee_rate_probe)
+        self._clob_host = str(clob_host)
+        self._fee_rate_timeout_sec = float(fee_rate_timeout_sec)
+
+    def _probe_official_fee_rate(self, token_id: str) -> Optional[Any]:
+        if self._fee_rate_fetcher is not None:
+            try:
+                return self._fee_rate_fetcher(token_id)
+            except Exception:
+                return None
+        if self._enable_official_fee_rate_probe:
+            return fetch_clob_fee_rate_official_raw(
+                token_id,
+                clob_host=self._clob_host,
+                timeout_sec=self._fee_rate_timeout_sec,
+            )
+        return None
 
     @staticmethod
     def _resolve_quota(
@@ -597,26 +693,39 @@ class DeterministicDecider:
         outcome: DecisionOutcome,
         *,
         reason: Optional[str] = None,
+        selected_bin_p_model: Optional[float] = None,
         best_ask_price: Optional[float] = None,
         best_ask_edge: Optional[float] = None,
+        net_ev: Optional[float] = None,
+        q_eff: Optional[float] = None,
+        fee_rate_applied: Optional[float] = None,
         s_edge: float = 0.0,
         g_cap: float = 0.0,
         headroom_d: float = 0.0,
+        pov_cap_usd: Optional[float] = None,
         slice_plan: Optional[SlicePlan] = None,
     ) -> ScanDecisionEvent:
         target_usd = float(slice_plan.target_usd) if (slice_plan and slice_plan.should_submit) else 0.0
+        reject_reason = "NONE" if outcome == "ORDERED" else (reason or outcome)
         return ScanDecisionEvent(
-            schema_version="p1.v1", decision_id=ctx.decision_id, session_id=ctx.orig_session_id,
+            schema_version="p1.v2", decision_id=ctx.decision_id, session_id=ctx.orig_session_id,
             execution_mode=ctx.execution_mode, scan_clock=ctx.scan_clock, scan_ts_utc=ctx.t_scan,
             station_id=ctx.station_id, target_date=ctx.target_date, target_type=ctx.target_type,
             bin_id=ctx.bin_id, token_id=ctx.yes_token_id, market_id=ctx.market_id,
             model_hash=ctx.model_hash, config_hash=ctx.policy_bundle.config_hash,
             policy_version=ctx.policy_bundle.policy_version, policy_overdue=ctx.policy_bundle.is_overdue,
             forecast_id=ctx.forecast_id, book_frame_ref=ctx.book_frame_ref,
+            selected_bin_p_model=selected_bin_p_model,
             best_ask_price=best_ask_price, best_ask_edge=best_ask_edge,
+            net_ev=net_ev, q_eff=q_eff, fee_rate_applied=fee_rate_applied,
+            fee_rate_official_raw=ctx.fee_rate_official_raw,
             m_threshold=ctx.m_threshold, tau_hours=ctx.tau_hours, b_budget_usd=ctx.b_budget,
-            w_tau=ctx.w_tau, s_edge=s_edge, g_cap_usd=g_cap, held_usd=ctx.quota.market_held_usd,
-            headroom_d=headroom_d, decision_outcome=outcome, target_slice_usd=target_usd,
+            w_tau=ctx.w_tau, s_edge=s_edge, lambda_l=ctx.lambda_l,
+            g_cap_usd=g_cap, held_usd=ctx.quota.market_held_usd,
+            b_eff_headroom_usd=ctx.b_eff_headroom_usd,
+            headroom_d=headroom_d, pov_cap_usd=pov_cap_usd,
+            decision_outcome=outcome, gate_result=outcome, reject_reason=reject_reason,
+            target_slice_usd=target_usd,
             scaler_policy_id=self.scaler.policy_id, scaler_provisional=self.scaler.provisional,
             scaler_provenance=self.scaler.provenance, light_status=ctx.light_status,
             p16_event_id=ctx.p16_event_id, degradation_reason=reason, slice_plan=slice_plan,
@@ -639,6 +748,7 @@ class DeterministicDecider:
         quota: QuotaSnapshot,
         assembled: AssembledScanInputs,
         light_event: Optional[LightLevelEvent],
+        fee_rate_official_raw: Optional[Any],
     ) -> _DecisionContext:
         fc = assembled.winning_forecast
         tau_h = (
@@ -649,6 +759,8 @@ class DeterministicDecider:
         ref_snap = assembled.yes_frame or assembled.no_frame
         b_budget = policy_bundle.w_policy.b_budget_usd
         active_light = light_event if light_event is not None else self.p16_slot.latest_event
+        light_lvl = active_light.level if active_light is not None else None
+        lambda_l = self._resolve_lambda_l(light_lvl, policy_bundle.risk_gate)
         return _DecisionContext(
             decision_id=compute_deterministic_decision_id(
                 orig_session_id=orig_session_id, scan_ts_utc=t_scan, scan_clock=scan_clock,
@@ -663,8 +775,11 @@ class DeterministicDecider:
             book_frame_ref=ref_snap.frame_seq if ref_snap is not None else 0,
             tau_hours=tau_h, m_threshold=policy_bundle.risk_gate.m_threshold,
             b_budget=b_budget, w_tau=compute_w_tau(tau_h, policy_bundle.w_policy),
-            light_status=active_light.level if active_light is not None else None,
+            light_status=light_lvl,
             p16_event_id=active_light.event_id if active_light is not None else None,
+            lambda_l=lambda_l,
+            b_eff_headroom_usd=float(quota.b_eff_headroom_usd),
+            fee_rate_official_raw=fee_rate_official_raw,
         )
 
     def _check_input_gates(
@@ -717,9 +832,13 @@ class DeterministicDecider:
         p_model: float,
         best_ask_price: float,
         best_ask_edge: float,
+        net_ev: float,
+        q_eff: float,
+        fee_rate_applied: float,
         s_edge: float,
         g_cap_usd: float,
         headroom_d: float,
+        pov_cap_usd: float,
     ) -> ScanDecisionEvent:
         slice_plan = plan_slice(
             d_headroom_usd=to_guarded_decimal(round(headroom_d, 6), name="headroom_d"),
@@ -736,12 +855,16 @@ class DeterministicDecider:
             )
             return self._build_scan_event(
                 ctx, outcome, reason=slice_plan.abort_reason,
-                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge,
-                s_edge=s_edge, g_cap=g_cap_usd, headroom_d=headroom_d,
+                selected_bin_p_model=p_model, best_ask_price=best_ask_price,
+                best_ask_edge=best_ask_edge, net_ev=net_ev, q_eff=q_eff,
+                fee_rate_applied=fee_rate_applied, s_edge=s_edge, g_cap=g_cap_usd,
+                headroom_d=headroom_d, pov_cap_usd=pov_cap_usd,
             )
         return self._build_scan_event(
-            ctx, "ORDERED", best_ask_price=best_ask_price, best_ask_edge=best_ask_edge,
-            s_edge=s_edge, g_cap=g_cap_usd, headroom_d=headroom_d, slice_plan=slice_plan,
+            ctx, "ORDERED", selected_bin_p_model=p_model, best_ask_price=best_ask_price,
+            best_ask_edge=best_ask_edge, net_ev=net_ev, q_eff=q_eff,
+            fee_rate_applied=fee_rate_applied, s_edge=s_edge, g_cap=g_cap_usd,
+            headroom_d=headroom_d, pov_cap_usd=pov_cap_usd, slice_plan=slice_plan,
         )
 
     def _apply_headroom_and_slice(
@@ -751,30 +874,41 @@ class DeterministicDecider:
         p_model: float,
         best_ask_price: float,
         best_ask_edge: float,
+        net_ev: float,
+        q_eff: float,
+        fee_rate_applied: float,
+        pov_cap_usd: float,
     ) -> ScanDecisionEvent:
         s_edge = float(self.scaler.scale(best_ask_edge=best_ask_edge, m_threshold=ctx.m_threshold))
-        lambda_l = self._resolve_lambda_l(ctx.light_status, ctx.policy_bundle.risk_gate)
+        lambda_l = ctx.lambda_l
         # Target gate equation (P8-D6-POLICY-CLOSURE §1.3 & §6): G = B * w(tau) * [s(edge) * lambda(L)].
         g_cap_usd = self._compute_g_cap(ctx, s_edge, lambda_l)
         q = ctx.quota
         if ctx.light_status == "RED" or lambda_l <= 0.0:
             return self._build_scan_event(
                 ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason or "P16_RED_LIGHT_BLOCKED",
-                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=0.0,
+                selected_bin_p_model=p_model, best_ask_price=best_ask_price,
+                best_ask_edge=best_ask_edge, net_ev=net_ev, q_eff=q_eff,
+                fee_rate_applied=fee_rate_applied, s_edge=s_edge, g_cap=0.0, pov_cap_usd=pov_cap_usd,
             )
         if q.account_drawdown_brake_tripped or q.station_loss_gate_tripped:
             return self._build_scan_event(
                 ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason or "RISK_BRAKE_TRIPPED",
-                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=g_cap_usd,
+                selected_bin_p_model=p_model, best_ask_price=best_ask_price,
+                best_ask_edge=best_ask_edge, net_ev=net_ev, q_eff=q_eff,
+                fee_rate_applied=fee_rate_applied, s_edge=s_edge, g_cap=g_cap_usd, pov_cap_usd=pov_cap_usd,
             )
         headroom_d = max(0.0, min(g_cap_usd - float(q.market_held_usd), float(q.b_eff_headroom_usd)))
         if headroom_d <= 0.0:
             return self._build_scan_event(
                 ctx, "IDLE_BUDGET_EXHAUSTED", reason=q.blocked_reason,
-                best_ask_price=best_ask_price, best_ask_edge=best_ask_edge, s_edge=s_edge, g_cap=g_cap_usd,
+                selected_bin_p_model=p_model, best_ask_price=best_ask_price,
+                best_ask_edge=best_ask_edge, net_ev=net_ev, q_eff=q_eff,
+                fee_rate_applied=fee_rate_applied, s_edge=s_edge, g_cap=g_cap_usd, pov_cap_usd=pov_cap_usd,
             )
         return self._slice_and_finalize(
-            ctx, view, p_model, best_ask_price, best_ask_edge, s_edge, g_cap_usd, headroom_d
+            ctx, view, p_model, best_ask_price, best_ask_edge, net_ev, q_eff,
+            fee_rate_applied, s_edge, g_cap_usd, headroom_d, pov_cap_usd,
         )
 
     def _evaluate_bin_with_view(
@@ -791,18 +925,31 @@ class DeterministicDecider:
         if bin_match is None:
             return self._build_scan_event(ctx, "BLOCKED_NO_BOOK_DEPTH", reason=f"UNKNOWN_BIN_ID:{bin_id}")
 
+        fee_rate_applied = float(view.legged_levels[0].fee_rate)
+        best_ask_price = float(view.ask_book.levels[0][0])
+        best_level_edge = compute_level_edge(best_ask_price, bin_match.p_model, fee_rate=fee_rate_applied)
         edge_summary = evaluate_book_edges(
             ask_book=view.ask_book, p_model=bin_match.p_model,
-            m=ctx.m_threshold, fee_rate=float(view.legged_levels[0].fee_rate),
+            m=ctx.m_threshold, fee_rate=fee_rate_applied,
         )
-        best_ask_price = float(view.ask_book.levels[0][0])
         best_ask_edge = float(edge_summary.best_ask_edge)
+        pov_cap_usd = _compute_pov_cap_usd(
+            view, edge_summary.qualified_levels, ctx.m_threshold, ctx.policy_bundle.phi_policy
+        )
         if best_ask_edge < ctx.m_threshold or not edge_summary.qualified_levels:
             return self._build_scan_event(
-                ctx, "SKIP_EDGE_BELOW_M", best_ask_price=best_ask_price, best_ask_edge=best_ask_edge
+                ctx, "SKIP_EDGE_BELOW_M",
+                selected_bin_p_model=float(bin_match.p_model),
+                best_ask_price=best_ask_price,
+                best_ask_edge=best_ask_edge,
+                net_ev=float(best_level_edge.net_ev),
+                q_eff=float(best_level_edge.q_eff),
+                fee_rate_applied=fee_rate_applied,
+                pov_cap_usd=pov_cap_usd,
             )
         return self._apply_headroom_and_slice(
-            ctx, view, bin_match.p_model, best_ask_price, best_ask_edge
+            ctx, view, float(bin_match.p_model), best_ask_price, best_ask_edge,
+            float(best_level_edge.net_ev), float(best_level_edge.q_eff), fee_rate_applied, pov_cap_usd,
         )
 
     def evaluate_bin(
@@ -827,6 +974,7 @@ class DeterministicDecider:
         include_no_side: bool = False,
         target_type: str = "TMAX",
         light_event: Optional[LightLevelEvent] = None,
+        fee_rate_official_raw: Optional[Any] = None,
     ) -> ScanDecisionEvent:
         """Evaluate one bin deterministically (never raises on bad book / stale forecast)."""
         t_scan = ensure_utc_datetime(scan_ts_utc, field_name="scan_ts_utc")
@@ -839,12 +987,17 @@ class DeterministicDecider:
             target_type=target_type, scan_ts_utc=t_scan, yes_frame=yes_frame,
             no_frame=no_frame, dual_pair=dual_pair, include_no_side=include_no_side,
         )
+        official_raw = (
+            fee_rate_official_raw
+            if fee_rate_official_raw is not None
+            else self._probe_official_fee_rate(yes_token_id)
+        )
         ctx = self._build_decision_context(
             orig_session_id=orig_session_id, execution_mode=execution_mode, scan_clock=scan_clock,
             t_scan=t_scan, station_id=station_id, target_date=target_date, target_type=target_type,
             bin_id=bin_id, market_id=market_id, yes_token_id=yes_token_id,
             policy_bundle=policy_bundle, quota=resolved_quota, assembled=assembled,
-            light_event=light_event,
+            light_event=light_event, fee_rate_official_raw=official_raw,
         )
         gate_block = self._check_input_gates(ctx, assembled)
         if gate_block is not None:
@@ -876,4 +1029,5 @@ __all__ = [
     "build_execution_policy_bundle",
     "compute_deterministic_decision_id",
     "compute_w_tau",
+    "fetch_clob_fee_rate_official_raw",
 ]

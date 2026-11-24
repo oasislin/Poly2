@@ -14,13 +14,13 @@
 | :---: | :--- | :---: | :--- | :--- |
 | **①** | **决策时点天气** | **`落盘但不足`** | `P17`：[`forecast_distribution_engine.py#L314-L340`](../../src/prediction/forecast_distribution_engine.py#L314-L340)<br>`P12`：[`settlement_metar_stream.py#L293-L345`](../../src/data_acquisition/settlement_metar_stream.py#L293-L345)<br>`P9`：[`m9_settler.py#L131-L167`](../../src/settlement/m9_settler.py#L131-L167) | `P17` 落盘了推理时日内极值 `m_now_f / m_now_int_f`、先验 `prior_mu0 / prior_sigma0`、`gefs_lead_hours / tau_hours / is_bridge_active` 等；`P12` 仅落盘可用率/龄期无温度值且无 `P1` 外键；`P17` 缺当站最新瞬时实测温与 `obs_ts_utc` / 原始 METAR 摘录；且 **`P17.m_now_f`（决策前日内极值）与 `P9.settled_temp_f_exact/int`（次日法定终态结算温度）非同一字段**；当前 `M10` 未展示上述任何气象字段。 |
 | **②** | **模型全档分布** | **`已落盘`**（未在前端展示） | `P17.bin_probs`：[`forecast_distribution_engine.py#L304,L338`](../../src/prediction/forecast_distribution_engine.py#L338)<br>规格：[`P8-T2-M7-LOGGING §2.3`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#L125-L128)<br>读取：[`p10_reader.py#L180-L206`](../../src/audit/p10_reader.py#L180-L206) | **`P17` 并非仅存点估计**：`bin_probs` 完整保存全档位离散概率列表（`bin_id / label / lower_int_f / upper_int_f / p_model / is_boundary_bin / is_dead_bin`）+ `prior_mu0 / prior_sigma0 / family / p_stay_phys / p_bin_stay / sigma_delta_sample`，**全档分布可完整回放**；当前仅 `M10` 未读取 `chain.p17_record["bin_probs"]` 渲染。 |
-| **③** | **所选档概率与 `I` 值** | 所选档概率：**`落盘但不足`**<br>`I` 值：**`未落盘`**（且后 α 无命名 `I` 公式） | `edge_math`：[`edge_math.py#L56-L115`](../../src/pricing/edge_math.py#L56-L115)<br>`M4`：[`engine.py#L348-L390,L794-L806`](../../src/decision/engine.py#L794-L806)<br>规格：[`项目方案 v3.0 §8.5`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#L325-L347) | ① 所选 `bin_id` 概率需关联 `P1.forecast_id → P17.bin_probs[bin_id].p_model` 间接获取，`P1` 未直存；② 全仓检索 `docs/` 与 `src/`：**早期 `P8-ALGO-DEF-SPEC` 用 $I_k$ 指代温度区间，现役后 α `v3.0` 与代码库中不存在命名为 `"I"` 或 `"I 值"` 的变量或公式**，现役对应中间评价量是含费相对边际优势 **`edge`（`P1.best_ask_edge`）与 `net_ev = p_model - q_eff`、`q_eff = price * (1 + fee_rate * (1 - price))`**，其中 `P1` 仅存 `best_ask_price`、`best_ask_edge`、`m_threshold`、`s_edge`，**未落盘 `selected_bin_p_model`、`fee_rate`、`q_eff`、`net_ev`、`lambda_l`**。 |
+| **③** | **所选档概率与 `edge / net_ev`** | 所选档概率：**`落盘但不足`**<br>`net_ev / q_eff`：**`未落盘`**（统一用 `edge / net_ev`） | `edge_math`：[`edge_math.py#L56-L115`](../../src/pricing/edge_math.py#L56-L115)<br>`M4`：[`engine.py#L348-L390,L794-L806`](../../src/decision/engine.py#L794-L806)<br>规格：[`项目方案 v3.0 §8.5`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#L325-L347) | ① 所选 `bin_id` 概率需关联 `P1.forecast_id → P17.bin_probs[bin_id].p_model` 间接获取，`P1` 未直存；② 全仓检索 `docs/` 与 `src/` 确认现役后 α `v3.0` 与代码库统一采用含费相对边际优势 **`edge`（`P1.best_ask_edge`）与 `net_ev = p_model - q_eff`、`q_eff = price * (1 + fee_rate * (1 - price))`**，其中 `P1` 此前仅存 `best_ask_price`、`best_ask_edge`、`m_threshold`、`s_edge`，**未落盘 `selected_bin_p_model`、`fee_rate_applied`、`q_eff`、`net_ev`、`lambda_l`**（术语统一：全项目直接用 `edge / net_ev`）。 |
 | **④** | **仓位公式** | **`落盘但不足`** | 公式锚点：[`P8-D6-POLICY-CLOSURE §1.3/§6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md)、[`P8-CAPITAL-CONFIG §6/§1.5`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#L73-L81)、[`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#L55-L85)<br>代码：[`engine.py#L709-L778`](../../src/decision/engine.py#L709-L778) | 公式 $G = B \cdot w(\tau) \cdot [s(\text{edge}) \cdot \lambda(L)]$ 与 $D = \max(0, \min(G - \text{held}, B_{\text{eff}}))$ 及其输出 `b_budget_usd / w_tau / s_edge / g_cap_usd / held_usd / headroom_d / target_slice_usd` 已入 `P1`，`P3` 含 `target_usd / filled_usd / fee_paid_usd`。在 `v2 1:N` 聚合口径下：**`G → D → target_slice_usd → sum(filled_usd)` 大体可区分，但缺 `lambda_l` 显式值、`b_eff_headroom_usd`、`pov_cap_usd` 与网关双闸裁剪/拒单归因（`reject_or_abort_reason`）**；且 `1:N` 重切片下不得用 `sum(P3.target_usd)`，须以 `P1.target_slice_usd` 作为理论发单基线。 |
 | **⑤** | **CLOB 盘口与深浅修正** | 盘口帧：**`已落盘`**（需 `--p13-root`）<br>`LIVE` 深浅终注：**`未落盘 / 未实现`** | `P13`：[`passive_book_recorder.py#L205-L250`](../../src/data_acquisition/passive_book_recorder.py#L205-L250)<br>`M5`：[`executor.py`](../../src/execution/executor.py)<br>网关：[`clob_gateway.py#L991,L1306`](../../src/execution/clob_gateway.py#L991) | ① `P13` payload（`p13_book_stream_<station>.jsonl`）完整含 `asks` 全部卖档 `[[p, s], ...]`、`bids` / `bid_top10`、`best_bid`、`fee_rate`、`min_order_size_shares`、`single_side`，完全具备盘口深浅分析所需全部原始档位；仅当前 CLI 需传 `--p13-root` 才索引，且 `M10` 未展示档位明细；② **如实确认：当前 `PAPER` 链不存在 `LIVE` 网关级盘口动态修正终注逻辑**（仅 `M5 P2 plan_slice` 按静态 `PhiPolicy` 计算 `pov_cap`），真实 CLOB 深度滑点与动态修正属 **`S3-15` 冻结设计范畴**，本单严守红线不解冻。 |
 
 ### 1.2 环节③与环节④关键实态澄清注记
 
-1. **关于“I 值”的零推断声明**：经全仓只读核验，现役系统与 `v3.0` 设计均无命名 `"I"` 的变量；若业主业务语义中的 **“I 值”** 即对应现役决策链中决定下注资格与仓位门槛的核心信号 **`best_ask_edge`（及伴生 `net_ev`、`q_eff`）**，或另有所指（如信息增益/凯利分数 `f*`），需请业主在批复本提案时一并确认，后续捕获与卡片标签按批复定名。
+1. **关于 `edge / net_ev` 术语统一声明（已对齐 `2026-11-24` 业主指令）**：经全仓只读核验与业主确认，全项目统一直接使用代码语义 **`edge`（`best_ask_edge`）与 `net_ev`（及 `q_eff`、`fee_rate_applied`）**，不再另设抽象代号，确保捕获字段、规格文档与监控视图完全一致。
 2. **关于 `P1` 关联与 `1:N` 口径下三段裁剪差值拆解**：
    - `理论门限 → M4/M6 裁剪` = `P1.g_cap_usd` → `P1.headroom_d`（受 `held_usd` 与 `B_eff` 制约）；
    - `M4/M6 额度 → P2 深度切片` = `P1.headroom_d` → `P1.target_slice_usd`（受盘口合格深度 `pov_cap` 与 `min_order_size` 制约）；
@@ -32,7 +32,7 @@
 
 ### 2.1 上游决策时点捕获闭合方案（铁律：决策时点落盘，`M10` 绝不重算）
 
-> **设计铁律**：所有决策链数值必须在 `M4 / M2` 决策当下写入 `M7` JSONL 并带 `record_sha256`；`M10` 只做只读聚合与字段关联，**严禁在 `M10` 渲染期重算 `edge` / `I` / `G` / `D` / `pov_cap` 或反推气候分布**，确保审计与监控共享单一真相源。
+> **设计铁律**：所有决策链数值必须在 `M4 / M2` 决策当下写入 `M7` JSONL 并带 `record_sha256`；`M10` 只做只读聚合与字段关联，**严禁在 `M10` 渲染期重算 `edge` / `net_ev` / `G` / `D` / `pov_cap` 或反推气候分布**，确保审计与监控共享单一真相源。
 
 建议采用 **`p1.v2` + `p17.v2` 向前兼容演进**（`p10_reader.py` 已天然兼容多 `schema_version` 字典字段，缺失新字段时回退渲染 `"LEGACY_N/A"`）：
 
@@ -45,7 +45,7 @@
    - 已有全档 `bin_probs` 保持不变，直接复用。
 2. **`P1` 扩展为 `schema_version = "p1.v2"`（环节③/④/⑤决策自解释字段）**：
    - `selected_bin_p_model: Optional[float]`（当次决策命中档位的 `p_model` 直录，免去跨流拼错风险）
-   - `applied_fee_rate: Optional[float]`、`best_ask_q_eff: Optional[float]`、`best_ask_net_ev: Optional[float]`（与 `best_ask_edge`、`m_threshold` 成套呈现“I 值/边际优势计算链”；若业主确认另设 `I` 公式则增 `i_value` + `i_formula_id`）
+   - `fee_rate_applied: Optional[float]`、`q_eff: Optional[float]`、`net_ev: Optional[float]`（与 `best_ask_edge`、`m_threshold`、`fee_rate_official_raw` 成套呈现 `edge / net_ev` 边际优势计算链）
    - `lambda_l: Optional[float]`、`b_eff_headroom_usd: Optional[float]`、`pov_cap_usd: Optional[float]`、`min_order_clipped: Optional[bool]`（实现 `G → D → target_slice_usd` 逐闸裁剪差值精确归因）
    - `gateway_reject_reason: Optional[str]`（或由 `M10` 从 `P3.reject_or_abort_reason` 与 `p3.gateway.v1 RISK_GATE_REJECTED` 直接抽取，无需 `P1` 改动即可获取成交裁剪原因）。
 3. **向后兼容策略**：
@@ -62,7 +62,7 @@
 │    日内极值 m_now_f (m_now_int_f) / 先验 (prior_mu0 ± prior_sigma0, family) / is_bridge_active
 ├─ 环节② 模型全档分布（来自 P17.bin_probs）
 │    纯 CSS 横向概率条图（展示全档 label + p_model% + dead/boundary 标，**当前选中 bin_id 高亮**）
-├─ 环节③ 所选档概率与边际评价（I 值 / edge 链，来自 P1）
+├─ 环节③ 所选档概率与边际评价（edge / net_ev 链，来自 P1）
 │    selected_bin_p_model | best_ask_price | fee_rate → q_eff → net_ev → best_ask_edge vs m_threshold
 │    挂参数出处：model_hash | config_hash | policy_version | scaler_policy_id
 ├─ 环节④ 仓位公式与三层裁剪对照（来自 P1 + P3 1:N 聚合）
@@ -100,8 +100,8 @@
 
 | 批次 | 拟定范围与核心交付物 | 建议修改落点 | 预估工时 | 前置与排序建议 |
 | :--- | :--- | :--- | :---: | :--- |
-| **Batch 1（上游捕获先行）**<br>拟号：`S3-10b-CAPTURE` 或并入 `M4/M7` 补强单 | ① 确定“I 值”命名（映射 `best_ask_edge/net_ev` 或新增定义）；<br>② `P17 v2` 补 `latest_obs_temp_f / latest_obs_ts_utc / obs_source_mode`（**须隔离于 `src/pricing/` 锁定区**）；<br>③ `P1 v2` 补 `selected_bin_p_model / applied_fee_rate / q_eff / net_ev / lambda_l / b_eff_headroom_usd / pov_cap_usd`；<br>④ 补强单测与 `P8-T2-M7-LOGGING` 规格升版（`§8.3` 同提交联动）。 | `src/prediction/`（非 `src/pricing/`）、`src/decision/engine.py`、`docs/audit/P8-T2-M7-LOGGING*`、相关单测 | **3–4 小时** | **最优先（`11-24 ~ 11-26`、`S3-11` 启动前完成）**；与 `S2-07` 并行。 |
+| **Batch 1（上游捕获先行）**<br>拟号：`S3-10b-CAPTURE` / `BIZCHAIN-EXEC3` | ① 统一使用代码语义 `edge / net_ev`；<br>② `P17 v2` 补 `obs_temp_f / obs_ts_utc / obs_source`（**须隔离于 `src/pricing/` 锁定区**）；<br>③ `P1 v2` 补 `selected_bin_p_model / fee_rate_applied / q_eff / net_ev / fee_rate_official_raw / lambda_l / b_eff_headroom_usd / pov_cap_usd / gate_result / reject_reason`；<br>④ 补强单测与 `P8-T2-M7-LOGGING` 规格升版（`§8.3` 同提交联动）。 | `src/prediction/`（非 `src/pricing/`）、`src/decision/engine.py`、`docs/audit/P8-T2-M7-LOGGING*`、相关单测 | **3–4 小时** | **最优先（`11-24 ~ 11-26`、`S3-11` 启动前完成）**；与 `S2-07` 并行。 |
 | **Batch 2（`M10 v2` 决策链可视 + 城市卡 + 日实现盈亏）** | ① `_build_decision_rows` 抽取 `P17`（气象+全档 `bin_probs`）、`P1` 三级裁剪、网关 `reject_or_abort_reason`、可选 `P13` 盘口摘要；<br>② 静态 HTML 区块 3 升级为“主表 + CSS `<details>` 链式卡片”（含环节⑤ `LIVE` 预留槽）；<br>③ 增加城市聚合卡与纯静态 SVG 日实现盈亏曲线；<br>④ 保持零 JS / 零 CDN / AST 三禁全绿 + `p1.v1/p17.v1` 向后兼容测试。 | `src/ui/m10_view.py`、`scripts/render_m10_dashboard.py`、`tests/unit/ui/test_m10_s310_readonly_view.py`、`P8-M10-DESIGN` | **4–5 小时** | **强依赖 Batch 1 完成后启动**；可与 `S3-11` / `S3-13` 并行。 |
 | **Batch 3（校准面板 + `LIVE` 深度修正接入）** | ① 接入 `P8` 校准指标与 `Brier/ECE` 分站命中视图；<br>② 随 `S3-15` 启用接入 `LIVE` 真实盘口深浅修正终注数据并开放环节⑤实值栏；<br>③ `S3-12` 前完成 `model_frozen` 只读注册表源重审。 | `src/ui/`、`src/audit/p8_aggregator.py`、`src/execution/`（仅届时经 `S3-15` 解冻授权单修改） | **3–4 小时** | **排期置后**：① 校准视图待 `S2-02 / S3-08` 复检期；② `LIVE` 修正栏待 `S3-15` 触发解冻。 |
 
-> **本轮声明**：以上均属设计提案与排期评估，**本轮严格零代码改动**；待业主审阅确认 `I 值` 口径与批复各批次立项后，再按单另行实施。
+> **本轮声明**：以上均属设计提案与排期评估，**本轮严格零代码改动**；待业主审阅确认 `edge / net_ev` 口径与批复各批次立项后，再按单另行实施。
