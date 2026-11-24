@@ -650,7 +650,11 @@ class DeterministicDecider:
         self._clob_host = str(clob_host)
         self._fee_rate_timeout_sec = float(fee_rate_timeout_sec)
 
-    def _probe_official_fee_rate(self, token_id: str) -> Optional[Any]:
+    def _probe_official_fee_rate(
+        self, token_id: str, override: Optional[Any] = None
+    ) -> Optional[Any]:
+        if override is not None:
+            return override
         if self._fee_rate_fetcher is not None:
             try:
                 return self._fee_rate_fetcher(token_id)
@@ -734,33 +738,20 @@ class DeterministicDecider:
     def _build_decision_context(
         self,
         *,
-        orig_session_id: str,
-        execution_mode: ExecutionMode,
-        scan_clock: ScanClock,
-        t_scan: datetime,
-        station_id: str,
-        target_date: str,
-        target_type: str,
-        bin_id: str,
-        market_id: str,
-        yes_token_id: str,
-        policy_bundle: ExecutionPolicyBundle,
-        quota: QuotaSnapshot,
-        assembled: AssembledScanInputs,
-        light_event: Optional[LightLevelEvent],
-        fee_rate_official_raw: Optional[Any],
+        orig_session_id: str, execution_mode: ExecutionMode, scan_clock: ScanClock,
+        t_scan: datetime, station_id: str, target_date: str, target_type: str,
+        bin_id: str, market_id: str, yes_token_id: str, policy_bundle: ExecutionPolicyBundle,
+        quota: QuotaSnapshot, assembled: AssembledScanInputs,
+        light_event: Optional[LightLevelEvent], fee_rate_official_raw: Optional[Any],
     ) -> _DecisionContext:
         fc = assembled.winning_forecast
         tau_h = (
             max(0.0, (ensure_utc_datetime(fc.settle_close_utc, field_name="settle_close") - t_scan).total_seconds() / 3600.0)
-            if fc is not None
-            else 0.0
+            if fc is not None else 0.0
         )
         ref_snap = assembled.yes_frame or assembled.no_frame
-        b_budget = policy_bundle.w_policy.b_budget_usd
         active_light = light_event if light_event is not None else self.p16_slot.latest_event
         light_lvl = active_light.level if active_light is not None else None
-        lambda_l = self._resolve_lambda_l(light_lvl, policy_bundle.risk_gate)
         return _DecisionContext(
             decision_id=compute_deterministic_decision_id(
                 orig_session_id=orig_session_id, scan_ts_utc=t_scan, scan_clock=scan_clock,
@@ -774,10 +765,11 @@ class DeterministicDecider:
             model_hash=fc.model_hash if fc is not None else "MISSING_MODEL",
             book_frame_ref=ref_snap.frame_seq if ref_snap is not None else 0,
             tau_hours=tau_h, m_threshold=policy_bundle.risk_gate.m_threshold,
-            b_budget=b_budget, w_tau=compute_w_tau(tau_h, policy_bundle.w_policy),
+            b_budget=policy_bundle.w_policy.b_budget_usd,
+            w_tau=compute_w_tau(tau_h, policy_bundle.w_policy),
             light_status=light_lvl,
             p16_event_id=active_light.event_id if active_light is not None else None,
-            lambda_l=lambda_l,
+            lambda_l=self._resolve_lambda_l(light_lvl, policy_bundle.risk_gate),
             b_eff_headroom_usd=float(quota.b_eff_headroom_usd),
             fee_rate_official_raw=fee_rate_official_raw,
         )
@@ -953,28 +945,14 @@ class DeterministicDecider:
         )
 
     def evaluate_bin(
-        self,
-        *,
-        orig_session_id: str,
-        execution_mode: ExecutionMode,
-        scan_clock: ScanClock,
-        scan_ts_utc: datetime,
-        station_id: str,
-        target_date: str,
-        bin_id: str,
-        market_id: str,
-        yes_token_id: str,
-        forecasts: Sequence[ForecastDistributionSnapshotV11],
-        policy_bundle: ExecutionPolicyBundle,
-        quota: Optional[QuotaSnapshot] = None,
-        quota_provider: Optional[QuotaProvider] = None,
-        yes_frame: Optional[MarketBookSnapshot] = None,
-        no_frame: Optional[MarketBookSnapshot] = None,
-        dual_pair: Optional[DualSideBookPair] = None,
-        include_no_side: bool = False,
-        target_type: str = "TMAX",
-        light_event: Optional[LightLevelEvent] = None,
-        fee_rate_official_raw: Optional[Any] = None,
+        self, *, orig_session_id: str, execution_mode: ExecutionMode, scan_clock: ScanClock,
+        scan_ts_utc: datetime, station_id: str, target_date: str, bin_id: str,
+        market_id: str, yes_token_id: str, forecasts: Sequence[ForecastDistributionSnapshotV11],
+        policy_bundle: ExecutionPolicyBundle, quota: Optional[QuotaSnapshot] = None,
+        quota_provider: Optional[QuotaProvider] = None, yes_frame: Optional[MarketBookSnapshot] = None,
+        no_frame: Optional[MarketBookSnapshot] = None, dual_pair: Optional[DualSideBookPair] = None,
+        include_no_side: bool = False, target_type: str = "TMAX",
+        light_event: Optional[LightLevelEvent] = None, fee_rate_official_raw: Optional[Any] = None,
     ) -> ScanDecisionEvent:
         """Evaluate one bin deterministically (never raises on bad book / stale forecast)."""
         t_scan = ensure_utc_datetime(scan_ts_utc, field_name="scan_ts_utc")
@@ -987,22 +965,16 @@ class DeterministicDecider:
             target_type=target_type, scan_ts_utc=t_scan, yes_frame=yes_frame,
             no_frame=no_frame, dual_pair=dual_pair, include_no_side=include_no_side,
         )
-        official_raw = (
-            fee_rate_official_raw
-            if fee_rate_official_raw is not None
-            else self._probe_official_fee_rate(yes_token_id)
-        )
         ctx = self._build_decision_context(
             orig_session_id=orig_session_id, execution_mode=execution_mode, scan_clock=scan_clock,
             t_scan=t_scan, station_id=station_id, target_date=target_date, target_type=target_type,
             bin_id=bin_id, market_id=market_id, yes_token_id=yes_token_id,
             policy_bundle=policy_bundle, quota=resolved_quota, assembled=assembled,
-            light_event=light_event, fee_rate_official_raw=official_raw,
+            light_event=light_event,
+            fee_rate_official_raw=self._probe_official_fee_rate(yes_token_id, fee_rate_official_raw),
         )
         gate_block = self._check_input_gates(ctx, assembled)
-        if gate_block is not None:
-            return gate_block
-        return self._evaluate_bin_with_view(ctx, assembled, bin_id)
+        return gate_block if gate_block is not None else self._evaluate_bin_with_view(ctx, assembled, bin_id)
 
 
 __all__ = [
