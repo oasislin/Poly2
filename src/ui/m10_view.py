@@ -8,7 +8,7 @@ from decimal import Decimal
 import html
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Tuple
 
 from src.audit.p10_reader import (
     DecisionJoinChain,
@@ -26,6 +26,7 @@ from src.execution.clob_gateway import (
 )
 
 _ZERO = Decimal("0")
+_UNPERSISTED = "未落盘"
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,143 @@ def _resolve_consolidated_terminal_status(
     return last_status
 
 
+def _to_decimal_or_none(value: Any) -> Optional[Decimal]:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except Exception:
+        return None
+
+
+def _extract_weather_stage(
+    p1: Mapping[str, Any],
+    p17: Optional[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    src = p17 if p17 is not None else {}
+    return {
+        "latest_obs_temp_f": src.get("latest_obs_temp_f"),
+        "latest_obs_ts_utc": src.get("latest_obs_ts_utc"),
+        "obs_source_mode": src.get("obs_source_mode"),
+        "m_now_f": src.get("m_now_f"),
+        "m_now_int_f": src.get("m_now_int_f"),
+        "prior_mu0": src.get("prior_mu0"),
+        "prior_sigma0": src.get("prior_sigma0"),
+        "family": src.get("family"),
+        "gefs_lead_hours": src.get("gefs_lead_hours"),
+        "tau_hours": src.get("tau_hours") if src.get("tau_hours") is not None else p1.get("tau_hours"),
+        "issue_ts_utc": src.get("issue_ts_utc"),
+        "is_bridge_active": src.get("is_bridge_active"),
+        "upstream_obs_fresh": src.get("upstream_obs_fresh"),
+    }
+
+
+def _extract_distribution_bins(
+    p17: Optional[Mapping[str, Any]],
+    selected_bin_id: str,
+) -> Tuple[Dict[str, Any], ...]:
+    if p17 is None:
+        return ()
+    raw_bins = p17.get("bin_probs")
+    if not isinstance(raw_bins, list):
+        return ()
+    out: List[Dict[str, Any]] = []
+    for bp in raw_bins:
+        if not isinstance(bp, Mapping):
+            continue
+        bid = str(bp.get("bin_id") or "")
+        out.append(
+            {
+                "bin_id": bid,
+                "label": str(bp.get("label") or bid),
+                "p_model": bp.get("p_model"),
+                "is_selected": bid == selected_bin_id,
+                "is_dead_bin": bool(bp.get("is_dead_bin", False)),
+                "is_boundary_bin": bool(bp.get("is_boundary_bin", False)),
+            }
+        )
+    return tuple(out)
+
+
+def _extract_prob_edge_stage(
+    p1: Mapping[str, Any],
+    dist_bins: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    selected_p_model = p1.get("selected_bin_p_model")
+    if selected_p_model is None:
+        selected_p_model = next((b["p_model"] for b in dist_bins if b["is_selected"]), None)
+    i_val = p1.get("i_value") if p1.get("i_value") is not None else p1.get("best_ask_net_ev")
+    return {
+        "selected_bin_p_model": selected_p_model,
+        "best_ask_price": p1.get("best_ask_price"),
+        "best_ask_edge": p1.get("best_ask_edge"),
+        "m_threshold": p1.get("m_threshold"),
+        "applied_fee_rate": p1.get("applied_fee_rate"),
+        "best_ask_q_eff": p1.get("best_ask_q_eff"),
+        "best_ask_net_ev": p1.get("best_ask_net_ev"),
+        "i_value": i_val,
+    }
+
+
+def _extract_sizing_stage(
+    p1: Mapping[str, Any],
+    attempt_recs: Sequence[Mapping[str, Any]],
+    filled_usd: Decimal,
+    fee_paid_usd: Decimal,
+) -> Dict[str, Any]:
+    g_cap = _to_decimal_or_none(p1.get("g_cap_usd"))
+    headroom = _to_decimal_or_none(p1.get("headroom_d"))
+    target_slice = _to_decimal_or_none(p1.get("target_slice_usd"))
+    reject_reason = p1.get("gateway_reject_reason")
+    if reject_reason is None:
+        reject_reason = next(
+            (str(a["reject_or_abort_reason"]) for a in attempt_recs if a.get("reject_or_abort_reason")),
+            None,
+        )
+    return {
+        "b_budget_usd": _to_decimal_or_none(p1.get("b_budget_usd")),
+        "w_tau": _to_decimal_or_none(p1.get("w_tau")),
+        "s_edge": _to_decimal_or_none(p1.get("s_edge")),
+        "g_cap_usd": g_cap,
+        "held_usd": _to_decimal_or_none(p1.get("held_usd")),
+        "headroom_d": headroom,
+        "target_slice_usd": target_slice,
+        "filled_usd": filled_usd,
+        "fee_paid_usd": fee_paid_usd,
+        "delta_g_to_d": (g_cap - headroom) if (g_cap is not None and headroom is not None) else None,
+        "delta_d_to_slice": (headroom - target_slice) if (headroom is not None and target_slice is not None) else None,
+        "delta_slice_to_fill": (target_slice - filled_usd) if target_slice is not None else None,
+        "light_status": p1.get("light_status"),
+        "scaler_policy_id": p1.get("scaler_policy_id"),
+        "lambda_l": p1.get("lambda_l"),
+        "b_eff_headroom_usd": p1.get("b_eff_headroom_usd"),
+        "pov_cap_usd": p1.get("pov_cap_usd"),
+        "reject_reason": reject_reason,
+    }
+
+
+def _extract_p13_book_stage(p13: Optional[Mapping[str, Any]]) -> Optional[Dict[str, Any]]:
+    if p13 is None:
+        return None
+    payload = p13.get("payload")
+    if not isinstance(payload, Mapping):
+        return None
+    asks = payload.get("asks") if isinstance(payload.get("asks"), list) else []
+    bids = payload.get("bids") if isinstance(payload.get("bids"), list) else []
+    if not bids and isinstance(payload.get("bid_top10"), list):
+        bids = payload.get("bid_top10")
+    return {
+        "frame_seq": payload.get("frame_seq"),
+        "data_source": payload.get("data_source"),
+        "single_side": payload.get("single_side"),
+        "best_bid": payload.get("best_bid"),
+        "fee_rate": payload.get("fee_rate"),
+        "min_order_size_shares": payload.get("min_order_size_shares"),
+        "asks_top3": tuple(asks[:3]),
+        "bids_top3": tuple(bids[:3]),
+    }
+
+
 def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str, Any], ...]:
     rows: List[Dict[str, Any]] = []
     for chain in chains:
@@ -161,6 +299,8 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
         filled_shares = sum((_to_decimal(a.get("filled_shares")) for a in attempt_recs), _ZERO)
         fee_paid_usd = sum((_to_decimal(a.get("fee_paid_usd")) for a in attempt_recs), _ZERO)
         terminal_status = _resolve_consolidated_terminal_status(attempt_recs, filled_shares)
+        bin_id = str(p1.get("bin_id") or "")
+        dist_bins = _extract_distribution_bins(chain.p17_record, bin_id)
         rows.append(
             {
                 "decision_id": chain.decision_id,
@@ -170,7 +310,7 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
                 "target_date": str(p1.get("target_date") or ""),
                 "target_type": str(p1.get("target_type") or ""),
                 "market_id": str(p1.get("market_id") or ""),
-                "bin_id": str(p1.get("bin_id") or ""),
+                "bin_id": bin_id,
                 "decision_outcome": str(p1.get("decision_outcome") or ""),
                 "model_hash": str(p1.get("model_hash") or ""),
                 "config_hash": str(p1.get("config_hash") or ""),
@@ -187,6 +327,11 @@ def _build_decision_rows(chains: Sequence[DecisionJoinChain]) -> Tuple[Dict[str,
                 "fee_paid_usd": fee_paid_usd,
                 "gateway_stages": " -> ".join(gateway_stages) if gateway_stages else "-",
                 "p19_count": len(chain.p19_records),
+                "weather_stage": _extract_weather_stage(p1, chain.p17_record),
+                "distribution_bins": dist_bins,
+                "prob_edge_stage": _extract_prob_edge_stage(p1, dist_bins),
+                "sizing_stage": _extract_sizing_stage(p1, attempt_recs, filled_usd, fee_paid_usd),
+                "p13_book_stage": _extract_p13_book_stage(chain.p13_record),
             }
         )
     return tuple(rows)
@@ -373,6 +518,132 @@ def _esc(val: Any) -> str:
     return html.escape("-" if val is None else str(val), quote=True)
 
 
+def _fmt_cell(val: Any, *, prefix: str = "", suffix: str = "") -> str:
+    if val is None or val == "":
+        return _esc(_UNPERSISTED)
+    return _esc(f"{prefix}{val}{suffix}")
+
+
+def _render_bin_distribution_html(dist_bins: Sequence[Mapping[str, Any]]) -> str:
+    if not dist_bins:
+        return f'<div class="empty">{_esc(_UNPERSISTED)} (P17.bin_probs 缺失)</div>'
+    items: List[str] = []
+    for b in dist_bins:
+        p_raw = b.get("p_model")
+        try:
+            pct = max(0.0, min(100.0, float(p_raw) * 100.0)) if p_raw is not None else 0.0
+            pct_label = f"{pct:.2f}%"
+        except Exception:
+            pct = 0.0
+            pct_label = _UNPERSISTED
+        cls = "bin-row bin-picked" if b.get("is_selected") else "bin-row"
+        tags = []
+        if b.get("is_selected"):
+            tags.append("★选中")
+        if b.get("is_dead_bin"):
+            tags.append("DEAD")
+        if b.get("is_boundary_bin"):
+            tags.append("BOUNDARY")
+        tag_txt = f" [{' · '.join(tags)}]" if tags else ""
+        items.append(
+            f'<div class="{cls}">'
+            f'<span class="bin-lbl">{_esc(b.get("label"))}{_esc(tag_txt)}</span>'
+            f'<span class="bin-bar"><span class="bin-fill" style="width:{pct:.1f}%"></span></span>'
+            f'<span class="bin-pct">{_esc(pct_label)}</span>'
+            "</div>"
+        )
+    return '<div class="bin-bar-list">' + "".join(items) + "</div>"
+
+
+def _render_decision_chain_card(
+    row: Mapping[str, Any],
+    settle_row: Optional[Mapping[str, Any]],
+) -> str:
+    w = row.get("weather_stage") or {}
+    pe = row.get("prob_edge_stage") or {}
+    sz = row.get("sizing_stage") or {}
+    p13 = row.get("p13_book_stage")
+    dist_html = _render_bin_distribution_html(row.get("distribution_bins") or ())
+
+    if p13:
+        asks_txt = ", ".join(f"{lvl[0]}×{lvl[1]}" for lvl in p13.get("asks_top3", ())) or _UNPERSISTED
+        bids_txt = ", ".join(f"{lvl[0]}×{lvl[1]}" for lvl in p13.get("bids_top3", ())) or _UNPERSISTED
+        p13_body = (
+            f"<div>frame={_fmt_cell(p13.get('frame_seq'))} | src={_fmt_cell(p13.get('data_source'))} "
+            f"| side={_esc(p13.get('single_side') or 'two_sided')}</div>"
+            f"<div>asks_top3: <code>{_esc(asks_txt)}</code> | bids_top3: <code>{_esc(bids_txt)}</code></div>"
+            f"<div>fee_rate={_fmt_cell(p13.get('fee_rate'))} | min_shares={_fmt_cell(p13.get('min_order_size_shares'))}</div>"
+        )
+    else:
+        p13_body = f"<div>P13 盘口帧: {_esc(_UNPERSISTED)} (或未传 --p13-root)</div>"
+
+    if settle_row is not None:
+        p9_body = (
+            f"<div>settlement_id: <code>{_esc(settle_row.get('settlement_id'))}</code></div>"
+            f"<div>winning_bin_id=<strong>{_esc(settle_row.get('winning_bin_id'))}</strong> "
+            f"| settled_temp_f_int={_fmt_cell(settle_row.get('settled_temp_f_int'), suffix=' °F')} "
+            f"| oracle={_esc(settle_row.get('oracle_source'))}</div>"
+            f"<div>payout=${_esc(settle_row.get('payout_usd'))} - cost=${_esc(settle_row.get('cost_basis_usd'))} "
+            f"= <strong>realized_pnl=${_esc(settle_row.get('realized_pnl_usd'))}</strong></div>"
+        )
+    else:
+        p9_body = f"<div>结算状态: PENDING_P9 ({_esc(_UNPERSISTED)})</div>"
+
+    return (
+        '<details class="chain-card" open>'
+        f"<summary><code>{_esc(row['decision_id'])}</code> | {_esc(row['station_id'])} "
+        f"{_esc(row['target_date'])} ({_esc(row.get('target_type') or '-')}) | "
+        f"bin=<strong>{_esc(row['bin_id'])}</strong> | {_esc(row['decision_outcome'])} "
+        f"| terminal={_esc(row['terminal_status'])} | filled=${_esc(row['filled_usd'])}</summary>"
+        '<div class="stage-grid">'
+        '<div class="stage-box">'
+        "<h3>① 决策时点天气 (P17 · 非 P9 结算真值)</h3>"
+        f"<div>瞬时观测温: {_fmt_cell(w.get('latest_obs_temp_f'), suffix=' °F')} "
+        f"(@ {_fmt_cell(w.get('latest_obs_ts_utc'))}, 源={_fmt_cell(w.get('obs_source_mode'))})</div>"
+        f"<div>日内极值 m_now: {_fmt_cell(w.get('m_now_f'), suffix=' °F')} (int={_fmt_cell(w.get('m_now_int_f'))}) "
+        f"| bridge={_fmt_cell(w.get('is_bridge_active'))} | fresh={_fmt_cell(w.get('upstream_obs_fresh'))}</div>"
+        f"<div>先验: family={_fmt_cell(w.get('family'))}, mu0={_fmt_cell(w.get('prior_mu0'))}, "
+        f"sigma0={_fmt_cell(w.get('prior_sigma0'))}, lead={_fmt_cell(w.get('gefs_lead_hours'), suffix='h')}, "
+        f"tau={_fmt_cell(w.get('tau_hours'), suffix='h')}</div>"
+        "</div>"
+        '<div class="stage-box">'
+        "<h3>② 模型全档分布 (P17.bin_probs · 所选档高亮)</h3>"
+        f"{dist_html}"
+        "</div>"
+        '<div class="stage-box">'
+        "<h3>③ 所选档概率与 I 值 / 边际优势</h3>"
+        f"<div>selected_bin_p_model={_fmt_cell(pe.get('selected_bin_p_model'))} "
+        f"| best_ask_price={_fmt_cell(pe.get('best_ask_price'))}</div>"
+        f"<div>I值 (net_ev / i_value)={_fmt_cell(pe.get('i_value'))} "
+        f"| q_eff={_fmt_cell(pe.get('best_ask_q_eff'))} | fee_rate={_fmt_cell(pe.get('applied_fee_rate'))}</div>"
+        f"<div>best_ask_edge={_fmt_cell(pe.get('best_ask_edge'))} vs m_threshold={_fmt_cell(pe.get('m_threshold'))}</div>"
+        "</div>"
+        '<div class="stage-box">'
+        "<h3>④ 仓位公式与三段裁剪对照 (1:N 聚合)</h3>"
+        f"<div>B=${_fmt_cell(sz.get('b_budget_usd'))} × w(τ)={_fmt_cell(sz.get('w_tau'))} "
+        f"× [s(edge)={_fmt_cell(sz.get('s_edge'))} × λ(L)={_fmt_cell(sz.get('lambda_l'))}] "
+        f"= G=${_fmt_cell(sz.get('g_cap_usd'))}</div>"
+        f"<div>G=${_fmt_cell(sz.get('g_cap_usd'))} →[Δ_G→D=${_fmt_cell(sz.get('delta_g_to_d'))}]→ "
+        f"D=${_fmt_cell(sz.get('headroom_d'))} →[Δ_D→slice=${_fmt_cell(sz.get('delta_d_to_slice'))}]→ "
+        f"slice=${_fmt_cell(sz.get('target_slice_usd'))} →[Δ_slice→fill=${_fmt_cell(sz.get('delta_slice_to_fill'))}]→ "
+        f"filled=${_esc(sz.get('filled_usd'))} (attempts={_esc(row.get('attempt_count'))}, fee=${_esc(sz.get('fee_paid_usd'))})</div>"
+        f"<div>b_eff_headroom=${_fmt_cell(sz.get('b_eff_headroom_usd'))} | pov_cap=${_fmt_cell(sz.get('pov_cap_usd'))} "
+        f"| reject_reason={_fmt_cell(sz.get('reject_reason'))}</div>"
+        "</div>"
+        '<div class="stage-box">'
+        "<h3>⑤ CLOB 盘口快照与 LIVE 修正预留</h3>"
+        f"{p13_body}"
+        '<div class="reserved-live-slot">LIVE 深度修正终注：未落盘 / 预留槽（待 S3-15 LIVE 轨启用，当前 PAPER 不解冻）</div>'
+        "</div>"
+        '<div class="stage-box">'
+        "<h3>⑥ M9 结算回填关联 (P9)</h3>"
+        f"{p9_body}"
+        "</div>"
+        "</div>"
+        "</details>"
+    )
+
+
 def render_m10_dashboard_html(model: M10DashboardModel) -> str:
     """Render a zero-script, zero-CDN, strictly read-only `M10 v1` standalone HTML report."""
     rp = model.risk_panel
@@ -415,6 +686,34 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
     )
     if not decision_trs:
         decision_trs = '<tr><td colspan="16" class="empty">No P1->P3 joined decision traces found.</td></tr>'
+
+    settle_by_scope = {
+        (
+            str(s.get("session_id") or ""),
+            str(s.get("station_id") or ""),
+            str(s.get("target_date") or ""),
+            str(s.get("target_type") or ""),
+            str(s.get("market_id") or ""),
+        ): s
+        for s in model.settlement_rows
+    }
+    decision_chain_cards = "\n".join(
+        _render_decision_chain_card(
+            r,
+            settle_by_scope.get(
+                (
+                    str(r.get("session_id") or ""),
+                    str(r.get("station_id") or ""),
+                    str(r.get("target_date") or ""),
+                    str(r.get("target_type") or ""),
+                    str(r.get("market_id") or ""),
+                )
+            ),
+        )
+        for r in model.decision_rows
+    )
+    if not decision_chain_cards:
+        decision_chain_cards = '<div class="empty">暂无决策链记录。</div>'
 
     settlement_trs = "\n".join(
         (
@@ -484,6 +783,19 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
   th {{ color: var(--muted); font-weight: 600; background: #0f172a; }}
   .empty {{ color: var(--muted); text-align: center; padding: 16px; }}
   code {{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #93c5fd; }}
+  details.chain-card {{ background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-top: 12px; }}
+  details.chain-card summary {{ cursor: pointer; font-weight: 600; font-size: 13px; color: #e2e8f0; }}
+  .stage-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px; margin-top: 10px; }}
+  .stage-box {{ background: #1e293b; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 12px; }}
+  .stage-box h3 {{ margin: 0 0 6px; font-size: 13px; color: #cbd5e1; }}
+  .bin-bar-list {{ display: flex; flex-direction: column; gap: 4px; }}
+  .bin-row {{ display: grid; grid-template-columns: 150px 1fr 56px; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 4px; }}
+  .bin-picked {{ background: rgba(59, 130, 246, 0.22); border: 1px solid #60a5fa; font-weight: 700; }}
+  .bin-bar {{ height: 8px; background: #0f172a; border-radius: 4px; overflow: hidden; display: block; }}
+  .bin-fill {{ height: 100%; background: #38bdf8; display: block; }}
+  .bin-picked .bin-fill {{ background: #fbbf24; }}
+  .bin-pct {{ text-align: right; font-variant-numeric: tabular-nums; }}
+  .reserved-live-slot {{ margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-style: italic; }}
 </style>
 </head>
 <body>
@@ -535,6 +847,7 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
         </thead>
         <tbody>{decision_trs}</tbody>
       </table>
+      {decision_chain_cards}
     </section>
 
     <section class="card">

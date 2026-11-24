@@ -617,3 +617,284 @@ def test_m10_missing_forecast_fk_count_positive(tmp_path: Path) -> None:
     html = render_m10_dashboard_html(model)
     _assert_strictly_readonly_html(html)
     assert "<div class=\"k\">missing_forecast_fk</div><div class=\"v\">1</div>" in html
+
+
+def test_m10_decision_chain_cross_stream_join_distribution_and_p13_snapshot(tmp_path: Path) -> None:
+    """Cross-stream join `P1 -> P17.bin_probs` + `P13` populates 6-stage card with selected bin highlight & LIVE slot."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    p13_root = tmp_path / "p13"
+    day_dir = audit_root / "PAPER" / "2026-11-23"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    _write_signed_stream(
+        day_dir / "p17_forecast_snapshots.jsonl",
+        [
+            {
+                "schema_version": "p17.v1",
+                "execution_mode": "PAPER",
+                "session_id": "sess-q6",
+                "station_id": "KORD",
+                "forecast_id": "fc-ok-1",
+                "issue_ts_utc": "2026-11-23T13:50:00+00:00",
+                "gefs_lead_hours": 24,
+                "tau_hours": 16.0,
+                "model_hash": "mh-q6",
+                "config_hash": "ch-q6",
+                "prior_mu0": 58.4,
+                "prior_sigma0": 1.8,
+                "family": "normal",
+                "m_now_f": 56.3,
+                "m_now_int_f": 56,
+                "oracle_compliant": True,
+                "upstream_obs_fresh": True,
+                "is_bridge_active": True,
+                "bin_probs": [
+                    {"bin_id": "bin-57below", "label": "<=57°F", "p_model": 0.12, "is_dead_bin": True, "is_boundary_bin": False},
+                    {"bin_id": "bin-58-59", "label": "58-59°F", "p_model": 0.54, "is_dead_bin": False, "is_boundary_bin": True},
+                    {"bin_id": "bin-60plus", "label": ">=60°F", "p_model": 0.34, "is_dead_bin": False, "is_boundary_bin": False},
+                ],
+            }
+        ],
+    )
+    _write_signed_stream(
+        day_dir / "p1_scan_decisions.jsonl",
+        [_sample_p1(decision_id="dec-chain-1", market_id="mkt-a", bin_id="bin-58-59", forecast_id="fc-ok-1")],
+    )
+    _write_signed_stream(
+        p13_root / "PASSIVE_RECORD" / "2026-11-23" / "sess-q6" / "p13_book_stream_KORD.jsonl",
+        [
+            {
+                "schema_version": "p13.v1",
+                "session_id": "sess-q6",
+                "payload": {
+                    "token_id": "tok-mkt-a",
+                    "frame_seq": 1,
+                    "data_source": "CLOB_WS",
+                    "single_side": None,
+                    "best_bid": 0.24,
+                    "fee_rate": 0.01,
+                    "min_order_size_shares": 5.0,
+                    "asks": [[0.25, 120.0], [0.26, 80.0]],
+                    "bids": [[0.24, 90.0]],
+                },
+            }
+        ],
+    )
+
+    model = build_m10_dashboard_model(
+        audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path, p13_root=p13_root
+    )
+    row = model.decision_rows[0]
+    assert row["forecast_fk_present"] is True
+    assert row["p13_ref_present"] is True
+    assert len(row["distribution_bins"]) == 3
+    selected = [b for b in row["distribution_bins"] if b["is_selected"]]
+    assert len(selected) == 1 and selected[0]["bin_id"] == "bin-58-59"
+    assert row["prob_edge_stage"]["selected_bin_p_model"] == 0.54
+    assert row["p13_book_stage"]["asks_top3"] == ([0.25, 120.0], [0.26, 80.0])
+
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert '<details class="chain-card" open>' in html
+    assert "bin-row bin-picked" in html
+    assert "58-59°F [★选中 · BOUNDARY]" in html
+    assert "54.00%" in html
+    assert "0.25×120.0" in html
+    assert "reserved-live-slot" in html
+    assert "待 S3-15 LIVE 轨启用" in html
+
+
+def test_m10_unpersisted_fields_render_fail_honest_placeholder_and_autofill_when_present(tmp_path: Path) -> None:
+    """Unpersisted Batch-1 fields render `未落盘` fail-honestly, and auto-populate without branching when persisted."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    # (a) v1 records missing Batch-1 fields -> fail-honest "未落盘"
+    audit_v1 = tmp_path / "m7_v1"
+    day_v1 = audit_v1 / "PAPER" / "2026-11-23"
+    _write_signed_stream(
+        day_v1 / "p17_forecast_snapshots.jsonl",
+        [{"schema_version": "p17.v1", "execution_mode": "PAPER", "session_id": "sess-q6", "station_id": "KORD", "forecast_id": "fc-ok-1", "model_hash": "mh-q6", "config_hash": "ch-q6"}],
+    )
+    _write_signed_stream(day_v1 / "p1_scan_decisions.jsonl", [_sample_p1(decision_id="dec-v1")])
+
+    html_v1 = render_m10_dashboard_html(
+        build_m10_dashboard_model(audit_root=audit_v1, execution_mode="PAPER", safety_config_path=cfg_path)
+    )
+    _assert_strictly_readonly_html(html_v1)
+    assert "瞬时观测温: 未落盘" in html_v1
+    assert "I值 (net_ev / i_value)=未落盘" in html_v1
+    assert "λ(L)=未落盘" in html_v1
+    assert "b_eff_headroom=$未落盘" in html_v1
+    assert "pov_cap=$未落盘" in html_v1
+    assert "reject_reason=未落盘" in html_v1
+
+    # (b) v2 records WITH Batch-1 fields persisted -> same renderer populates values cleanly
+    audit_v2 = tmp_path / "m7_v2"
+    day_v2 = audit_v2 / "PAPER" / "2026-11-23"
+    _write_signed_stream(
+        day_v2 / "p17_forecast_snapshots.jsonl",
+        [
+            {
+                "schema_version": "p17.v2",
+                "execution_mode": "PAPER",
+                "session_id": "sess-q6",
+                "station_id": "KORD",
+                "forecast_id": "fc-ok-1",
+                "model_hash": "mh-q6",
+                "config_hash": "ch-q6",
+                "latest_obs_temp_f": 57.2,
+                "latest_obs_ts_utc": "2026-11-23T13:55:00+00:00",
+                "obs_source_mode": "AWC_ROUTINE_METAR",
+            }
+        ],
+    )
+    p1_v2 = _sample_p1(decision_id="dec-v2")
+    p1_v2.update(
+        {
+            "schema_version": "p1.v2",
+            "selected_bin_p_model": 0.35,
+            "best_ask_price": 0.25,
+            "applied_fee_rate": 0.01,
+            "best_ask_q_eff": 0.251875,
+            "best_ask_net_ev": 0.098125,
+            "best_ask_edge": 0.389578,
+            "m_threshold": 0.01,
+            "lambda_l": 0.5,
+            "b_eff_headroom_usd": "20.0",
+            "pov_cap_usd": "18.5",
+            "gateway_reject_reason": "NONE",
+        }
+    )
+    _write_signed_stream(day_v2 / "p1_scan_decisions.jsonl", [p1_v2])
+
+    html_v2 = render_m10_dashboard_html(
+        build_m10_dashboard_model(audit_root=audit_v2, execution_mode="PAPER", safety_config_path=cfg_path)
+    )
+    _assert_strictly_readonly_html(html_v2)
+    assert "瞬时观测温: 57.2 °F" in html_v2
+    assert "I值 (net_ev / i_value)=0.098125" in html_v2
+    assert "q_eff=0.251875" in html_v2
+    assert "λ(L)=0.5" in html_v2
+    assert "b_eff_headroom=$20.0" in html_v2
+    assert "pov_cap=$18.5" in html_v2
+
+
+def test_m10_three_stage_sizing_deltas_exact_decimal_with_1n_reslice(tmp_path: Path) -> None:
+    """Three-stage deltas (`G->D`, `D->target_slice`, `target_slice->sum(filled)`) prevent 1:N `target_usd` doubling."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    day_dir = audit_root / "PAPER" / "2026-11-23"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    p1_sized = _sample_p1(decision_id="dec-3stage")
+    p1_sized.update(
+        {
+            "b_budget_usd": 50.0,
+            "w_tau": 0.8,
+            "s_edge": 1.0,
+            "g_cap_usd": 40.0,
+            "held_usd": 15.0,
+            "headroom_d": 25.0,
+            "target_slice_usd": 10.0,
+        }
+    )
+    _write_signed_stream(day_dir / "p1_scan_decisions.jsonl", [p1_sized])
+    att_1 = _sample_p3_attempt(
+        attempt_id="att-s1",
+        decision_id="dec-3stage",
+        terminal_status="PARTIAL",
+        filled_shares="16.00",
+        filled_usd="4.00",
+        fee_paid_usd="0.02",
+        final_ts_utc="2026-11-23T14:00:01+00:00",
+    )
+    att_1["target_usd"] = "10.0"
+    att_2 = _sample_p3_attempt(
+        attempt_id="att-s2",
+        decision_id="dec-3stage",
+        terminal_status="FILLED",
+        filled_shares="22.00",
+        filled_usd="5.50",
+        fee_paid_usd="0.03",
+        final_ts_utc="2026-11-23T14:00:02+00:00",
+    )
+    att_2["target_usd"] = "6.0"  # sum(target_usd)=16.0 must NOT replace P1.target_slice_usd=10.0
+    _write_signed_stream(day_dir / "p3_execution_attempts.jsonl", [att_1, att_2])
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    sz = model.decision_rows[0]["sizing_stage"]
+    assert sz["delta_g_to_d"] == Decimal("15.0")
+    assert sz["delta_d_to_slice"] == Decimal("15.0")
+    assert sz["delta_slice_to_fill"] == Decimal("0.50")
+    assert sz["filled_usd"] == Decimal("9.50")
+
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert "Δ_G→D=$15.0" in html
+    assert "Δ_D→slice=$15.0" in html
+    assert "Δ_slice→fill=$0.50" in html
+
+
+def test_m10_full_distribution_render_missing_p17_fallback_and_p9_card_link(tmp_path: Path) -> None:
+    """Cards render P9 reconciliation link when settled and clean `未落盘` distribution fallback when P17 is absent."""
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    day_dir = audit_root / "PAPER" / "2026-11-23"
+    settle_dir = audit_root / "PAPER" / "2026-11-24"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+
+    _write_signed_stream(
+        day_dir / "p1_scan_decisions.jsonl",
+        [_sample_p1(decision_id="dec-no-p17", market_id="mkt-a", bin_id="bin-58-59", forecast_id="fc-lost")],
+    )
+    _write_signed_stream(
+        day_dir / "p3_execution_attempts.jsonl",
+        [
+            _sample_p3_attempt(
+                attempt_id="att-p9",
+                decision_id="dec-no-p17",
+                market_id="mkt-a",
+                terminal_status="FILLED",
+                filled_shares="20.00",
+                filled_usd="5.00",
+                fee_paid_usd="0.02",
+                final_ts_utc="2026-11-23T14:00:01+00:00",
+            )
+        ],
+    )
+    _write_signed_stream(
+        settle_dir / "p9_settlement_truths.jsonl",
+        [
+            {
+                "schema_version": "p9.v1",
+                "settlement_id": "sid-card-p9",
+                "settled_ts_utc": "2026-11-24T06:10:00+00:00",
+                "session_id": "sess-q6",
+                "execution_mode": "PAPER",
+                "station_id": "KORD",
+                "target_date": "2026-11-23",
+                "target_type": "TMAX",
+                "market_id": "mkt-a",
+                "winning_bin_id": "bin-58-59",
+                "oracle_source": "AWC_ROUTINE_METAR",
+                "oracle_source_tier": "AWC_METAR_TGROUP",
+                "settled_temp_f_int": 59,
+                "fallback_to_lowest_bin": False,
+            }
+        ],
+    )
+
+    model = build_m10_dashboard_model(audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path)
+    assert model.missing_forecast_fk_count == 1
+    assert model.decision_rows[0]["distribution_bins"] == ()
+    html = render_m10_dashboard_html(model)
+    _assert_strictly_readonly_html(html)
+    assert "未落盘 (P17.bin_probs 缺失)" in html
+    assert "sid-card-p9" in html
+    assert "realized_pnl=$14.98" in html
