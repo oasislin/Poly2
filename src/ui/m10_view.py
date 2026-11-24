@@ -54,6 +54,36 @@ class M10DashboardModel:
     missing_forecast_fk_count: int
     city_cards: Tuple[Dict[str, Any], ...] = ()
     daily_pnl_series: Tuple[Dict[str, Any], ...] = ()
+    alerts_status: Optional[Dict[str, Any]] = None
+
+
+def _read_alerts_status_readonly(alerts_status_path: Optional[Path]) -> Optional[Dict[str, Any]]:
+    if alerts_status_path is None or not alerts_status_path.exists():
+        return None
+    try:
+        with alerts_status_path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _render_watchdog_badge_strip(alerts_status: Optional[Mapping[str, Any]]) -> str:
+    if not alerts_status:
+        return ""
+    checks = alerts_status.get("checks") if isinstance(alerts_status.get("checks"), Mapping) else {}
+    overall = str(alerts_status.get("overall_severity") or "UNKNOWN")
+    checked_ts = str(alerts_status.get("checked_ts_utc") or "-")
+    pills = []
+    for name in ("gap_rate", "corrupt_lines", "token_coverage", "disk_watchdog"):
+        st = str((checks.get(name) or {}).get("status") or "UNKNOWN") if isinstance(checks.get(name), Mapping) else "UNKNOWN"
+        cls = "pill-ready" if st == "OK" else ("pill-pending" if st == "WARN" else "pill-loss")
+        pills.append(f'<span class="pill {cls}">{_esc(name)}: {_esc(st)}</span>')
+    return (
+        '<div class="kv"><div class="k">watchdog_summary (read-only)</div>'
+        f'<div class="v">{_esc(overall)} ({_esc(checked_ts)})<br/>'
+        f"{' '.join(pills)}</div></div>"
+    )
 
 
 def _to_decimal(value: Any, default: Decimal = _ZERO) -> Decimal:
@@ -611,6 +641,7 @@ def build_m10_dashboard_model(
     model_hash: Optional[str] = None,
     model_frozen: bool = True,
     risk_panel_override: Optional[GatewayRiskPanelSnapshot] = None,
+    alerts_status_path: Optional[Path] = None,
 ) -> M10DashboardModel:
     """Aggregate read-only `M7` traces, safety limits, and `M9` settlements into an `M10` model."""
     query = P10Query(
@@ -685,6 +716,7 @@ def build_m10_dashboard_model(
         missing_forecast_fk_count=view.missing_forecast_fk_count,
         city_cards=city_cards,
         daily_pnl_series=daily_pnl_series,
+        alerts_status=_read_alerts_status_readonly(alerts_status_path),
     )
 
 
@@ -1095,6 +1127,7 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
 
     city_cards_html = _render_city_aggregation_cards(model.city_cards)
     daily_pnl_svg_html = _render_daily_pnl_svg(model.daily_pnl_series)
+    watchdog_summary_html = _render_watchdog_badge_strip(model.alerts_status)
 
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -1167,6 +1200,7 @@ def render_m10_dashboard_html(model: M10DashboardModel) -> str:
         <div class="kv"><div class="k">light_status</div><div class="v">{_esc(light_text)}</div></div>
         <div class="kv"><div class="k">model_hash / freeze</div><div class="v"><code>{_esc(rp.model_hash)}</code> ({frozen_text})</div></div>
         <div class="kv"><div class="k">safety_config_sha256</div><div class="v"><code>{_esc(rp.safety_config_sha256)}</code></div></div>
+        {watchdog_summary_html}
       </div>
     </section>
 

@@ -1483,3 +1483,52 @@ def test_m10_p1_v2_p17_v2_autofill_and_v1_backward_compat(tmp_path: Path) -> Non
     assert "瞬时观测温: 未落盘" in html  # legacy v1 row stays fail-honest alongside v2 row
 
 
+def test_m10_readonly_watchdog_alerts_status_badge_integration(tmp_path: Path) -> None:
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+    alerts_json = tmp_path / "watchdog_status.json"
+    alerts_json.write_text(
+        json.dumps(
+            {
+                "schema_version": "watchdog.v1",
+                "checked_ts_utc": "2026-11-25T00:10:00+00:00",
+                "overall_severity": "WARN",
+                "checks": {
+                    "gap_rate": {"status": "OK"},
+                    "corrupt_lines": {"status": "OK"},
+                    "token_coverage": {"status": "WARN"},
+                    "disk_watchdog": {"status": "OK"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    out_html = tmp_path / "m10_with_alerts.html"
+    repo_root = Path(__file__).resolve().parents[3]
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts/render_m10_dashboard.py"),
+            "--audit-root",
+            str(tmp_path / "missing_m7"),
+            "--execution-mode",
+            "PAPER",
+            "--safety-config",
+            str(cfg_path),
+            "--alerts-status",
+            str(alerts_json),
+            "--output",
+            str(out_html),
+        ],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    rendered = out_html.read_text(encoding="utf-8")
+    _assert_strictly_readonly_html(rendered)
+    assert "watchdog_summary (read-only)" in rendered
+    assert "token_coverage: WARN" in rendered
+    assert "gap_rate: OK" in rendered
+
+

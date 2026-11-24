@@ -49,7 +49,7 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     assert "2019-SEALED-003" in by_id["S3-03"]["acceptance"]
     assert "2019-12-30T23:55:00Z" in by_id["S3-03"]["acceptance"]
     assert by_id["S3-08"]["status"] == "BLOCKED"
-    assert by_id["S3-13"]["status"] == "PLANNED"
+    assert by_id["S3-13"]["status"] == "DONE"
 
     assert len(data["mainline_reviews"]) == 1
     assert data["mainline_reviews"][0]["date"] == "2026-11-19"

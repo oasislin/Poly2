@@ -48,6 +48,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Mark model freeze badge as UNFROZEN instead of default FROZEN.",
     )
+    parser.add_argument(
+        "--alerts-status",
+        type=Path,
+        default=None,
+        help="Optional read-only path to watchdog_status.json for top watchdog summary badges.",
+    )
     parser.add_argument("--output", type=Path, required=True, help="Output standalone HTML path (must be outside audit-root).")
     args = parser.parse_args(argv)
 
@@ -67,6 +73,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         p13_root=args.p13_root,
         model_hash=args.model_hash,
         model_frozen=not args.model_unfrozen,
+        alerts_status_path=args.alerts_status,
     )
     html_text = render_m10_dashboard_html(model)
     out_resolved.parent.mkdir(parents=True, exist_ok=True)
