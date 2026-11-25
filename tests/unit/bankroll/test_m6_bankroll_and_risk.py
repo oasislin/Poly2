@@ -342,7 +342,11 @@ def test_p14_fee_paid_conservation_and_cost_basis() -> None:
 
 def test_bankroll_and_decision_ast_function_length_under_50_lines() -> None:
     ge_50: list[tuple[str, str, int]] = []
-    targets = list((REPO_ROOT / "src/bankroll").glob("*.py")) + [REPO_ROOT / "src/decision/engine.py"]
+    targets = list((REPO_ROOT / "src/bankroll").glob("*.py")) + [
+        REPO_ROOT / "src/decision/engine.py",
+        REPO_ROOT / "src/decision/offline_scheduler.py",
+        REPO_ROOT / "src/prediction/forecast_distribution_engine.py",
+    ]
     for path in targets:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):

@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from src.audit.audit_logger import AsyncAuditLogger
 from src.audit.p13_reader import P13SessionLoad, P18ReplayFrameRetriever, load_p13_session_readonly
@@ -179,6 +179,43 @@ def _evaluate_tick_target(
     )
 
 
+def _execute_audit_replay_loop(
+    cfg: OfflineSchedulerConfig,
+    *,
+    ticks: Tuple[datetime, ...],
+    targets: Sequence[OfflineScheduleTarget],
+    retriever: P18ReplayFrameRetriever,
+    decider: DeterministicDecider,
+    exec_config: TradingExecutionConfig,
+    forecasts: Sequence[ForecastDistributionSnapshotV11],
+    policy_bundle: ExecutionPolicyBundle,
+    quota_provider: QuotaProvider,
+    light_event: Optional[LightLevelEvent],
+) -> Tuple[Dict[str, int], int, Tuple[int, ...]]:
+    """Run forecast/decision replay loop into M7 audit logger (offline only)."""
+    ordered_cnt = 0
+    consumed_seqs: List[int] = []
+    with AsyncAuditLogger(cfg.audit_output_root, execution_mode="PAPER") as logger:
+        for fc in forecasts:
+            logger.log_p17_forecast_snapshot(
+                fc, session_id=cfg.orig_session_id, config_hash=policy_bundle.config_hash,
+                capture_replay_mode="REPLAY_P13",
+            )
+        for tick_utc in ticks:
+            for target in targets:
+                ev = _evaluate_tick_target(
+                    tick_utc=tick_utc, target=target, cfg=cfg, retriever=retriever,
+                    decider=decider, exec_config=exec_config, forecasts=forecasts,
+                    policy_bundle=policy_bundle, quota_provider=quota_provider, light_event=light_event,
+                )
+                logger.log_p1_scan_decision(ev)
+                consumed_seqs.append(ev.book_frame_ref)
+                ordered_cnt += 1 if ev.decision_outcome == "ORDERED" else 0
+        logger.flush()
+        written = logger.stats().written_by_stream
+    return written, ordered_cnt, tuple(consumed_seqs)
+
+
 def run_s311_offline_schedule(
     cfg: OfflineSchedulerConfig,
     *,
@@ -206,32 +243,17 @@ def run_s311_offline_schedule(
         enable_official_fee_rate_probe=cfg.enable_official_fee_rate_probe,
         fee_rate_timeout_sec=cfg.fee_rate_timeout_sec,
     )
-    ordered_cnt = 0
-    consumed_seqs: List[int] = []
-    with AsyncAuditLogger(cfg.audit_output_root, execution_mode="PAPER") as logger:
-        for fc in forecasts:
-            logger.log_p17_forecast_snapshot(
-                fc, session_id=cfg.orig_session_id, config_hash=policy_bundle.config_hash,
-                capture_replay_mode="REPLAY_P13",
-            )
-        for tick_utc in ticks:
-            for target in targets:
-                ev = _evaluate_tick_target(
-                    tick_utc=tick_utc, target=target, cfg=cfg, retriever=retriever,
-                    decider=decider, exec_config=exec_config, forecasts=forecasts,
-                    policy_bundle=policy_bundle, quota_provider=quota_provider, light_event=light_event,
-                )
-                logger.log_p1_scan_decision(ev)
-                consumed_seqs.append(ev.book_frame_ref)
-                ordered_cnt += 1 if ev.decision_outcome == "ORDERED" else 0
-        logger.flush()
-        written = logger.stats().written_by_stream
+    written, ordered_cnt, consumed_seqs = _execute_audit_replay_loop(
+        cfg, ticks=ticks, targets=targets, retriever=retriever, decider=decider,
+        exec_config=exec_config, forecasts=forecasts, policy_bundle=policy_bundle,
+        quota_provider=quota_provider, light_event=light_event,
+    )
     return OfflineScheduleSummary(
         orig_session_id=cfg.orig_session_id, clob_host_wired=clob_host,
         probe_enabled=cfg.enable_official_fee_rate_probe, ticks_executed=len(ticks),
         decisions_logged=written["p1"], p17_logged=written["p17"], ordered_count=ordered_cnt,
         p13_valid_frames=loaded.summary.valid_frames, p13_corrupt_lines=len(loaded.summary.corrupt_lines),
-        consumed_frame_seqs=tuple(consumed_seqs),
+        consumed_frame_seqs=consumed_seqs,
     )
 
 

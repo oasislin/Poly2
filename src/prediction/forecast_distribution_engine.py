@@ -681,6 +681,32 @@ class IntegerGridDiscretizer:
         )
 
 
+def _extract_p11_instant_obs(
+    selected: Optional[StationDayState],
+) -> Tuple[Optional[float], Optional[datetime], Optional[str]]:
+    if selected is None:
+        return None, None, None
+    obs_temp_f = float(selected.latest_instant_temp_f) if selected.latest_instant_temp_f is not None else None
+    obs_ts_utc = (
+        ensure_utc_datetime(selected.latest_obs_utc, field_name="p11.latest_obs_utc")
+        if selected.latest_obs_utc is not None
+        else None
+    )
+    obs_source = str(selected.oracle_source_tier) if selected.oracle_source_tier else None
+    return obs_temp_f, obs_ts_utc, obs_source
+
+
+def _compute_p5_forecast_id(
+    code: str, target_date: date, target_type: TargetType, issue_ts: datetime,
+    model_hash: str, gefs_lead_hours: int, is_bridge_active: bool, m_now_int_f: Optional[int],
+) -> str:
+    forecast_key = "|".join([
+        code, target_date.isoformat(), target_type, issue_ts.isoformat(), model_hash,
+        str(gefs_lead_hours), "BRIDGE" if is_bridge_active else "PRIOR", str(m_now_int_f),
+    ])
+    return str(uuid.uuid5(_FORECAST_ID_NAMESPACE, forecast_key))
+
+
 class ForecastDistributionEngine:
     """End-to-end M2 engine producing self-certified `P5 ForecastDistributionSnapshot v1.1`."""
 
@@ -739,21 +765,7 @@ class ForecastDistributionEngine:
         )
         m_exact, m_int_f, x_t = _extract_p11_target_observables(selected, target_type)
         m_now_f = float(m_exact) if m_exact is not None else None
-        obs_temp_f = (
-            float(selected.latest_instant_temp_f)
-            if (selected is not None and selected.latest_instant_temp_f is not None)
-            else None
-        )
-        obs_ts_utc = (
-            ensure_utc_datetime(selected.latest_obs_utc, field_name="p11.latest_obs_utc")
-            if (selected is not None and selected.latest_obs_utc is not None)
-            else None
-        )
-        obs_source = (
-            str(selected.oracle_source_tier)
-            if (selected is not None and selected.oracle_source_tier)
-            else None
-        )
+        obs_temp_f, obs_ts_utc, obs_source = _extract_p11_instant_obs(selected)
         oracle_ok = bool(selected.oracle_compliant) if selected is not None else True
         bridge_allowed = bool(selected is not None and oracle_ok and fresh and m_now_f is not None and m_int_f is not None)
         bridge_out = self._bridge.build(
@@ -776,57 +788,31 @@ class ForecastDistributionEngine:
 
     @staticmethod
     def _assemble_snapshot(
-        code: str,
-        target_date: date,
-        target_type: TargetType,
-        issue_ts: datetime,
-        close_ts: datetime,
-        gefs_lead_hours: int,
-        model_hash: str,
-        prior: PriorAffineFamilyModel,
-        m_now_f: Optional[float],
-        m_now_int_f: Optional[int],
-        oracle_ok: bool,
-        fresh: bool,
-        bridge_out: HurdleBridgeOutput,
-        bin_probs: Tuple[BinProbV11, ...],
-        p_bin_stay: Optional[float],
-        sigma_delta_sample: float,
-        *,
-        obs_temp_f: Optional[float] = None,
-        obs_ts_utc: Optional[datetime] = None,
+        code: str, target_date: date, target_type: TargetType, issue_ts: datetime,
+        close_ts: datetime, gefs_lead_hours: int, model_hash: str, prior: PriorAffineFamilyModel,
+        m_now_f: Optional[float], m_now_int_f: Optional[int], oracle_ok: bool, fresh: bool,
+        bridge_out: HurdleBridgeOutput, bin_probs: Tuple[BinProbV11, ...],
+        p_bin_stay: Optional[float], sigma_delta_sample: float, *,
+        obs_temp_f: Optional[float] = None, obs_ts_utc: Optional[datetime] = None,
         obs_source: Optional[str] = None,
     ) -> ForecastDistributionSnapshotV11:
-        forecast_key = "|".join([
-            code, target_date.isoformat(), target_type, issue_ts.isoformat(), model_hash,
-            str(gefs_lead_hours), "BRIDGE" if bridge_out.is_bridge_active else "PRIOR", str(m_now_int_f),
-        ])
+        forecast_id = _compute_p5_forecast_id(
+            code, target_date, target_type, issue_ts, model_hash,
+            gefs_lead_hours, bridge_out.is_bridge_active, m_now_int_f,
+        )
         return ForecastDistributionSnapshotV11(
-            schema_version="p5.v1.1",
-            forecast_id=str(uuid.uuid5(_FORECAST_ID_NAMESPACE, forecast_key)),
-            issue_ts_utc=issue_ts,
-            station_id=code,
-            target_date=target_date,
-            target_type=target_type,
+            schema_version="p5.v1.1", forecast_id=forecast_id, issue_ts_utc=issue_ts,
+            station_id=code, target_date=target_date, target_type=target_type,
             gefs_lead_hours=int(gefs_lead_hours),
             tau_hours=max(0.0, (close_ts - issue_ts).total_seconds() / 3600.0),
-            settle_close_utc=close_ts,
-            model_hash=model_hash,
-            prior_mu0=prior.mu0,
-            prior_sigma0=prior.sigma0,
-            family=prior.family,
-            m_now_f=m_now_f,
-            m_now_int_f=m_now_int_f,
-            oracle_compliant=oracle_ok,
-            upstream_obs_fresh=fresh,
+            settle_close_utc=close_ts, model_hash=model_hash,
+            prior_mu0=prior.mu0, prior_sigma0=prior.sigma0, family=prior.family,
+            m_now_f=m_now_f, m_now_int_f=m_now_int_f,
+            oracle_compliant=oracle_ok, upstream_obs_fresh=fresh,
             is_bridge_active=bridge_out.is_bridge_active,
-            p_stay_phys=bridge_out.p_stay_phys,
-            p_bin_stay=p_bin_stay,
-            bin_probs=bin_probs,
-            sigma_delta_sample=float(sigma_delta_sample),
-            obs_temp_f=obs_temp_f,
-            obs_ts_utc=obs_ts_utc,
-            obs_source=obs_source,
+            p_stay_phys=bridge_out.p_stay_phys, p_bin_stay=p_bin_stay,
+            bin_probs=bin_probs, sigma_delta_sample=float(sigma_delta_sample),
+            obs_temp_f=obs_temp_f, obs_ts_utc=obs_ts_utc, obs_source=obs_source,
         )
 
 
