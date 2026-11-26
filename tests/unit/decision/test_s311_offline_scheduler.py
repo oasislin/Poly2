@@ -436,14 +436,84 @@ def test_s311_cli_dry_run_plan_and_zero_trading_endpoints_ast_check(tmp_path: Pa
     assert plan["p13_valid_frames"] == 2
     assert plan["planned_ticks"] == 3
 
-    # AST static guard: offline_scheduler.py must never import/call order submission gateways
-    src_path = Path("src/decision/offline_scheduler.py")
-    tree = ast.parse(src_path.read_text(encoding="utf-8"))
+    # AST static guard: offline_scheduler.py & CLI must never import/call order submission gateways
+    # and every function must stay strictly < 50 lines
     forbidden_names = {"ClobGateway", "PaperGateway", "LiveGateway", "submit_order", "place_order", "cancel_order"}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name):
-            assert node.id not in forbidden_names, f"Forbidden trading symbol {node.id} in offline_scheduler.py"
-        elif isinstance(node, ast.Attribute):
-            assert node.attr not in forbidden_names, f"Forbidden trading attr {node.attr} in offline_scheduler.py"
-        elif isinstance(node, ast.alias):
-            assert node.name not in forbidden_names, f"Forbidden trading import {node.name} in offline_scheduler.py"
+    for src_path in (Path("src/decision/offline_scheduler.py"), Path("scripts/run_s311_offline_scheduler.py")):
+        tree = ast.parse(src_path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name):
+                assert node.id not in forbidden_names, f"Forbidden trading symbol {node.id} in {src_path}"
+            elif isinstance(node, ast.Attribute):
+                assert node.attr not in forbidden_names, f"Forbidden trading attr {node.attr} in {src_path}"
+            elif isinstance(node, ast.alias):
+                assert node.name not in forbidden_names, f"Forbidden trading import {node.name} in {src_path}"
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                span = (node.end_lineno or node.lineno) - node.lineno + 1
+                assert span < 50, f"{src_path}:{node.name} span={span} >= 50"
+
+
+def test_s311_cli_all_completed_sessions_watermark_dedup_watch_and_fail_closed(tmp_path: Path) -> None:
+    from scripts.run_s311_offline_scheduler import (
+        discover_completed_p13_sessions,
+        load_watermark,
+        main as cli_main,
+        validate_audit_output_root,
+    )
+
+    t0 = datetime(2026, 11, 25, 12, 0, 0, tzinfo=timezone.utc)
+    rec_root = tmp_path / "market_recordings"
+    s_done = rec_root / "PASSIVE_RECORD" / "2026-11-25" / "rec-20261125T000505Z-done01"
+    s_active = rec_root / "PASSIVE_RECORD" / "2026-11-25" / "rec-20261125T144119Z-active"
+    _write_p13_session(s_done, t0)
+    _write_p13_session(s_active, t0 + timedelta(hours=1))
+    (rec_root / "latest_session.json").write_text(
+        json.dumps({"session_id": s_active.name}), encoding="utf-8"
+    )
+
+    # 1) --all-completed-sessions excludes active pointer session
+    completed = discover_completed_p13_sessions(rec_root)
+    assert completed == (s_done,)
+
+    # 2) Output root isolation rejects docs/audit, src, evidence, and recordings_root
+    with pytest.raises(ValueError, match="isolated"):
+        validate_audit_output_root(rec_root / "nested", rec_root)
+
+    # 3) --execute without real P5/P6 inputs fails closed (exit 2) and does not create audit_root
+    audit_out = tmp_path / "audit_exec_out"
+    rc_blocked = cli_main([
+        "--all-completed-sessions",
+        "--recordings-root", str(rec_root),
+        "--audit-output-root", str(audit_out),
+        "--execute",
+    ])
+    assert rc_blocked == 2
+    assert not audit_out.exists()
+
+    # 4) Periodic --watch-interval-sec with watermark dedup processes ticks once and skips duplicates
+    calls: List[Tuple[str, int]] = []
+
+    def _runner(sess_dir: Path, pending_ticks: Tuple[datetime, ...], _out: Path) -> int:
+        calls.append((sess_dir.name, len(pending_ticks)))
+        return len(pending_ticks)
+
+    sleeps: List[float] = []
+    rc_ok = cli_main(
+        [
+            "--all-completed-sessions",
+            "--recordings-root", str(rec_root),
+            "--audit-output-root", str(audit_out),
+            "--cadence-sec", "30",
+            "--replay-delay-ms", "0",
+            "--execute",
+            "--watch-interval-sec", "5",
+        ],
+        session_runner=_runner,
+        max_watch_cycles=2,
+        sleep_fn=lambda sec: sleeps.append(sec),
+    )
+    assert rc_ok == 0
+    assert calls == [(s_done.name, 3)]  # 2nd cycle deduplicated by watermark
+    assert sleeps == [5.0]
+    wm = load_watermark(audit_out)
+    assert s_done.name in wm and s_active.name not in wm
