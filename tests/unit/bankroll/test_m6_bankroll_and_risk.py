@@ -346,6 +346,7 @@ def test_bankroll_and_decision_ast_function_length_under_50_lines() -> None:
         REPO_ROOT / "src/decision/engine.py",
         REPO_ROOT / "src/decision/offline_scheduler.py",
         REPO_ROOT / "src/prediction/forecast_distribution_engine.py",
+        REPO_ROOT / "src/prediction/live_p5_producer.py",
     ]
     for path in targets:
         tree = ast.parse(path.read_text(encoding="utf-8"))

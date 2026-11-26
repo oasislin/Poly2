@@ -23,12 +23,14 @@ REAL_BOARD = REPO_ROOT / "docs/audit/progress_board.html"
 def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     data = load_task_ledger(REAL_LEDGER)
     assert tuple(m["id"] for m in data["modules"]) == EXPECTED_MODULE_IDS
-    assert len(data["tasks"]) == 32
+    assert len(data["tasks"]) == 33
     assert {t["slice"] for t in data["tasks"]} == {"切片 1", "切片 2", "切片 3", "切片 4"}
 
     by_id = {t["id"]: t for t in data["tasks"]}
     assert by_id["S3-16"]["status"] == "BLOCKED"
     assert "Batch 3" in by_id["S3-16"]["title"]
+    assert by_id["S3-17"]["status"] == "DONE"
+    assert "live_p5_producer" in by_id["S3-17"]["title"]
     assert by_id["S3-05b"]["status"] == "DONE"
     assert by_id["S3-09"]["status"] == "DONE"
     assert by_id["S3-10"]["status"] == "DONE"
@@ -45,7 +47,7 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
     for tid in ALGORITHM_PROTECTED_IDS:
         assert by_id[tid]["acceptance"] != "待架构侧供给"
 
-    assert by_id["S2-01"]["status"] == "READY_TO_LAUNCH"
+    assert by_id["S2-01"]["status"] == "DONE"
     assert "待用户按开关" in by_id["S2-01"]["dependencies_label"]
     assert by_id["S2-07"]["status"] == "DONE"
     assert "2019-SEALED-003" in by_id["S3-03"]["acceptance"]
