@@ -208,6 +208,7 @@ class PolicyParameterLedger:
     scaler_provenance: str = "PROVISIONAL_UNTIL_D6"
     review_interval_days: int = DEFAULT_REVIEW_INTERVAL_DAYS
     replacement_history: Tuple[ParameterReplacementRecord, ...] = ()
+    calibration_archive: Optional[Dict[str, Any]] = None
 
     def __post_init__(self) -> None:
         ensure_utc_datetime(self.signed_at_utc, field_name="ledger.signed_at_utc")
@@ -298,8 +299,20 @@ class PolicyParameterLedger:
             replacement_history=self.replacement_history,
         )
 
+    def with_calibration_archive(self, archive: Mapping[str, Any]) -> "PolicyParameterLedger":
+        """Attach read-only calibration distribution archive (e.g. p25/p50/p75/p90) to ledger."""
+        return PolicyParameterLedger(
+            policy_version=self.policy_version, signed_at_utc=self.signed_at_utc,
+            sigma_delta_frozen=self.sigma_delta_frozen, entries=dict(self.entries),
+            m_floor=self.m_floor, tau_max_h=self.tau_max_h, station_cap_usd=self.station_cap_usd,
+            w_provenance=self.w_provenance, scaler_policy_id=self.scaler_policy_id,
+            scaler_provisional=self.scaler_provisional, scaler_provenance=self.scaler_provenance,
+            review_interval_days=self.review_interval_days,
+            replacement_history=self.replacement_history, calibration_archive=dict(archive),
+        )
+
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        payload: Dict[str, Any] = {
             "policy_version": self.policy_version,
             "signed_at_utc": self.signed_at_utc.isoformat(),
             "sigma_delta_frozen": {
@@ -318,10 +331,14 @@ class PolicyParameterLedger:
             "review_interval_days": self.review_interval_days,
             "replacement_history": [r.to_dict() for r in self.replacement_history],
         }
+        if self.calibration_archive is not None:
+            payload["calibration_archive"] = dict(self.calibration_archive)
+        return payload
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "PolicyParameterLedger":
         sd_raw = payload["sigma_delta_frozen"]
+        arch_raw = payload.get("calibration_archive")
         return cls(
             policy_version=str(payload["policy_version"]),
             signed_at_utc=parse_utc_timestamp(str(payload["signed_at_utc"]), field_name="ledger.signed_at_utc"),
@@ -342,6 +359,7 @@ class PolicyParameterLedger:
             replacement_history=tuple(
                 ParameterReplacementRecord.from_dict(r) for r in payload.get("replacement_history", ())
             ),
+            calibration_archive=dict(arch_raw) if isinstance(arch_raw, Mapping) else None,
         )
 
     def save(self, path: Path) -> Path:

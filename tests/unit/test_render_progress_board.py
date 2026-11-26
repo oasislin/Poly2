@@ -49,11 +49,11 @@ def test_real_ledger_covers_all_modules_slices_and_guardrails() -> None:
 
     assert by_id["S2-01"]["status"] == "DONE"
     assert "待用户按开关" in by_id["S2-01"]["dependencies_label"]
-    assert by_id["S2-02"]["status"] == "PENDING_APPROVAL"
+    assert by_id["S2-02"]["status"] == "DONE"
     assert by_id["S2-07"]["status"] == "DONE"
     assert "2019-SEALED-003" in by_id["S3-03"]["acceptance"]
     assert "2019-12-30T23:55:00Z" in by_id["S3-03"]["acceptance"]
-    assert by_id["S3-08"]["status"] == "BLOCKED"
+    assert by_id["S3-08"]["status"] == "DONE"
     assert by_id["S3-13"]["status"] == "DONE"
 
     assert len(data["mainline_reviews"]) == 1

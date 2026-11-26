@@ -1,0 +1,152 @@
+{
+  "calibration_archive": {
+    "active_track": "YES_ONLY",
+    "dual_merged_reference_not_in_p6": {
+      "depth_gain_median_ratio": 2.0,
+      "p25": 0.0,
+      "p50": 0.031578947368421054,
+      "p75": 0.18044925844251308,
+      "p90": 0.596343405647383,
+      "valid_fills": 9366
+    },
+    "enable_cross_side_split_routing": false,
+    "signed_config_hash_v2": "13e4316407b5585b",
+    "signed_friction_median_exact": 0.07164475764557077,
+    "source_report": "docs/audit/P8-S202-DUAL-TRACK-CALIB_20261126.md",
+    "work_order": "P8-WO-20261126-EXEC15-L2-SIGNOFF",
+    "yes_only_quantiles": {
+      "mean": 0.7830434586176381,
+      "p25": 0.0,
+      "p50": 0.07164475764557077,
+      "p75": 0.3435441370223979,
+      "p90": 1.1493822102862115,
+      "stations_covered": [
+        "KATL",
+        "KDAL",
+        "KLGA",
+        "KMIA",
+        "KORD",
+        "KSEA"
+      ],
+      "valid_fills": 9387
+    }
+  },
+  "entries": {
+    "concurrent_days": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77",
+      "name": "concurrent_days",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": 2
+    },
+    "friction_median": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77 / D-A1",
+      "name": "friction_median",
+      "note": "S2-02 D-A1 empirical P18 book-walk calibration on 0.01-era P13 corpus (9387 YES_ONLY fills / 6 stations): enable_cross_side_split_routing=False -> YES_ONLY median=0.071645 per D-6 \u00a79.2.",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": 0.07164475764557077
+    },
+    "k0_threshold_coef": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77",
+      "name": "k0_threshold_coef",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": 2.0
+    },
+    "p": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77",
+      "name": "p",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": 1.5
+    },
+    "phi_policy": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77",
+      "name": "phi_policy",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": {
+        "k_slope": "0.0",
+        "order_type": "IOC_FAK",
+        "provenance": "P8-CAPITAL-CONFIG v1.0 \u00a77",
+        "rho_0": "0.30",
+        "rho_max": "0.50",
+        "rho_min": "0.10"
+      }
+    },
+    "platform_min_order": {
+      "basis": "FACT-004 / P8-CAPITAL-CONFIG \u00a77",
+      "name": "platform_min_order",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": {
+        "min_notional_usd": 1.0,
+        "min_shares": 5
+      }
+    },
+    "scan_schedule": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77",
+      "name": "scan_schedule",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": {
+        "info_clock_hours": [
+          6.0,
+          3.0,
+          1.0,
+          0.5
+        ],
+        "price_clock_minutes": 45.0
+      }
+    },
+    "w0_intent": {
+      "basis": "P8-CAPITAL-CONFIG \u00a77",
+      "name": "w0_intent",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": 0.1
+    },
+    "yellow_multiplier": {
+      "basis": "P8-D6-POLICY-CLOSURE \u00a7\u516d",
+      "name": "yellow_multiplier",
+      "note": "",
+      "replace_condition": "Monthly manual sign-off",
+      "sample_source": "P8-CAPITAL-CONFIG \u00a77",
+      "value": 0.5
+    }
+  },
+  "m_floor": 0.02,
+  "policy_version": "p6-s202-v1.0",
+  "replacement_history": [
+    {
+      "operator": "OWNER-WEB-20261126",
+      "policy_version": "p6-s202-v1.0",
+      "rationale": "S2-02 D-A1 empirical P18 book-walk calibration on 0.01-era P13 corpus (9387 YES_ONLY fills / 6 stations): enable_cross_side_split_routing=False -> YES_ONLY median=0.071645 per D-6 \u00a79.2.",
+      "signed_ts_utc": "2026-11-26T11:06:22.536437+00:00",
+      "updated_fields": [
+        "friction_median"
+      ]
+    }
+  ],
+  "review_interval_days": 30,
+  "scaler_policy_id": "provisional_identity_v0",
+  "scaler_provenance": "PROVISIONAL_UNTIL_D6",
+  "scaler_provisional": true,
+  "sigma_delta_frozen": {
+    "freeze_cycle_id": "cycle-init",
+    "provenance": "2019_OFFLINE_PRIOR",
+    "value": 0.02
+  },
+  "signed_at_utc": "2026-11-26T11:06:22.536437+00:00",
+  "station_cap_usd": 500.0,
+  "tau_max_h": 24.0,
+  "w_provenance": "P8-CAPITAL-CONFIG v1.1"
+}

@@ -308,3 +308,49 @@ def test_p16_dual_broadcaster_reaches_m4_and_m6_with_typed_reasons_and_a1_isolat
         "LIGHT_LEVEL_APPLIED",
         "TIER_STEP_UP",
     ]
+
+
+def test_signed_production_policy_ledger_loads_issues_p6_and_broadcasts_p16(tmp_path: Path) -> None:
+    """Verify signed `configs/policy_ledger.json` loads cleanly, issues `P6`, and broadcasts `P16`."""
+    from src.calibration.policy_ledger import (
+        P16Broadcaster,
+        PolicyParameterLedger,
+        issue_policy_bundle,
+    )
+
+    repo_root = Path(__file__).resolve().parents[3]
+    ledger_path = repo_root / "configs/policy_ledger.json"
+    ledger = PolicyParameterLedger.load(ledger_path)
+    assert ledger.policy_version == "p6-s202-v1.0"
+    assert ledger.friction_median == pytest.approx(0.07164475764557077)
+    assert ledger.calibration_archive is not None
+    assert ledger.calibration_archive["yes_only_quantiles"]["p90"] == pytest.approx(1.1493822102862115)
+
+    bundle = issue_policy_bundle(ledger, is_overdue=False)
+    assert bundle.config_hash == "13e4316407b5585b"
+    assert bundle.risk_gate.friction_median == pytest.approx(0.07164475764557077)
+    assert bundle.risk_gate.m_threshold == pytest.approx(2.0 * 0.02 + 0.07164475764557077)
+
+    slot = P16SubscriptionSlot()
+    with AsyncAuditLogger(tmp_path / "m7", execution_mode="PAPER") as alog:
+        mgr = BankrollAccountManager(
+            BankrollConfig(
+                session_id="sess-prod-ledger-check",
+                execution_mode="PAPER",
+                policy_version=bundle.policy_version,
+                config_hash=bundle.config_hash,
+                initial_pool_usd=Decimal("2000"),
+                full_deployment=False,
+            ),
+            audit_logger=alog,
+        )
+        broadcaster = P16Broadcaster(m4_slot=slot, m6_bankroll=mgr)
+        ev = broadcaster.broadcast_light_level(
+            event_id="p16-prod-green",
+            level="GREEN",
+            reason="S202_L2_SIGNOFF_VERIFIED",
+            emitted_ts_utc=ledger.signed_at_utc,
+        )
+        alog.flush()
+    assert slot.latest_event == ev
+    assert mgr.snapshot_state().light_status == "GREEN"
