@@ -517,3 +517,100 @@ def test_s311_cli_all_completed_sessions_watermark_dedup_watch_and_fail_closed(t
     assert sleeps == [5.0]
     wm = load_watermark(audit_out)
     assert s_done.name in wm and s_active.name not in wm
+
+
+def test_s311_cli_real_p5_p6_active_session_start_cutoff_and_missing_p5_accounting(tmp_path: Path) -> None:
+    from scripts.run_s311_offline_scheduler import main as cli_main
+    from src.calibration.policy_ledger import PolicyParameterLedger
+    from src.prediction.discrete_bin_engine import BinProbV11
+    from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
+
+    t0 = datetime(2026, 11, 26, 12, 0, 0, tzinfo=timezone.utc)
+    rec_root = tmp_path / "recordings"
+    s_act = rec_root / "PASSIVE_RECORD" / "2026-11-26" / "rec-active-exec16"
+    s_act.mkdir(parents=True)
+    # Historical pre-cutoff frame at t0 (2026-11-25 expired date) + post-cutoff frames at t0+120s (2026-11-25 & 2026-11-26)
+    e_hist, _ = build_p4_v11_stub_envelope(
+        session_id="rec-active-exec16", seq_id=1, frame_seq=1, token_id="tok-25",
+        market_id="mkt-25", condition_id="c25", station_id="KORD", target_date="2026-11-25",
+        bin_label="58-59°F", outcome="YES", regime="two_sided", recv_ts_utc=t0,
+        asks=((0.20, 50.0),), bids=((0.18, 50.0),),
+    )
+    e_25_new, _ = build_p4_v11_stub_envelope(
+        session_id="rec-active-exec16", seq_id=2, frame_seq=2, token_id="tok-25",
+        market_id="mkt-25", condition_id="c25", station_id="KORD", target_date="2026-11-25",
+        bin_label="58-59°F", outcome="YES", regime="two_sided", recv_ts_utc=t0 + timedelta(seconds=120),
+        asks=((0.20, 50.0),), bids=((0.18, 50.0),),
+    )
+    e_26_new, _ = build_p4_v11_stub_envelope(
+        session_id="rec-active-exec16", seq_id=3, frame_seq=3, token_id="tok-26",
+        market_id="mkt-26", condition_id="c26", station_id="KORD", target_date="2026-11-26",
+        bin_label="58-59°F", outcome="YES", regime="two_sided", recv_ts_utc=t0 + timedelta(seconds=120),
+        asks=((0.85, 50.0),), bids=((0.80, 50.0),),
+    )
+    (s_act / "p13_book_stream_20261126.jsonl").write_text(
+        "\n".join(e.to_json_line() for e in (e_hist, e_25_new, e_26_new)) + "\n", encoding="utf-8"
+    )
+    (rec_root / "latest_session.json").write_text(json.dumps({"session_id": s_act.name}), encoding="utf-8")
+
+    # P5 contains ONLY 2026-11-26 (so 2026-11-25 records fail-closed as MISSING_FORECAST)
+    fc_26 = ForecastDistributionSnapshotV11(
+        schema_version="p5.v1.1", forecast_id="fc-kord-26", issue_ts_utc=t0,
+        station_id="KORD", target_date=t0.date(), target_type="TMAX", gefs_lead_hours=24,
+        tau_hours=10.0, settle_close_utc=t0 + timedelta(hours=10), model_hash="mh-1",
+        prior_mu0=58.5, prior_sigma0=2.0, family="NORMAL", m_now_f=None, m_now_int_f=None,
+        oracle_compliant=True, upstream_obs_fresh=True, is_bridge_active=False,
+        p_stay_phys=None, p_bin_stay=None,
+        bin_probs=(
+            BinProbV11("le_57F", "57°F or below", None, 57, 0.25),
+            BinProbV11("58-59F", "58-59°F", 58, 59, 0.55),
+            BinProbV11("ge_60F", "60°F or higher", 60, None, 0.20),
+        ),
+        sigma_delta_sample=0.0,
+    )
+    p5_dir = tmp_path / "live_p5"
+    p5_dir.mkdir()
+    p5_payload = fc_26.to_p17_dict_without_hash(session_id="s317", execution_mode="PAPER", config_hash="s317")
+    p5_payload["forecast_origin"] = "REALTIME_LIVE_PULL"
+    (p5_dir / "p5_live.jsonl").write_text(_sign_jsonl_record(p5_payload) + "\n", encoding="utf-8")
+
+    ledger_path = tmp_path / "policy_ledger.json"
+    PolicyParameterLedger.create_initial_placeholder(
+        policy_version="p6-s202-v1.0",
+        created_ts_utc=t0,
+        sigma_delta_frozen=SigmaDeltaFrozen(0.02, "test", "cyc"),
+        phi_policy=PhiPolicy(Decimal("0.30"), Decimal("0.0"), Decimal("0.10"), Decimal("0.50")),
+        friction_median=0.07164475764557077,
+    ).save(ledger_path)
+
+    audit_out = tmp_path / "audit_logs"
+    sleeps: List[float] = []
+    rc = cli_main(
+        [
+            "--active-session",
+            "--recordings-root", str(rec_root),
+            "--audit-output-root", str(audit_out),
+            "--p5-dir", str(p5_dir),
+            "--policy-ledger-path", str(ledger_path),
+            "--start-from-utc", (t0 + timedelta(seconds=120)).isoformat(),
+            "--cadence-sec", "60",
+            "--replay-delay-ms", "0",
+            "--execute",
+            "--watch-interval-sec", "5",
+        ],
+        max_watch_cycles=2,
+        sleep_fn=sleeps.append,
+    )
+    assert rc == 0
+    assert sleeps == [5.0]
+    p1_lines = next(audit_out.rglob("p1_scan_decisions.jsonl")).read_text(encoding="utf-8").splitlines()
+    p17_lines = next(audit_out.rglob("p17_forecast_snapshots.jsonl")).read_text(encoding="utf-8").splitlines()
+    assert len(p17_lines) == 1  # deduplicated across watch cycles
+    assert len(p1_lines) == 2   # only 1 post-cutoff tick x 2 targets (2026-11-25 & 2026-11-26)
+    recs = [json.loads(line) for line in p1_lines]
+    assert all(verify_record_sha256_line(line) for line in p1_lines)
+    assert all(r["capture_replay_mode"] == "REPLAY_P13" and r["fee_rate_official_raw"] is None for r in recs)
+    by_date = {r["target_date"]: r for r in recs}
+    assert by_date["2026-11-25"]["decision_outcome"] == "BLOCKED_NO_BOOK_DEPTH"
+    assert by_date["2026-11-25"]["degradation_reason"] == "MISSING_FORECAST"
+    assert by_date["2026-11-26"]["decision_outcome"] == "SKIP_EDGE_BELOW_M"

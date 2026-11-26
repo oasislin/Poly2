@@ -21,7 +21,10 @@ from src.prediction.live_p5_producer import (
     SUPPORTED_LIVE_STATIONS,
     LiveP5Producer,
     LiveP5ProducerConfig,
+    discover_p13_market_ladders,
     kelvin_to_fahrenheit,
+    load_p5_jsonl_snapshots,
+    parse_polymarket_bin_label,
     resolve_latest_gefs_cycle_utc,
     serialize_p5_jsonl_record,
     write_p5_jsonl,
@@ -142,15 +145,63 @@ def test_kelvin_conversion_and_cycle_resolution() -> None:
 
 
 def test_live_p5_producer_ast_function_length_under_50_lines() -> None:
-    target = REPO_ROOT / "src/prediction/live_p5_producer.py"
-    tree = ast.parse(target.read_text(encoding="utf-8"))
-    ge_50 = [
-        (node.name, (node.end_lineno or node.lineno) - node.lineno + 1)
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and ((node.end_lineno or node.lineno) - node.lineno + 1) >= 50
+    for rel in ("src/prediction/live_p5_producer.py", "scripts/run_live_p5_producer.py"):
+        target = REPO_ROOT / rel
+        tree = ast.parse(target.read_text(encoding="utf-8"))
+        ge_50 = [
+            (node.name, (node.end_lineno or node.lineno) - node.lineno + 1)
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and ((node.end_lineno or node.lineno) - node.lineno + 1) >= 50
+        ]
+        assert ge_50 == [], f"{rel} has functions >= 50 lines: {ge_50}"
+
+
+def test_polymarket_bin_label_parsing_ladder_discovery_and_p5_roundtrip(tmp_path: Path) -> None:
+    from src.execution.stub_generator import build_p4_v11_stub_envelope
+
+    b0 = parse_polymarket_bin_label("33°F or below")
+    b1 = parse_polymarket_bin_label("34-35°F")
+    b2 = parse_polymarket_bin_label("36°F or higher")
+    assert (b0.bin_id, b0.lower_int_f, b0.upper_int_f) == ("le_33F", None, 33)
+    assert (b1.bin_id, b1.lower_int_f, b1.upper_int_f) == ("34-35F", 34, 35)
+    assert (b2.bin_id, b2.lower_int_f, b2.upper_int_f) == ("ge_36F", 36, None)
+
+    rec_root = tmp_path / "recordings"
+    sess = rec_root / "PASSIVE_RECORD" / "2026-11-26" / "rec-test-active"
+    sess.mkdir(parents=True)
+    t0 = datetime(2026, 11, 26, 12, 0, 0, tzinfo=timezone.utc)
+    envs = [
+        build_p4_v11_stub_envelope(
+            session_id="rec-test-active", seq_id=i + 1, frame_seq=i + 1,
+            token_id=f"tok-{i}", market_id=f"mkt-{i}", condition_id="c1",
+            station_id="KORD", target_date="2026-11-26", bin_label=lbl,
+            outcome="YES", regime="two_sided", recv_ts_utc=t0,
+            asks=((0.50, 10.0),), bids=((0.48, 10.0),),
+        )[0].to_json_line()
+        for i, lbl in enumerate(("33°F or below", "34-35°F", "36°F or higher"))
     ]
-    assert ge_50 == []
+    (sess / "p13_book_stream_20261126.jsonl").write_text("\n".join(envs) + "\n", encoding="utf-8")
+    (rec_root / "latest_session.json").write_text(json.dumps({"session_id": "rec-test-active"}), encoding="utf-8")
+    ladders = discover_p13_market_ladders(rec_root, active_only=True)
+    assert [b.bin_id for b in ladders[("KORD", "2026-11-26")]] == ["le_33F", "34-35F", "ge_36F"]
+
+    issue_ts = datetime(2026, 11, 26, 15, 0, 0, tzinfo=timezone.utc)
+    producer = LiveP5Producer(
+        config=LiveP5ProducerConfig(stations=("KORD",), gefs_members=(0, 1, 2, 3, 4)),
+        gefs_fetcher=_FakeGefsFetcher({"KORD": 35.0}),
+        metar_adapter=LiveAwcMetarAdapter(http_get=_make_mock_awc_http(issue_ts), clock_utc=lambda: issue_ts),
+    )
+    rec = producer.produce_station_snapshot(
+        station_id="KORD", target_date=date(2026, 11, 26), issue_ts_utc=issue_ts,
+        cycle_utc=datetime(2026, 11, 26, 6, 0, 0, tzinfo=timezone.utc),
+        bins=ladders[("KORD", "2026-11-26")],
+    )
+    out = write_p5_jsonl([rec], tmp_path / "p5_out" / "p5.jsonl", session_id="s-rt")
+    loaded = load_p5_jsonl_snapshots(tmp_path / "p5_out")
+    assert len(loaded) == 1
+    assert loaded[0].forecast_id == rec.snapshot.forecast_id
+    assert [bp.bin_id for bp in loaded[0].bin_probs] == ["le_33F", "34-35F", "ge_36F"]
 
 
 @pytest.mark.skipif(
@@ -161,7 +212,7 @@ def test_network_s317_live_p5_producer_smoke(tmp_path: Path) -> None:
     issue_ts = datetime.now(timezone.utc)
     target = issue_ts.date()
     producer = LiveP5Producer(
-        config=LiveP5ProducerConfig(stations=("KORD",), gefs_members=(0, 1)),
+        config=LiveP5ProducerConfig(stations=("KORD",), gefs_members=(0, 1, 2, 3, 4)),
     )
     rec = producer.produce_station_snapshot(
         station_id="KORD",
@@ -170,7 +221,7 @@ def test_network_s317_live_p5_producer_smoke(tmp_path: Path) -> None:
         lead_hours=24,
     )
     assert rec.forecast_origin == "REALTIME_LIVE_PULL"
+    assert rec.gefs_summary.member_count == 5
     assert rec.invariant_report.all_passed is True
-    line = serialize_p5_jsonl_record(rec, session_id="s317-net-smoke")
-    assert verify_p17_json_line(line) is True
-    assert not (REPO_ROOT / "data/audit_logs").exists()
+    out_file = write_p5_jsonl([rec], tmp_path / "net_smoke.jsonl", session_id="s317-net-smoke")
+    assert verify_p17_json_line(out_file.read_text(encoding="utf-8").strip()) is True

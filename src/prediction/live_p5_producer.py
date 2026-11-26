@@ -18,9 +18,12 @@ from datetime import date, datetime, timedelta, timezone
 import json
 import math
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Literal, Mapping, Optional, Protocol, Sequence, Tuple
 import numpy as np
 
+from src.audit.p10_reader import CorruptLineRecord, read_verified_jsonl_file
+from src.audit.p13_reader import load_p13_session_readonly
 from src.contract.parameter_contract import AUTHORIZED_LEAD_HOURS
 from src.data_acquisition.gefs_fetcher import GEFSFetcher
 from src.data_acquisition.settlement_metar_stream import (
@@ -35,7 +38,12 @@ from src.data_acquisition.settlement_metar_stream import (
 )
 from src.data_processing.constants import STATION_METADATA
 from src.modeling.registry import ModelRegistry
-from src.prediction.discrete_bin_engine import IntegerBinSpec, build_integer_bin_ladder
+from src.prediction.discrete_bin_engine import (
+    BinProbV11,
+    IntegerBinSpec,
+    build_integer_bin_ladder,
+    validate_contiguous_bin_ladder,
+)
 from src.prediction.forecast_distribution_engine import (
     CalibrationJsonEtaProvider,
     ConstantEtaProvider,
@@ -46,8 +54,9 @@ from src.prediction.forecast_distribution_engine import (
     P5InvariantReport,
     PriorAffineFamilyModel,
     TargetType,
+    verify_p17_json_line,
 )
-from src.utils.causal_utils import compute_record_sha256, ensure_utc_datetime
+from src.utils.causal_utils import compute_record_sha256, ensure_utc_datetime, parse_utc_timestamp
 
 SUPPORTED_LIVE_STATIONS: Tuple[str, ...] = ("KORD", "KMIA", "KLGA", "KATL", "KDAL", "KSEA")
 DEFAULT_GEFS_MEMBERS: Tuple[int, ...] = (0, 1, 2, 3, 4)
@@ -488,3 +497,130 @@ class LiveP5Producer:
             )
             for st in selected
         ]
+
+
+_RE_BIN_BELOW = re.compile(r"^(?:<=)?\s*(-?\d+)\s*°?F(?:\s+or\s+below)?$", re.IGNORECASE)
+_RE_BIN_ABOVE = re.compile(r"^(?:>=)?\s*(-?\d+)\s*°?F(?:\s+or\s+(?:higher|above))?$", re.IGNORECASE)
+_RE_BIN_RANGE = re.compile(r"^(-?\d+)\s*-\s*(-?\d+)\s*°?F$", re.IGNORECASE)
+
+
+def parse_polymarket_bin_label(bin_label: str) -> IntegerBinSpec:
+    """Parse Polymarket integer temperature label (e.g. `'33°F or below'`, `'34-35°F'`) into `IntegerBinSpec`."""
+    raw = bin_label.strip()
+    if raw.startswith("<=") or raw.lower().endswith("or below"):
+        m_low = _RE_BIN_BELOW.match(raw)
+        if m_low:
+            hi = int(m_low.group(1))
+            return IntegerBinSpec(f"le_{hi}F", raw, None, hi)
+    if raw.startswith(">=") or raw.lower().endswith(("or higher", "or above")):
+        m_hi = _RE_BIN_ABOVE.match(raw)
+        if m_hi:
+            lo = int(m_hi.group(1))
+            return IntegerBinSpec(f"ge_{lo}F", raw, lo, None)
+    m_rng = _RE_BIN_RANGE.match(raw)
+    if m_rng:
+        lo, hi = int(m_rng.group(1)), int(m_rng.group(2))
+        bid = f"{lo}F" if lo == hi else f"{lo}-{hi}F"
+        return IntegerBinSpec(bid, raw, lo, hi)
+    m_single = re.match(r"^(-?\d+)\s*°?F$", raw, re.IGNORECASE)
+    if m_single:
+        val = int(m_single.group(1))
+        return IntegerBinSpec(f"{val}F", raw, val, val)
+    raise ValueError(f"Unrecognized Polymarket temperature bin_label: {bin_label!r}")
+
+
+def _resolve_ladder_session_dir(
+    recordings_root: Path, session_dir: Optional[Path], active_only: bool
+) -> Optional[Path]:
+    if session_dir is not None:
+        return Path(session_dir)
+    if not active_only:
+        return None
+    ptr = Path(recordings_root) / "latest_session.json"
+    if not ptr.exists():
+        return None
+    sid = json.loads(ptr.read_text(encoding="utf-8")).get("session_id")
+    if not sid:
+        return None
+    matches = list((Path(recordings_root) / "PASSIVE_RECORD").rglob(str(sid)))
+    return matches[0] if matches else None
+
+
+def discover_p13_market_ladders(
+    recordings_root: Path = Path("data/market_recordings"),
+    *,
+    session_dir: Optional[Path] = None,
+    active_only: bool = True,
+) -> Dict[Tuple[str, str], Tuple[IntegerBinSpec, ...]]:
+    """Discover and validate contiguous `IntegerBinSpec` ladders per `(station_id, target_date)`."""
+    target_dir = _resolve_ladder_session_dir(recordings_root, session_dir, active_only)
+    if target_dir is None or not target_dir.exists():
+        return {}
+    loaded = load_p13_session_readonly(target_dir)
+    grouped: Dict[Tuple[str, str], set[str]] = {}
+    for env in loaded.envelopes:
+        grouped.setdefault((env.station_id, env.target_date), set()).add(env.bin_label)
+    out: Dict[Tuple[str, str], Tuple[IntegerBinSpec, ...]] = {}
+    for key, labels in sorted(grouped.items()):
+        specs = sorted(
+            (parse_polymarket_bin_label(lbl) for lbl in labels),
+            key=lambda b: (0, b.upper_int_f or 0) if b.lower_int_f is None else ((2, b.lower_int_f) if b.upper_int_f is None else (1, b.lower_int_f)),
+        )
+        validate_contiguous_bin_ladder(specs)
+        out[key] = tuple(specs)
+    return out
+
+
+def deserialize_p5_jsonl_record(raw_line: str) -> Tuple[ForecastDistributionSnapshotV11, str]:
+    """Verify `record_sha256` and deserialize one `p17.v3` JSONL line back to `P5 v1.1` + `forecast_origin`."""
+    if not verify_p17_json_line(raw_line):
+        raise ValueError("P5/P17 JSONL record failed record_sha256 integrity verification")
+    row = json.loads(raw_line)
+    bins = tuple(
+        BinProbV11(
+            bin_id=str(b["bin_id"]), label=str(b["label"]),
+            lower_int_f=b["lower_int_f"], upper_int_f=b["upper_int_f"], p_model=float(b["p_model"]),
+        )
+        for b in row["bin_probs"]
+    )
+    snap = ForecastDistributionSnapshotV11(
+        schema_version=str(row["schema_version"]), forecast_id=str(row["forecast_id"]),
+        issue_ts_utc=parse_utc_timestamp(str(row["issue_ts_utc"]), field_name="p5.issue_ts_utc"),
+        station_id=str(row["station_id"]), target_date=date.fromisoformat(str(row["target_date"])),
+        target_type=row["target_type"], gefs_lead_hours=int(row["gefs_lead_hours"]),
+        tau_hours=float(row["tau_hours"]),
+        settle_close_utc=parse_utc_timestamp(str(row["settle_close_utc"]), field_name="p5.settle_close_utc"),
+        model_hash=str(row["model_hash"]), prior_mu0=float(row["prior_mu0"]),
+        prior_sigma0=float(row["prior_sigma0"]), family=row["family"],
+        m_now_f=row.get("m_now_f"), m_now_int_f=row.get("m_now_int_f"),
+        oracle_compliant=bool(row["oracle_compliant"]), upstream_obs_fresh=bool(row["upstream_obs_fresh"]),
+        is_bridge_active=bool(row["is_bridge_active"]),
+        p_stay_phys=row.get("p_stay_phys"), p_bin_stay=row.get("p_bin_stay"),
+        bin_probs=bins, sigma_delta_sample=float(row["sigma_delta_sample"]),
+        obs_temp_f=row.get("obs_temp_f"),
+        obs_ts_utc=parse_utc_timestamp(str(row["obs_ts_utc"]), field_name="p5.obs_ts_utc") if row.get("obs_ts_utc") else None,
+        obs_source=row.get("obs_source"),
+    )
+    return snap, str(row.get("forecast_origin") or "UNKNOWN")
+
+
+def load_p5_jsonl_snapshots(
+    p5_path: Path,
+    *,
+    forecast_origin_filter: Optional[str] = DEFAULT_FORECAST_ORIGIN,
+) -> Tuple[ForecastDistributionSnapshotV11, ...]:
+    """Load verified `P5` snapshots from a `.jsonl` file or directory, deduplicated by `forecast_id`."""
+    target = Path(p5_path)
+    files = [target] if target.is_file() else (sorted(target.glob("*.jsonl")) if target.is_dir() else [])
+    by_id: Dict[str, ForecastDistributionSnapshotV11] = {}
+    for fp in files:
+        res = read_verified_jsonl_file(fp, verify_sha256=True)
+        for idx, rec in enumerate(res.records, start=1):
+            raw = json.dumps(rec, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            snap, origin = deserialize_p5_jsonl_record(raw)
+            if forecast_origin_filter and origin != forecast_origin_filter:
+                continue
+            by_id[snap.forecast_id] = snap
+        if res.corrupt_lines:
+            raise ValueError(f"Corrupt P5 records in {fp}: {len(res.corrupt_lines)}")
+    return tuple(sorted(by_id.values(), key=lambda s: (s.issue_ts_utc, s.station_id, s.target_date)))
