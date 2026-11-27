@@ -4,7 +4,7 @@
 - **法定锚点**：
   - [`项目方案 (v3.0) §8.2–§8.4`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策)（含 `C3` 协议联动铁律）
   - [`P8-T2-M7-LOGGING v1.0 §2.6 & §4`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#26-p13-marketbookrecordenvelopem3--m7--s1-05-与-c3-锚点)
-  - [`P8-T4-M4M5-INTERFACE v1.0 §1.2, §2.2–2.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v11--2026-11-21-对齐-decimal-域)
+  - [`P8-T4-M4M5-INTERFACE v1.0 §1.2, §2.2–2.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v11--2026-11-21-对齐-decimal-域)
   - [`P8-T8-ALGO4-DESIGN v0.3 §3–§4`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md#4-s3-05--m5-执行器ρedge-引-p2全程-decimal-与-p18-保守撮合)
 - **文件增殖判据核验（[`AGENTS.md`](../../AGENTS.md)）**：本批工作同时覆盖已落地之 `M3` 采集器 `P4 v1.1 / P13` 协议修正（工单 1–4）与经 `2026-11-21` 开工批复落地之 `M4/M5` `No` 侧跨视图升级暨 `D-6` 合并视图输入（工单 5）。既不可将 `No` 侧跨视图工程规格混入 [`P8-T8-ALGO4-DESIGN v0.3`](P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md)，亦不适合由单边日志规格 [`P8-T2-M7-LOGGING`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md) 承载执行撮合与 `split/merge` 经济等价设计，故按判据合规单独立档。
 - **边界声明（已对齐 `2026-11-21` 工单 5 实施批）**：**`§1–§2` 对应已落盘之 `M3` 采集与协议守卫口径；`§3` 对应经批复并已于 `src/execution/`、`src/decision/` 落地桩验证之 `M4/M5` 与 `DualSideBookPair` 实现（`LIVE` 实盘交叉拆分仍由 `enable_cross_side_split_routing=False` 门控）；全程严守 `F-2` 锁定区（`src/pricing/penetration_probe.py` / `src/pricing/edge_math.py`）零修改。**
@@ -42,7 +42,7 @@
 ## §2 尾桶单侧盘口修复与 `P4 v1.1 / P13 / M5` 对齐定案（工单 3）
 
 ### 2.1 对照 `P13` Schema 口径定案：选用 `payload.single_side`，严禁复用 `gap_reason`
-- **对照依据**：[`P8-T2-M7-LOGGING v1.0 §2.6`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#L148-L149) 定义 `gap_detected: bool` / `gap_reason: Optional[str]` 专用于**传输与采集连续性缺失**；[`P8-T4-M4M5-INTERFACE v1.0 §2.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#L90) 规定 `P18` 回放窗口 `(decision_seq_id, F*.seq_id]` 内**只要存在任意 `gap_detected == True` 帧即强制熔断拒单 `PAPER_MATCH_ABORTED_GAP`**。
+- **对照依据**：[`P8-T2-M7-LOGGING v1.0 §2.6`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#L148-L149) 定义 `gap_detected: bool` / `gap_reason: Optional[str]` 专用于**传输与采集连续性缺失**；[`P8-T4-M4M5-INTERFACE v1.0 §2.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#L90) 规定 `P18` 回放窗口 `(decision_seq_id, F*.seq_id]` 内**只要存在任意 `gap_detected == True` 帧即强制熔断拒单 `PAPER_MATCH_ABORTED_GAP`**。
 - **实盘反证**：`2026-11-21` 在盘统计显示 `KLGA / KATL / KSEA / KDAL` 等正常盘面中约 4–10 个档位常态为 `bids=[]`（`ask_only`）、尾端 1 个档位常态为 `asks=[]`（`bid_only`）。若将单侧状态写入 `gap_reason` 并置 `gap_detected=True`，等同将正常流动盘面污染为“录盘断流”，导致 `P18` 假盘撮合大面积误熔断。
 - **正式口径**：
   1. `P13` 信封层 `gap_detected / gap_reason` **严格维持纯粹传输/采集缺口语义**；

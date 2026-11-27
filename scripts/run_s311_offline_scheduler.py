@@ -20,17 +20,20 @@ if str(_REPO_ROOT) not in sys.path:
 from src.audit.p13_reader import load_p13_session_readonly
 from src.bankroll.manager import BankrollAccountManager
 from src.bankroll.models import BankrollConfig
+from src.bankroll.recovery import recover_bankroll_and_claims_from_audit
 from src.calibration.policy_ledger import PolicyParameterLedger, issue_policy_bundle
 from src.data_acquisition.settlement_metar_stream import LiveAwcMetarAdapter
 from src.decision.offline_scheduler import (
     OfflineScheduleTarget,
     OfflineSchedulerConfig,
+    _AdaptiveTargetGate,
+    _P1NoDepthThrottle,
     generate_synthetic_clock_ticks,
     run_s311_offline_schedule,
 )
 from src.settlement.m9_settler import MarketPositionClaim
 from src.execution.clob_gateway import DEFAULT_GATEWAY_CONFIG_PATH, load_gateway_safety_config
-from src.execution.executor import TradingExecutionConfig
+from src.execution.executor import ReplayMatcher, TradingExecutionConfig
 from src.prediction.live_p5_producer import load_p5_jsonl_snapshots, parse_polymarket_bin_label
 from src.utils.causal_utils import ensure_utc_datetime, parse_utc_timestamp
 
@@ -197,8 +200,22 @@ def _build_real_session_runner(
         ),
         p19_sink=lambda ev: sink_ref[0](ev) if sink_ref[0] is not None else None,
     )
-    seen_p17, settled_p9 = _load_existing_p17_and_p9_keys(audit_root)
-    return _make_runner_fn(args, p5_dir, policy_bundle, exec_cfg, quota_mgr, seen_p17, settled_p9, sink_ref, run_stats)
+    recovered = recover_bankroll_and_claims_from_audit(audit_root, execution_mode=safety.execution_mode)
+    quota_mgr.restore_from_audit_history(
+        open_held_by_market=recovered.open_held_by_market,
+        open_fee_by_market=recovered.open_fee_by_market,
+        total_fee_paid_usd=recovered.total_fee_paid_usd,
+        realized_pnl_by_station=recovered.realized_pnl_by_station,
+        settled_attempt_ids=recovered.settled_attempt_ids,
+        settled_p15_ids=recovered.settled_p15_ids,
+        tier_pool_usd=recovered.tier_pool_usd,
+        light_status=recovered.light_status,
+    )
+    return _make_runner_fn(
+        args, p5_dir, policy_bundle, exec_cfg, quota_mgr,
+        recovered.seen_p17_ids, recovered.settled_p9_keys, sink_ref, run_stats,
+        open_claims=recovered.open_claims,
+    )
 
 
 def _make_runner_fn(
@@ -206,26 +223,34 @@ def _make_runner_fn(
     exec_cfg: TradingExecutionConfig, quota_mgr: BankrollAccountManager,
     seen_p17: Set[str], settled_p9: Set[Tuple[str, str, str]],
     sink_ref: List[Optional[Callable[[Any], None]]], run_stats: Dict[str, Any],
+    *,
+    open_claims: Optional[Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim]]] = None,
 ) -> Callable[[Path, Tuple[datetime, ...], Path], int]:
     metar_src = LiveAwcMetarAdapter()
-    claims: Dict[Tuple[str, str, str], MarketPositionClaim] = {}
+    claims: Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim]] = open_claims if open_claims is not None else {}
+    hb_sec = float(getattr(args, "p1_no_depth_heartbeat_sec", 900.0))
+    p1_throttle = _P1NoDepthThrottle(hb_sec) if hb_sec > 0 else None
+    allow_resting = bool(getattr(args, "allow_resting_book_fallback", True))
+    use_adaptive = bool(getattr(args, "enable_adaptive_event_gate", True))
+    matcher = ReplayMatcher(exec_cfg, allow_resting_book_fallback=allow_resting) if getattr(args, "enable_p18_matching", True) else None
+    adaptive_gate = _AdaptiveTargetGate() if use_adaptive else None
 
     def _runner(sess_dir: Path, pending_ticks: Tuple[datetime, ...], out_root: Path) -> int:
         targets = discover_p13_schedule_targets(sess_dir)
-        all_fc = load_p5_jsonl_snapshots(p5_dir)
-        causal_fc = [fc for fc in all_fc if fc.issue_ts_utc <= pending_ticks[-1]]
+        causal_fc = [fc for fc in load_p5_jsonl_snapshots(p5_dir) if fc.issue_ts_utc <= pending_ticks[-1]]
         cfg = OfflineSchedulerConfig(
             p13_session_dir=sess_dir, audit_output_root=out_root, orig_session_id=sess_dir.name,
-            safety_config_path=args.safety_config, cadence_sec=args.cadence_sec,
-            replay_delay_ms=args.replay_delay_ms, enable_official_fee_rate_probe=False,
-            enable_p18_matching=bool(getattr(args, "enable_p18_matching", True)),
+            safety_config_path=args.safety_config, cadence_sec=args.cadence_sec, replay_delay_ms=args.replay_delay_ms,
+            enable_official_fee_rate_probe=False, enable_p18_matching=bool(getattr(args, "enable_p18_matching", True)),
             enable_m9_settlement=bool(getattr(args, "enable_m9_settlement", True)),
+            p1_no_depth_heartbeat_sec=hb_sec, allow_resting_book_fallback=allow_resting, enable_adaptive_event_gate=use_adaptive,
         )
         summary = run_s311_offline_schedule(
-            cfg, exec_config=exec_cfg, policy_bundle=policy_bundle, forecasts=causal_fc,
-            targets=targets, quota_provider=quota_mgr, clock_ticks=pending_ticks,
-            p17_forecast_ids_to_skip=seen_p17, metar_source=metar_src, settled_keys=settled_p9,
-            open_claims=claims, p19_sink_setter=lambda fn: sink_ref.__setitem__(0, fn),
+            cfg, exec_config=exec_cfg, policy_bundle=policy_bundle, forecasts=causal_fc, targets=targets,
+            quota_provider=quota_mgr, clock_ticks=pending_ticks, p17_forecast_ids_to_skip=seen_p17,
+            metar_source=metar_src, settled_keys=settled_p9, open_claims=claims,
+            p19_sink_setter=lambda fn: sink_ref.__setitem__(0, fn), p1_throttle=p1_throttle,
+            matcher=matcher, adaptive_gate=adaptive_gate,
         )
         seen_p17.update(fc.forecast_id for fc in causal_fc)
         for key, cnt in summary.outcome_counts:
@@ -319,6 +344,11 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--enable-p18-matching", action="store_true", default=True)
     parser.add_argument("--enable-m9-settlement", action="store_true", default=True)
     parser.add_argument("--watch-interval-sec", type=float, default=None)
+    parser.add_argument("--p1-no-depth-heartbeat-sec", type=float, default=900.0)
+    parser.add_argument("--allow-resting-book-fallback", dest="allow_resting_book_fallback", action="store_true", default=True)
+    parser.add_argument("--no-resting-book-fallback", dest="allow_resting_book_fallback", action="store_false")
+    parser.add_argument("--enable-adaptive-event-gate", dest="enable_adaptive_event_gate", action="store_true", default=True)
+    parser.add_argument("--no-adaptive-event-gate", dest="enable_adaptive_event_gate", action="store_false")
     return parser.parse_args(argv)
 
 

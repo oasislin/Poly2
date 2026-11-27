@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+import gzip
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Mapping, Optional, Tuple
@@ -86,15 +87,29 @@ class P10SessionView:
     p9_events: Tuple[Dict[str, Any], ...] = ()
 
 
+def _open_jsonl_readonly(path: Path):
+    if path.suffix == ".gz":
+        return gzip.open(path, "rt", encoding="utf-8")
+    return path.open("r", encoding="utf-8")
+
+
+def _resolve_stream_file(date_dir: Path, fname: str) -> Path:
+    plain = date_dir / fname
+    if plain.exists():
+        return plain
+    gz = date_dir / f"{fname}.gz"
+    return gz if gz.exists() else plain
+
+
 def read_verified_jsonl_file(path: Path, *, verify_sha256: bool = True) -> JsonlStreamReadResult:
-    """Strictly read-only JSONL scanner skipping unterminated tails and quarantining corrupt lines."""
+    """Strictly read-only JSONL(.gz) scanner skipping unterminated tails and quarantining corrupt lines."""
     records: List[Dict[str, Any]] = []
     corrupt: List[CorruptLineRecord] = []
     skipped_tail = 0
     if not path.exists():
         return JsonlStreamReadResult((), 0, (), 0)
 
-    with path.open("r", encoding="utf-8") as fh:
+    with _open_jsonl_readonly(path) as fh:
         for line_no, raw in enumerate(fh, start=1):
             if not raw.endswith("\n"):
                 skipped_tail += 1
@@ -153,7 +168,7 @@ def _read_all_mode_streams(
     for stream, fname in STREAM_FILENAMES.items():
         matched: List[Dict[str, Any]] = []
         for ddir in date_dirs:
-            res = read_verified_jsonl_file(ddir / fname, verify_sha256=True)
+            res = read_verified_jsonl_file(_resolve_stream_file(ddir, fname), verify_sha256=True)
             tail_cnt += res.partial_tail_skipped_lines
             corrupts.extend(res.corrupt_lines)
             matched.extend(r for r in res.records if _matches_query(r, query))

@@ -1,6 +1,6 @@
 # P8-ALGO-AUDIT-CHK-01：算法链路与 S_conf 独立性复核报告
 
-> ⚠️ **历史快照（只读留档 · 2026-11-22 标定）**：本文档反映 **[2026-11-06 前-`α` 阶段《项目方案 v2.8》+ `ADR-0019` 链路之一次性独立审计产出]**，所审 `S_conf / x_ece / σ*` 链路已被 **`post-α` 架构**（[`项目方案 (v3.0) §8`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md)）整体取代，且不再承担日常活状态更新。依据《项目编号与命名规范 v1.1 §8.1》满足全部三项判据并冻结留档——**严禁回改原正文、严禁删除或移动路径**。当前实时权威状态与现行门限额制度请跳转：[`P8-PROJECT-TASKS_全量任务分解台账_v1.0.md`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md)、[`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 与 [`P8-T4-M4M5-INTERFACE v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md)。
+> ⚠️ **历史快照（只读留档 · 2026-11-22 标定）**：本文档反映 **[2026-11-06 前-`α` 阶段《项目方案 v2.8》+ `ADR-0019` 链路之一次性独立审计产出]**，所审 `S_conf / x_ece / σ*` 链路已被 **`post-α` 架构**（[`项目方案 (v3.0) §8`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md)）整体取代，且不再承担日常活状态更新。依据《项目编号与命名规范 v1.1 §8.1》满足全部三项判据并冻结留档——**严禁回改原正文、严禁删除或移动路径**。当前实时权威状态与现行门限额制度请跳转：[`P8-PROJECT-TASKS_全量任务分解台账.md`](P8-PROJECT-TASKS_全量任务分解台账.md)、[`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 与 [`P8-T4-M4M5-INTERFACE v1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md)。
 
 > **单据编号**：`P8-ALGO-AUDIT-CHK-01`  
 > **父工单（B 线）**：`P8-ALGO-AUDIT`（全系统算法链路与风控独立性深度审计）  
@@ -132,7 +132,7 @@
 
 ### M2: 抽样标准差 $\sigma^*$ 的三种解析形式对比
 
-> ⚠️ **本节内容已失效/被取代（2026-11-22 标定）**：原作为连续 $S_{\text{conf}}$ 标准化分母之 $\sigma^*_{\text{ece}} / \sigma^*_{\text{cov}} / \sigma^*_{\text{pit}}$（前-`α` 未定参数），已被 `post-α` 锚底幂函数时间骨架 $w(\tau)$ 与离散三态 `P16` 灯级乘子 $\lambda(L)$ 乘性结构、以及冻结残差分散度参数 `sigma_delta_frozen` 取代。现行权威：[`P8-EXECUTION-DESIGN v1.0 §2.1 & §3`](P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md#三-当前裁决与驳回记录2026-11-17)、[`P8-D6-POLICY-CLOSURE v1.0 §1.3 & §6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md#六-黄灯半额精确定义与-yellow_multiplier-作用点议程第-6-项) 与 [`P8-T4-M4M5-INTERFACE v1.1 §3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#34-p6-executionpolicybundle-v10m8--m4--m5--m7--由-rc-正式成文)。原文按冻结规则保留，本标注为唯一合法编辑。
+> ⚠️ **本节内容已失效/被取代（2026-11-22 标定）**：原作为连续 $S_{\text{conf}}$ 标准化分母之 $\sigma^*_{\text{ece}} / \sigma^*_{\text{cov}} / \sigma^*_{\text{pit}}$（前-`α` 未定参数），已被 `post-α` 锚底幂函数时间骨架 $w(\tau)$ 与离散三态 `P16` 灯级乘子 $\lambda(L)$ 乘性结构、以及冻结残差分散度参数 `sigma_delta_frozen` 取代。现行权威：[`P8-EXECUTION-DESIGN v1.0 §2.1 & §3`](P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md#三-当前裁决与驳回记录2026-11-17)、[`P8-D6-POLICY-CLOSURE v1.0 §1.3 & §6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md#六-黄灯半额精确定义与-yellow_multiplier-作用点议程第-6-项) 与 [`P8-T4-M4M5-INTERFACE v1.1 §3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#34-p6-executionpolicybundle-v10m8--m4--m5--m7--由-rc-正式成文)。原文按冻结规则保留，本标注为唯一合法编辑。
 
 1. **假设**：
    - 形式 A（独立渐近折叠高斯）：假设 11 档绝对离差互相独立；
@@ -306,7 +306,7 @@
 
 ## 6. 判定结论与最小可行定义
 
-> ⚠️ **本节内容已失效/被取代（2026-11-22 标定）**：本单针对前-`α` 链路的「需修正后可用」总判定（含 `J1 σ* 无定义`、`J2 x_ece 缺零基线校正`、`J3 E[S]=0.4648` 三项技术发现及 `B6 src/bankroll/ 缺失`）**均已全面销项并被现行 `post-α` 架构取代**：① `S_conf` 旧法源经 `P7-ALGO-2` 与 [`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 合龙裁决废止，三项 `S_conf` 缺陷随 [`项目方案 (v3.0) §8`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-D6-POLICY-CLOSURE §1.2/§1.3/§4/§6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 落地（$G = B \cdot w(\tau) \cdot [s(\text{edge}) \cdot \lambda(L)]$ + 离散 `P16 ECE` 锚）全面消解；② `src/bankroll/`（`M6`）及 `M4 λ(L)` 亦已于 `S3-06`（`bff79e4` + `a861764`）正式交付 [`src/bankroll/`](../../src/bankroll/__init__.py)。现行权威：[`P7-ALGO-2_裁决记录.md`](P7-ALGO-2_裁决记录.md)、[`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 与 [`P8-PROJECT-TASKS v1.5`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md)。原文按冻结规则保留，本标注为唯一合法编辑。
+> ⚠️ **本节内容已失效/被取代（2026-11-22 标定）**：本单针对前-`α` 链路的「需修正后可用」总判定（含 `J1 σ* 无定义`、`J2 x_ece 缺零基线校正`、`J3 E[S]=0.4648` 三项技术发现及 `B6 src/bankroll/ 缺失`）**均已全面销项并被现行 `post-α` 架构取代**：① `S_conf` 旧法源经 `P7-ALGO-2` 与 [`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 合龙裁决废止，三项 `S_conf` 缺陷随 [`项目方案 (v3.0) §8`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-D6-POLICY-CLOSURE §1.2/§1.3/§4/§6`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 落地（$G = B \cdot w(\tau) \cdot [s(\text{edge}) \cdot \lambda(L)]$ + 离散 `P16 ECE` 锚）全面消解；② `src/bankroll/`（`M6`）及 `M4 λ(L)` 亦已于 `S3-06`（`bff79e4` + `a861764`）正式交付 [`src/bankroll/`](../../src/bankroll/__init__.py)。现行权威：[`P7-ALGO-2_裁决记录.md`](P7-ALGO-2_裁决记录.md)、[`P8-D6-POLICY-CLOSURE v1.0`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) 与 [`P8-PROJECT-TASKS v1.5`](P8-PROJECT-TASKS_全量任务分解台账.md)。原文按冻结规则保留，本标注为唯一合法编辑。
 
 ### 6.1 审计判定：**需修正后可用**
 - **判据 J1（三 $\sigma^*$ 存在性）**：文档/代码均未定义数值与公式 $\to$ **不通过**；

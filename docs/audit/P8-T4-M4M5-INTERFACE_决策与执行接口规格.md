@@ -1,6 +1,8 @@
-# P8-T4-M4M5-INTERFACE：决策引擎（`M4`）与执行器（`M5`）接口规格及 `P2/P5/P6/P7/P8/P14` 协议正文（`v1.1` · `2026-11-22 已对齐 S3-06 阶段二`）
+# P8-T4-M4M5-INTERFACE：决策引擎（`M4`）与执行器（`M5`）接口规格及 `P2/P5/P6/P7/P8/P14` 协议正文（`v1.2` · `2026-11-28 已对齐 P2 陡峭尾档预冻结约束与 P18 静息盘口回退`）
 
 > **版本标注（`2026-11-22` `P8-WO-20261123-S306-STAGE2-EXEC` · 已对齐 `S3-06` 阶段二 / `D-6` 合龙）**：物理路径保持 `_v1.0.md` 引用不变；既有 `§1–§3.4` 历史正文保留不重写，新增 **`§3.5 P14 v1.0` 正式协议正文**，并同步注记 `§3.4` `_compute_policy_config_hash v2` 纳入 `yellow_multiplier`。
+>
+> **版本标注（`2026-11-28` · 已对齐 `P2 v1.2` 陡峭尾档预冻结感知走簿与 `P18 v1.1` 连续假盘静息回退）**：既有历史正文全部保留不重写；`§2.2` 追加 **`P2 v1.2`** 预冻结感知深度切片与预计实花下限双校验修订注记，`§2.3` 追加 **`P18 v1.1`** 可选静息盘口回退与帧级虚拟深度扣减修订注记（代码落点 [`src/execution/executor.py`](../../src/execution/executor.py)）；同日按业主指令移除物理文件名 `_v1.0` 后缀，版本号统一在正文首部维护。
 
 - **任务单与治理编号**：`S1-04`（`T4` · 切片 1 阶段 0 接口规格与纯函数交付）｜归属模块：**`M4`（决策引擎）/ `M5`（执行器）**，联动 `M2 / M6 / M7 / M8`
 - **法定锚点**：
@@ -85,6 +87,12 @@ def plan_slice(
   3. 确定 `target_usd = min(d_headroom_usd, pov_cap_usd)`，保护限价 `limit_price` 取合格档位最差档价按 `tick_size` 向下整数倍对齐（`Decimal` 整除对齐消除浮点漂移），`target_shares = (target_usd / limit_price).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)`，`effective_target_usd = target_shares * limit_price`；
   4. **双约束校验**：在 `Decimal` 域核验 `target_shares >= min_order_size_shares`（`5.0 shares`）及（若非空）`effective_target_usd >= min_notional_usd`，不达标则返回 `should_submit=False, abort_reason="BELOW_MIN_ORDER"`。
 
+- **2026-11-28 修订注记（`P2 v1.2` · 陡峭尾档预冻结感知走簿与预计实花下限双校验，[`src/execution/executor.py`](../../src/execution/executor.py)）**：
+  - **问题根因**：在 `KDAL 7338470`（`D=$6.312`）实测中暴露出陡峭尾档切片失真——原 `_allocate_pov_legs` 沿合格卖档一路上探至高价档位（`$0.001 -> $0.20`），抬高 `limit_price=$0.20`，随后旧版 `plan_slice` 抛弃累计 `tot_sh` 而直接按 `target_usd / limit_price` 计算 `target_shares = $6.312 / $0.20 = 31.56 shares`，导致实际只买入低价卖档成交 `$0.03156`（`200x` 失真），同时以虚高的 `effective_target_usd = $6.312` 绕过了 `min_notional_usd = $1.0` 下限校验。
+  - **预冻结感知走簿（`_allocate_pov_legs`）**：逐档累加合格卖盘深度时，在每个价位 `p` 先核算按最高限价预冻结预算可容纳的增量上限 `escrow_room_shares = (d_usd_dec / p) - total_shares`；若 `escrow_room_shares <= 0` 则立即停止继续向上爬档；否则截断当前档取量 `take_sh = min(take_sh, escrow_room_shares)` 并在吃满预冻结容量后终止，确保 `limit_price` 不再被陡峭尾档虚高拉升。
+  - **份额守恒与双下限校验（`plan_slice`）**：保留实际走簿累计份额 `tot_sh`，取 `target_shares = min(tot_sh, d_usd_dec / limit_dec).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)`；并对 `min_notional_usd` 执行**双口径强校验**——`effective_target_usd = target_shares * limit_price` **与** `est_expected_usd = target_shares * est_vwap` 必须**同时** `>= min_notional_usd`，否则返回 `should_submit=False, abort_reason="BELOW_MIN_ORDER"`，杜绝 `$0.03` 等尘埃单穿透发单门槛。
+  - **Edge / VWAP 与预算门不变量**：走簿涉及的每一档均已单独满足 `lvl.edge >= m_threshold`，因此累计平均成交价严格满足 `est_vwap <= limit_price` 且组合 `edge(est_vwap) >= m_threshold`；同时 `target_shares * limit_price <= D` 保证 `M6` 预冻结资金 `C_freeze` 严格不越 `G` 上限。
+
 ### 2.3 `LIVE` 与 `PAPER`（`P18` 延迟撮合）双轨路由规则
 
 - **`LIVE` 路由**：通过 `P14` 冻结 `C_freeze = target_shares * limit_price * (1 + max_fee_buffer)` 后，按 `ask_book_frame.neg_risk` 选择 NegRisk CTF EIP-712 域签名下发 `FAK` 限价单；成交后 `P14` 确认实花含费美元解冻余款，并写 `P3`。
@@ -93,6 +101,9 @@ def plan_slice(
   - 向 `M7` 只读查询 `(token_id=ask_book_frame.token_id, after_ts=submit_ts_utc + latency_ms)` 对应的 **`P13` 录制流下一真实帧**；
   - 若命中帧 `gap_detected == True` 或缺失可匹配帧：**立即终止本笔模拟撮合**，回传 **`PAPER_MATCH_ABORTED_GAP`** 写入 `P3` 并通知 `P14` 解冻预冻结额；**严禁回退使用决策瞬间快照零延迟成交，严禁旁路直读 `live WS` 流**；
   - 若命中帧 `gap_detected == False` 但 `ask_book is None`（`single_side == "bid_only"`）：诚实判正常无卖盘深度未成交，置 **`terminal_status = "CANCELLED_UNFILLED"`**、**`reject_or_abort_reason = "NO_ASK_DEPTH"`** 并经 `P14` 解冻 `C_freeze`（不得误报 `PAPER_MATCH_ABORTED_GAP`；双侧 `No` 跨视图撮合扩展设计见 [`P8-RECORDER-NO-SIDE-DESIGN v0.1 §3`](P8-RECORDER-NO-SIDE-DESIGN_尾桶单侧与No侧双视角升级设计书_v0.1.md#3-工单-5-纯设计m4--m5-no-侧解析split--merge-跨视图撮合与-d-6-合并视图输入不下代码)，待回签后落代码）。
+  - **2026-11-28 修订注记（`P18 v1.1` · 连续假盘静息盘口回退与帧级虚拟深度扣减，[`src/execution/executor.py`](../../src/execution/executor.py)）**：
+    - `ReplayMatcher.__init__(..., allow_resting_book_fallback: bool = False)` 新增可选参数；**默认 `False`**，保持离线静态回放对 `R1` 无后继帧的既有严格拒单契约；
+    - 当连续假盘守望模式显式开启 `allow_resting_book_fallback=True` 时：① **严格保留真断流守卫**：命中帧或 `(decision_seq_id, F*.seq_id]` 窗口任一 `gap_detected == True` 时仍强制立即中止（`R2_HIT_GAP` / `R2_GAP_IN_WINDOW`）；② **静息盘口回退**：若 `t_arrive` 之后盘口因行情静默尚未产生新增量帧，允许安全回退至 `t_arrive` 前最新无缺口真实录盘帧（`prior_clean`），并置 `final_ts = max(t_arrive, raw_final_ts)` 防止回填时间戳倒挂；③ **帧级虚拟深度扣减**：按 `(token_id, frame_seq, raw_price)` 持久化维护 `_consumed_shares` 账本，同一静态盘口帧的某档深度被模拟单吃尽后，后续命中同一帧的请求不再重复吃同一流动性，耗尽时返回 `RESTING_BOOK_DEPTH_EXHAUSTED` 并解冻余款。
 
 ### 2.4 `S1-06` 费率消费与回放口径隔离规则（`P4 / P18` · `2026-11-19` 当前决策）
 

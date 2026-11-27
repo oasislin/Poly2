@@ -5,7 +5,7 @@
 - **法定锚点**：
   - [`P8-KERNEL-CONSENSUS §六 G`](P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md#g下一桌-d-6-制度合龙议程登记只登记不开桌--2026-11-17)（`D-6` 九项制度议程清单）
   - [`P8-CAPITAL-CONFIG v1.0`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)（资金三层结构、升降档、回撤闸与参数账本）
-  - [`P8-T4-M4M5-INTERFACE v1.0 §3.1–§3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#三-本批正式确立协议正文p7p8p5-v10p6-v10)（`P7 / P8 / P5 v1.1 / P6`）
+  - [`P8-T4-M4M5-INTERFACE v1.0 §3.1–§3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#三-本批正式确立协议正文p7p8p5-v10p6-v10)（`P7 / P8 / P5 v1.1 / P6`）
   - [`P8-RECORDER-NO-SIDE-DESIGN v0.1 §3.3`](P8-RECORDER-NO-SIDE-DESIGN_尾桶单侧与No侧双视角升级设计书_v0.1.md#33-d-6-标定输入升级yes--no-双侧盘口合并视图)（`YES_ONLY` vs `DUAL_MERGED` 双轨对照规范）
 - **核心边界声明**：
   1. **本文件仅定版规则、口径、样本量门槛、双轨判定标准与审批程序，不含 `S2-02`（`D-A1` 实测拟合，绑定 `11-26` 后至少 `3–5` 天 `0.01` 时代录盘数据节点）**；
@@ -96,7 +96,7 @@
 
 ## 六、 黄灯半额精确定义与 `yellow_multiplier` 作用点（议程第 6 项）
 
-正式闭合 [`P8-T4-M4M5-INTERFACE v1.0 §3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#34-p6-executionpolicybundle-v10m8--m4--m5--m7--由-rc-正式成文) 与 [`src/decision/engine.py`](../../src/decision/engine.py) 预留之 `yellow_multiplier` 作用点：
+正式闭合 [`P8-T4-M4M5-INTERFACE v1.0 §3.4`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#34-p6-executionpolicybundle-v10m8--m4--m5--m7--由-rc-正式成文) 与 [`src/decision/engine.py`](../../src/decision/engine.py) 预留之 `yellow_multiplier` 作用点：
 
 1. **数值与作用公式（乘在机会缩放因子 `s(edge)` 侧，经门限额 $G$ 统一传导）**：
    $$G = B \cdot w(\tau) \cdot \big[s(\text{edge}) \cdot \lambda(L)\big]$$

@@ -290,6 +290,9 @@ def test_m10_ast_zero_database_zero_write_and_cli_render(tmp_path: Path) -> None
                     assert a.name not in ("sqlite3", "sqlalchemy", "psycopg", "py_clob_client")
             elif isinstance(node, ast.ImportFrom) and node.module:
                 assert not node.module.startswith(("sqlite3", "sqlalchemy", "psycopg", "py_clob_client"))
+            elif py_file.name != "m10_view.py" and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                fn_lines = (node.end_lineno or node.lineno) - node.lineno + 1
+                assert fn_lines < 50, f"{py_file.name}:{node.name} has {fn_lines} lines (>= 50)"
         for bad_call in (".write(", ".unlink(", ".mkdir(", "open(..., \"w\")", "open(..., \"a\")"):
             assert bad_call not in src_text
 
@@ -697,7 +700,8 @@ def test_m10_decision_chain_cross_stream_join_distribution_and_p13_snapshot(tmp_
 
     html = render_m10_dashboard_html(model)
     _assert_strictly_readonly_html(html)
-    assert '<details class="chain-card" open>' in html
+    assert 'id="dec-dec-chain-1"' in html
+    assert 'class="chain-card" open>' in html
     assert "bin-row bin-picked" in html
     assert "58-59°F [★选中 · BOUNDARY]" in html
     assert "54.00%" in html
@@ -1048,13 +1052,13 @@ def test_m10_city_date_nested_aggregation_multi_market_split_and_totals(tmp_path
 
     html = render_m10_dashboard_html(model)
     _assert_strictly_readonly_html(html)
-    assert '<details class="city-card" open>' in html
-    assert '<details class="market-day-card">' in html
+    assert 'id="city-KLGA" class="city-card">' in html
+    assert 'class="market-day-card">' in html
     assert "空盘口（有决策未成交）" in html
     assert "同日多盘口独立核算" in html
     assert "未落盘" not in html or "未落盘 (P17.bin_probs 缺失)" in html  # placeholders intact when P17 absent
     # Domain invariant: city-level summaries only sum amounts/counts (never win-rate % or probability blend)
-    city_sum_start = html.index('<details class="city-card" open><summary>')
+    city_sum_start = html.index('class="city-card"><summary>')
     city_sum_end = html.index("</summary>", city_sum_start)
     assert "%" not in html[city_sum_start:city_sum_end]
 
@@ -1530,5 +1534,37 @@ def test_m10_readonly_watchdog_alerts_status_badge_integration(tmp_path: Path) -
     assert "watchdog_summary (read-only)" in rendered
     assert "token_coverage: WARN" in rendered
     assert "gap_rate: OK" in rendered
+
+
+def test_m10_light_theme_target_type_filter_and_dual_timezone(tmp_path: Path) -> None:
+    from src.ui.m10_view import build_m10_dashboard_model, render_m10_dashboard_html
+
+    audit_root = tmp_path / "m7"
+    cfg_path = _write_safety_yaml(tmp_path / "gw.yaml", tmp_path / "usage.json", mode="PAPER")
+    p1_tmax = _sample_p1(decision_id="dec-tmax", station_id="KORD", target_type="TMAX")
+    p1_tmin = _sample_p1(decision_id="dec-tmin", station_id="KMIA", target_type="TMIN", market_id="mkt-tmin")
+    _write_signed_stream(audit_root / "PAPER/2026-11-23/p1_scan_decisions.jsonl", [p1_tmax, p1_tmin])
+
+    model_tmax = build_m10_dashboard_model(
+        audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path, target_type="TMAX"
+    )
+    assert [r["decision_id"] for r in model_tmax.decision_rows] == ["dec-tmax"]
+    html_tmax = render_m10_dashboard_html(model_tmax, tz_mode="both")
+    _assert_strictly_readonly_html(html_tmax)
+    assert "--bg: #f4f6f9" in html_tmax
+    assert "最高温 TMAX" in html_tmax
+    assert "最低温 TMIN" not in html_tmax
+    assert "北京 " in html_tmax
+    assert "当地 " in html_tmax
+    assert "stepper" in html_tmax
+
+    model_tmin = build_m10_dashboard_model(
+        audit_root=audit_root, execution_mode="PAPER", safety_config_path=cfg_path, target_type="TMIN"
+    )
+    assert [r["decision_id"] for r in model_tmin.decision_rows] == ["dec-tmin"]
+    html_tmin = render_m10_dashboard_html(model_tmin, tz_mode="station")
+    assert "最低温 TMIN" in html_tmin
+    assert "EST" in html_tmin or "EDT" in html_tmin
+
 
 

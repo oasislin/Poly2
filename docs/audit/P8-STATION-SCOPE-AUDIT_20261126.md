@@ -25,10 +25,10 @@
 | [`P8-D6-POLICY-CLOSURE v1.0 §七 L122`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md#L122) | `真盘切换首期（S3-12 通过后首月）按当期总部署配置下的默认站点全额执行（单站上限 $500 / 站... 如初期总部署先开 $2,000 覆盖 4 站）` | **真盘初期示例覆盖 `4 站`** | 不固定 2 站 |
 | [`P8-D6-POLICY-CLOSURE v1.0 §八 L132`](P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md#L132) | `离线录盘走簿：>= 200 次有效深度模拟切片覆盖至少 4 个站、连续 >= 72h 0.01 时代录盘` | **语料定标通用门槛：`>= 4 站`** | `S2-02` 与 `P8-PARAMETER-LIFECYCLE-REGISTRY §1` 均继承此 **`>= 4 站`** |
 | [`P8-RECORDER-NO-SIDE-DESIGN v0.1 §1.1 L17`](P8-RECORDER-NO-SIDE-DESIGN_尾桶单侧与No侧双视角升级设计书_v0.1.md#L17) | `配置站表：configs/passive_book_recorder.example.yaml 更新为 6 站 ["KORD", "KMIA", "KLGA", "KATL", "KDAL", "KSEA"]` | **录盘正式升级为 `6 站`** | 2026-11-21 批复落地 |
-| [`P8-PROJECT-TASKS §2.2 S2-01 L56`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#L56) | `多日被动录盘建盘口基线（6 站 Yes+No 双侧 + 00:05Z 轮转 + single_side）` | **`S2-01 = 6 站 DONE`** | 六站与上游采集/录盘对齐 |
-| [`P8-PROJECT-TASKS §2.3 S3-17 L85`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#L85) | `总装 6 站（KORD, KMIA, KLGA, KATL, KDAL, KSEA）GEFSFetcher.download_realtime(atmos.25) ...` | **`S3-17 = 6 站 DONE`** | `EXEC13` 批复后落地 |
-| [`P8-PROJECT-TASKS §2.3 S3-11 L79`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#L79) | `model_hash 上线日冻结，execution_mode="PAPER" 消费 P13 实时录盘并注入真实延迟帧撮合，零 LIVE 发单` | **`S3-11 (T9)` 未限制站数** | 消费 `P13` 全盘（隐含承接 `S2-01` 6 站） |
-| [`P8-PROJECT-TASKS §2.3 S3-15 L83`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#L83) 与 [`试单运行手册 §1 L17`](P8-S305B-TRIAL-RUNBOOK_试单运行手册草案_v0.1.md#L17) | `KMIA/KORD D+1 核心温区 YES（best_ask ∈ [0.25, 0.55]，禁 mid 锚定）` | **`S3-15` 真钱三探针试点仅 `KMIA/KORD` 2 站** | 系 **`S3-15` 真钱小额试单段**专用，非 `S3-11` 假盘 |
+| [`P8-PROJECT-TASKS §2.2 S2-01 L56`](P8-PROJECT-TASKS_全量任务分解台账.md#L56) | `多日被动录盘建盘口基线（6 站 Yes+No 双侧 + 00:05Z 轮转 + single_side）` | **`S2-01 = 6 站 DONE`** | 六站与上游采集/录盘对齐 |
+| [`P8-PROJECT-TASKS §2.3 S3-17 L85`](P8-PROJECT-TASKS_全量任务分解台账.md#L85) | `总装 6 站（KORD, KMIA, KLGA, KATL, KDAL, KSEA）GEFSFetcher.download_realtime(atmos.25) ...` | **`S3-17 = 6 站 DONE`** | `EXEC13` 批复后落地 |
+| [`P8-PROJECT-TASKS §2.3 S3-11 L79`](P8-PROJECT-TASKS_全量任务分解台账.md#L79) | `model_hash 上线日冻结，execution_mode="PAPER" 消费 P13 实时录盘并注入真实延迟帧撮合，零 LIVE 发单` | **`S3-11 (T9)` 未限制站数** | 消费 `P13` 全盘（隐含承接 `S2-01` 6 站） |
+| [`P8-PROJECT-TASKS §2.3 S3-15 L83`](P8-PROJECT-TASKS_全量任务分解台账.md#L83) 与 [`试单运行手册 §1 L17`](P8-S305B-TRIAL-RUNBOOK_试单运行手册草案_v0.1.md#L17) | `KMIA/KORD D+1 核心温区 YES（best_ask ∈ [0.25, 0.55]，禁 mid 锚定）` | **`S3-15` 真钱三探针试点仅 `KMIA/KORD` 2 站** | 系 **`S3-15` 真钱小额试单段**专用，非 `S3-11` 假盘 |
 
 > **规格层核心发现**：
 > 1. 仓库内 **存在三处历史“2 站（`KORD, KMIA`）/ `2 站`"条款**：① Phase 1 `{ZSPD, KDEN}`（已废）；② Phase 2 W2 `KORD/KMIA` 双站只读短闭环 + `CONF-02` [`AUTHORIZED_STATIONS = ("KORD", "KMIA")`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md#L45)（`2026-11-08`）；③ [`S3-15` 真钱三探针试单段](P8-S305B-TRIAL-RUNBOOK_试单运行手册草案_v0.1.md#L17)（`KMIA/KORD` 真钱 `$5` 上限测试）。

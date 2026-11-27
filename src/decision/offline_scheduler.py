@@ -82,6 +82,66 @@ class OfflineSchedulerConfig:
     fee_rate_timeout_sec: float = 0.5
     enable_p18_matching: bool = False
     enable_m9_settlement: bool = False
+    p1_no_depth_heartbeat_sec: float = 0.0
+    allow_resting_book_fallback: bool = False
+    enable_adaptive_event_gate: bool = False
+
+
+class _AdaptiveTargetGate:
+    """Event-driven + `τ`-tiered cadence gate (`>24h: 15m`, `3-24h: 5m`, `<=3h: 1m`)."""
+
+    def __init__(self) -> None:
+        self._last: Dict[Tuple[str, str, str, str, str], Tuple[int, str, datetime]] = {}
+
+    @staticmethod
+    def tier_cadence_sec(tau_hours: Optional[float]) -> float:
+        if tau_hours is None or tau_hours > 24.0:
+            return 900.0
+        if tau_hours > 3.0:
+            return 300.0
+        return 60.0
+
+    def should_evaluate(
+        self,
+        *,
+        key: Tuple[str, str, str, str, str],
+        tick_utc: datetime,
+        book_frame_ref: int,
+        forecast_id: str,
+        tau_hours: Optional[float],
+    ) -> bool:
+        prev = self._last.get(key)
+        if prev is None:
+            self._last[key] = (book_frame_ref, forecast_id, tick_utc)
+            return True
+        prev_frame, prev_fc, prev_ts = prev
+        book_changed = book_frame_ref > 0 and book_frame_ref != prev_frame
+        fc_changed = bool(forecast_id) and forecast_id != prev_fc
+        heartbeat_due = (tick_utc - prev_ts).total_seconds() >= self.tier_cadence_sec(tau_hours)
+        if book_changed or fc_changed or heartbeat_due:
+            self._last[key] = (book_frame_ref, forecast_id, tick_utc)
+            return True
+        return False
+
+
+class _P1NoDepthThrottle:
+    """Suppress repetitive `BLOCKED_NO_BOOK_DEPTH` P1 audit writes while keeping all other outcomes 100%."""
+
+    def __init__(self, heartbeat_sec: float) -> None:
+        self.heartbeat_sec = float(heartbeat_sec)
+        self._last: Dict[Tuple[str, str, str, str, str], Tuple[Tuple[str, str], datetime]] = {}
+
+    def should_log(self, ev: ScanDecisionEvent) -> bool:
+        if self.heartbeat_sec <= 0 or ev.decision_outcome != "BLOCKED_NO_BOOK_DEPTH":
+            return True
+        key = (ev.station_id, ev.target_date, ev.target_type, ev.market_id, ev.bin_id)
+        state = (ev.decision_outcome, ev.degradation_reason or "")
+        ev_ts = ensure_utc_datetime(ev.scan_ts_utc, field_name="p1.scan_ts_utc")
+        prev = self._last.get(key)
+        if prev is None or prev[0] != state or (ev_ts - prev[1]).total_seconds() >= self.heartbeat_sec:
+            self._last[key] = (state, ev_ts)
+            return True
+        return False
 
 
 @dataclass(frozen=True)
@@ -354,37 +414,60 @@ def _log_initial_p17_forecasts(
             )
 
 
+def _latest_causal_fc_map(
+    forecasts: Sequence[ForecastDistributionSnapshotV11], tick_utc: datetime
+) -> Dict[Tuple[str, str, str], Tuple[str, float]]:
+    latest: Dict[Tuple[str, str, str], Tuple[datetime, str, float]] = {}
+    for fc in forecasts:
+        iss = ensure_utc_datetime(fc.issue_ts_utc, field_name="fc.issue_ts_utc")
+        if iss > tick_utc:
+            continue
+        k = (fc.station_id, fc.target_date.isoformat(), fc.target_type)
+        prev = latest.get(k)
+        if prev is None or iss > prev[0]:
+            latest[k] = (iss, fc.forecast_id, float(fc.tau_hours))
+    return {k: (v[1], v[2]) for k, v in latest.items()}
+
+
+def _target_passes_adaptive_gate(
+    gate: Optional[_AdaptiveTargetGate], *, target: OfflineScheduleTarget, tick_utc: datetime,
+    book_as_of: datetime, retriever: P18ReplayFrameRetriever,
+    fc_map: Mapping[Tuple[str, str, str], Tuple[str, float]],
+) -> bool:
+    if gate is None:
+        return True
+    frame_ref = retriever.find_latest_seq_before(target.yes_token_id, book_as_of) or 0
+    fc_id, tau_h = fc_map.get((target.station_id, target.target_date, target.target_type), ("", None))
+    tkey = (target.station_id, target.target_date, target.target_type, target.market_id, target.bin_id)
+    return gate.should_evaluate(key=tkey, tick_utc=tick_utc, book_frame_ref=frame_ref, forecast_id=fc_id, tau_hours=tau_h)
+
+
 def _run_tick_targets(
     *,
-    tick_utc: datetime,
-    targets: Sequence[OfflineScheduleTarget],
-    cfg: OfflineSchedulerConfig,
-    retriever: P18ReplayFrameRetriever,
-    decider: DeterministicDecider,
-    exec_config: TradingExecutionConfig,
-    forecasts: Sequence[ForecastDistributionSnapshotV11],
-    policy_bundle: ExecutionPolicyBundle,
-    quota_provider: QuotaProvider,
-    light_event: Optional[LightLevelEvent],
-    matcher: Optional[ReplayMatcher],
-    logger: AsyncAuditLogger,
-    claims: Dict[Tuple[str, str, str], MarketPositionClaim],
-    consumed_seqs: List[int],
-    outcomes: Dict[str, int],
-    degradations: Dict[str, int],
+    tick_utc: datetime, targets: Sequence[OfflineScheduleTarget], cfg: OfflineSchedulerConfig,
+    retriever: P18ReplayFrameRetriever, decider: DeterministicDecider, exec_config: TradingExecutionConfig,
+    forecasts: Sequence[ForecastDistributionSnapshotV11], policy_bundle: ExecutionPolicyBundle,
+    quota_provider: QuotaProvider, light_event: Optional[LightLevelEvent], matcher: Optional[ReplayMatcher],
+    logger: AsyncAuditLogger, claims: Dict[Tuple[str, str, str], MarketPositionClaim],
+    consumed_seqs: List[int], outcomes: Dict[str, int], degradations: Dict[str, int],
+    p1_throttle: Optional[_P1NoDepthThrottle] = None, adaptive_gate: Optional[_AdaptiveTargetGate] = None,
 ) -> Tuple[int, int]:
     ordered_inc, filled_inc = 0, 0
+    book_as_of = tick_utc - timedelta(milliseconds=max(0, int(cfg.replay_delay_ms)))
     pairs = retriever.retrieve_decision_book_pairs(
-        as_of_ts_utc=tick_utc - timedelta(milliseconds=max(0, int(cfg.replay_delay_ms))),
-        max_book_staleness_sec=exec_config.max_book_staleness_sec, pair_max_skew_sec=exec_config.pair_max_skew_sec,
+        as_of_ts_utc=book_as_of, max_book_staleness_sec=exec_config.max_book_staleness_sec, pair_max_skew_sec=exec_config.pair_max_skew_sec,
     )
+    fc_map = _latest_causal_fc_map(forecasts, tick_utc) if adaptive_gate is not None else {}
     for target in targets:
+        if not _target_passes_adaptive_gate(adaptive_gate, target=target, tick_utc=tick_utc, book_as_of=book_as_of, retriever=retriever, fc_map=fc_map):
+            continue
         ev = _evaluate_tick_target(
             tick_utc=tick_utc, target=target, cfg=cfg, retriever=retriever, decider=decider,
             exec_config=exec_config, forecasts=forecasts, policy_bundle=policy_bundle,
             quota_provider=quota_provider, light_event=light_event, book_pairs=pairs,
         )
-        logger.log_p1_scan_decision(ev)
+        if p1_throttle is None or p1_throttle.should_log(ev):
+            logger.log_p1_scan_decision(ev)
         consumed_seqs.append(ev.book_frame_ref)
         outcomes[ev.decision_outcome] = outcomes.get(ev.decision_outcome, 0) + 1
         if ev.degradation_reason:
@@ -392,39 +475,47 @@ def _run_tick_targets(
         if ev.decision_outcome == "ORDERED":
             ordered_inc += 1
             if matcher is not None:
-                att = _match_and_bookkeep_ordered(
-                    ev=ev, cfg=cfg, retriever=retriever, matcher=matcher,
-                    quota_provider=quota_provider, logger=logger, open_claims=claims,
-                )
+                att = _match_and_bookkeep_ordered(ev=ev, cfg=cfg, retriever=retriever, matcher=matcher, quota_provider=quota_provider, logger=logger, open_claims=claims)
                 filled_inc += 1 if (att and att.terminal_status in ("FILLED", "PARTIAL")) else 0
     return ordered_inc, filled_inc
 
 
-def _execute_audit_replay_loop(
+def _maybe_run_m9_settlement(
     cfg: OfflineSchedulerConfig,
     *,
-    ticks: Tuple[datetime, ...],
-    targets: Sequence[OfflineScheduleTarget],
-    retriever: P18ReplayFrameRetriever,
-    decider: DeterministicDecider,
-    exec_config: TradingExecutionConfig,
     forecasts: Sequence[ForecastDistributionSnapshotV11],
-    policy_bundle: ExecutionPolicyBundle,
+    ticks: Tuple[datetime, ...],
+    metar_source: RawMetarSource,
+    logger: AsyncAuditLogger,
     quota_provider: QuotaProvider,
-    light_event: Optional[LightLevelEvent],
-    p17_forecast_ids_to_skip: Optional[AbstractSet[str]] = None,
-    metar_source: Optional[RawMetarSource] = None,
-    settled_keys: Optional[Set[Tuple[str, str, str]]] = None,
-    open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None,
-    p19_sink_setter: Optional[Callable[[Optional[Callable]], None]] = None,
+    claims: Dict[Tuple[str, str, str], MarketPositionClaim],
+    settled_keys: Optional[Set[Tuple[str, str, str]]],
+) -> None:
+    bankroll = quota_provider if isinstance(quota_provider, BankrollAccountManager) else None
+    run_m9_settlement_pass(
+        forecasts=forecasts, now_utc=(ticks[-1] if ticks else datetime.now(timezone.utc)),
+        metar_source=metar_source, logger=logger, session_id=cfg.orig_session_id,
+        bankroll=bankroll, open_claims=claims, settled_keys=settled_keys,
+    )
+
+
+def _execute_audit_replay_loop(
+    cfg: OfflineSchedulerConfig, *, ticks: Tuple[datetime, ...], targets: Sequence[OfflineScheduleTarget],
+    retriever: P18ReplayFrameRetriever, decider: DeterministicDecider, exec_config: TradingExecutionConfig,
+    forecasts: Sequence[ForecastDistributionSnapshotV11], policy_bundle: ExecutionPolicyBundle,
+    quota_provider: QuotaProvider, light_event: Optional[LightLevelEvent],
+    p17_forecast_ids_to_skip: Optional[AbstractSet[str]] = None, metar_source: Optional[RawMetarSource] = None,
+    settled_keys: Optional[Set[Tuple[str, str, str]]] = None, open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None,
+    p19_sink_setter: Optional[Callable[[Optional[Callable]], None]] = None, p1_throttle: Optional[_P1NoDepthThrottle] = None,
+    matcher: Optional[ReplayMatcher] = None, adaptive_gate: Optional[_AdaptiveTargetGate] = None,
 ) -> Tuple[Dict[str, int], int, int, Tuple[int, ...], Dict[str, int], Dict[str, int]]:
     """Run forecast/decision/P18-match/M9-settlement replay loop into M7 audit logger (offline only)."""
     ordered_cnt, filled_cnt, skip_ids = 0, 0, p17_forecast_ids_to_skip or set()
-    consumed_seqs: List[int] = []
-    outcomes: Dict[str, int] = {}
-    degradations: Dict[str, int] = {}
-    matcher = ReplayMatcher(exec_config) if cfg.enable_p18_matching else None
+    consumed_seqs, outcomes, degradations = [], {}, {}
+    active_matcher = matcher if matcher is not None else (ReplayMatcher(exec_config, allow_resting_book_fallback=cfg.allow_resting_book_fallback) if cfg.enable_p18_matching else None)
     claims = open_claims if open_claims is not None else {}
+    throttle = p1_throttle or (_P1NoDepthThrottle(cfg.p1_no_depth_heartbeat_sec) if cfg.p1_no_depth_heartbeat_sec > 0 else None)
+    gate = adaptive_gate if adaptive_gate is not None else (_AdaptiveTargetGate() if cfg.enable_adaptive_event_gate else None)
     with AsyncAuditLogger(cfg.audit_output_root, execution_mode="PAPER") as logger:
         if p19_sink_setter is not None:
             p19_sink_setter(logger.log_p19_capital_event)
@@ -433,17 +524,12 @@ def _execute_audit_replay_loop(
             o_inc, f_inc = _run_tick_targets(
                 tick_utc=tick_utc, targets=targets, cfg=cfg, retriever=retriever, decider=decider,
                 exec_config=exec_config, forecasts=forecasts, policy_bundle=policy_bundle,
-                quota_provider=quota_provider, light_event=light_event, matcher=matcher, logger=logger,
-                claims=claims, consumed_seqs=consumed_seqs, outcomes=outcomes, degradations=degradations,
+                quota_provider=quota_provider, light_event=light_event, matcher=active_matcher, logger=logger,
+                claims=claims, consumed_seqs=consumed_seqs, outcomes=outcomes, degradations=degradations, p1_throttle=throttle, adaptive_gate=gate,
             )
             ordered_cnt, filled_cnt = ordered_cnt + o_inc, filled_cnt + f_inc
         if cfg.enable_m9_settlement and metar_source is not None:
-            bankroll = quota_provider if isinstance(quota_provider, BankrollAccountManager) else None
-            run_m9_settlement_pass(
-                forecasts=forecasts, now_utc=(ticks[-1] if ticks else datetime.now(timezone.utc)),
-                metar_source=metar_source, logger=logger, session_id=cfg.orig_session_id,
-                bankroll=bankroll, open_claims=claims, settled_keys=settled_keys,
-            )
+            _maybe_run_m9_settlement(cfg, forecasts=forecasts, ticks=ticks, metar_source=metar_source, logger=logger, quota_provider=quota_provider, claims=claims, settled_keys=settled_keys)
         logger.flush()
         if p19_sink_setter is not None:
             p19_sink_setter(None)
@@ -452,50 +538,36 @@ def _execute_audit_replay_loop(
 
 
 def run_s311_offline_schedule(
-    cfg: OfflineSchedulerConfig,
-    *,
-    exec_config: TradingExecutionConfig,
-    policy_bundle: ExecutionPolicyBundle,
-    forecasts: Sequence[ForecastDistributionSnapshotV11],
-    targets: Sequence[OfflineScheduleTarget],
-    quota_provider: QuotaProvider,
-    clock_ticks: Optional[Sequence[datetime]] = None,
-    light_event: Optional[LightLevelEvent] = None,
-    p16_slot: Optional[P16SubscriptionSlot] = None,
-    p17_forecast_ids_to_skip: Optional[AbstractSet[str]] = None,
-    metar_source: Optional[RawMetarSource] = None,
-    settled_keys: Optional[Set[Tuple[str, str, str]]] = None,
-    open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None,
-    p19_sink_setter: Optional[Callable[[Optional[Callable]], None]] = None,
+    cfg: OfflineSchedulerConfig, *, exec_config: TradingExecutionConfig, policy_bundle: ExecutionPolicyBundle,
+    forecasts: Sequence[ForecastDistributionSnapshotV11], targets: Sequence[OfflineScheduleTarget],
+    quota_provider: QuotaProvider, clock_ticks: Optional[Sequence[datetime]] = None, light_event: Optional[LightLevelEvent] = None,
+    p16_slot: Optional[P16SubscriptionSlot] = None, p17_forecast_ids_to_skip: Optional[AbstractSet[str]] = None,
+    metar_source: Optional[RawMetarSource] = None, settled_keys: Optional[Set[Tuple[str, str, str]]] = None,
+    open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None, p19_sink_setter: Optional[Callable[[Optional[Callable]], None]] = None,
+    p1_throttle: Optional[_P1NoDepthThrottle] = None, matcher: Optional[ReplayMatcher] = None, adaptive_gate: Optional[_AdaptiveTargetGate] = None,
 ) -> OfflineScheduleSummary:
     """Execute S3-11 offline delayed-replay schedule (`P13 -> M4 -> [M5 P18] -> [M9 P9] -> M7`)."""
     loaded = load_p13_session_readonly(cfg.p13_session_dir)
-    ordered_envs = sorted(
-        loaded.envelopes,
-        key=lambda e: (ensure_utc_datetime(e.payload.recv_ts_utc, field_name="p13.recv_ts_utc"), e.seq_id),
-    )
+    ordered_envs = sorted(loaded.envelopes, key=lambda e: (ensure_utc_datetime(e.payload.recv_ts_utc, field_name="p13.recv_ts_utc"), e.seq_id))
     retriever = P18ReplayFrameRetriever(ordered_envs)
     ticks = _resolve_schedule_ticks(cfg, loaded, clock_ticks)
     decider, clob_host = build_wired_decider(
         exec_config=exec_config, safety_config_path=cfg.safety_config_path,
-        p16_slot=p16_slot, enable_official_fee_rate_probe=cfg.enable_official_fee_rate_probe,
-        fee_rate_timeout_sec=cfg.fee_rate_timeout_sec,
+        p16_slot=p16_slot, enable_official_fee_rate_probe=cfg.enable_official_fee_rate_probe, fee_rate_timeout_sec=cfg.fee_rate_timeout_sec,
     )
     written, ordered_cnt, filled_cnt, consumed_seqs, outcomes, degradations = _execute_audit_replay_loop(
-        cfg, ticks=ticks, targets=targets, retriever=retriever, decider=decider,
-        exec_config=exec_config, forecasts=forecasts, policy_bundle=policy_bundle,
-        quota_provider=quota_provider, light_event=light_event,
-        p17_forecast_ids_to_skip=p17_forecast_ids_to_skip, metar_source=metar_source,
-        settled_keys=settled_keys, open_claims=open_claims, p19_sink_setter=p19_sink_setter,
+        cfg, ticks=ticks, targets=targets, retriever=retriever, decider=decider, exec_config=exec_config,
+        forecasts=forecasts, policy_bundle=policy_bundle, quota_provider=quota_provider, light_event=light_event,
+        p17_forecast_ids_to_skip=p17_forecast_ids_to_skip, metar_source=metar_source, settled_keys=settled_keys,
+        open_claims=open_claims, p19_sink_setter=p19_sink_setter, p1_throttle=p1_throttle, matcher=matcher, adaptive_gate=adaptive_gate,
     )
     return OfflineScheduleSummary(
-        orig_session_id=cfg.orig_session_id, clob_host_wired=clob_host,
-        probe_enabled=cfg.enable_official_fee_rate_probe, ticks_executed=len(ticks),
-        decisions_logged=written["p1"], p17_logged=written["p17"], ordered_count=ordered_cnt,
+        orig_session_id=cfg.orig_session_id, clob_host_wired=clob_host, probe_enabled=cfg.enable_official_fee_rate_probe,
+        ticks_executed=len(ticks), decisions_logged=written["p1"], p17_logged=written["p17"], ordered_count=ordered_cnt,
         p13_valid_frames=loaded.summary.valid_frames, p13_corrupt_lines=len(loaded.summary.corrupt_lines),
         consumed_frame_seqs=consumed_seqs, outcome_counts=tuple(sorted(outcomes.items())),
-        degradation_counts=tuple(sorted(degradations.items())),
-        p3_logged=written.get("p3", 0), p9_logged=written.get("p9", 0), filled_count=filled_cnt,
+        degradation_counts=tuple(sorted(degradations.items())), p3_logged=written.get("p3", 0),
+        p9_logged=written.get("p9", 0), filled_count=filled_cnt,
     )
 
 
@@ -503,6 +575,8 @@ __all__ = [
     "OfflineScheduleSummary",
     "OfflineScheduleTarget",
     "OfflineSchedulerConfig",
+    "_AdaptiveTargetGate",
+    "_P1NoDepthThrottle",
     "build_wired_decider",
     "generate_synthetic_clock_ticks",
     "run_s311_offline_schedule",

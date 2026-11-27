@@ -359,40 +359,40 @@ def _allocate_pov_legs(
     m_dec: Decimal,
     phi_policy: PhiPolicy,
 ) -> Tuple[List[PlannedLegSlice], Decimal, Decimal, Decimal, Decimal, Decimal]:
-    pov_cap_usd, qual_depth_shares = Decimal("0"), Decimal("0")
-    leg_caps: List[Tuple[LeggedAskLevel, Decimal, Decimal]] = []
+    qual_depth_shares = Decimal("0")
+    leg_caps: List[Tuple[LeggedAskLevel, Decimal]] = []
     for leg in qual_legs:
         rho_j = compute_rho(edge_by_price[leg.implied_yes_price], m_dec, phi_policy)
         cap_shares = leg.size_shares * rho_j
-        cap_usd = cap_shares * leg.implied_yes_price
-        pov_cap_usd += cap_usd
         qual_depth_shares += leg.size_shares
-        leg_caps.append((leg, cap_shares, cap_usd))
+        leg_caps.append((leg, cap_shares))
 
-    rem_usd = min(d_usd_dec, pov_cap_usd)
     allocated_legs: List[PlannedLegSlice] = []
     worst_hit_price = qual_legs[0].implied_yes_price
     tick_for_limit = qual_legs[0].tick_size
     total_shares, total_usd = Decimal("0"), Decimal("0")
-    for leg, cap_shares, cap_usd in leg_caps:
-        if rem_usd <= Decimal("0"):
+    for leg, cap_shares in leg_caps:
+        p = leg.implied_yes_price
+        escrow_room_shares = (d_usd_dec / p) - total_shares
+        if escrow_room_shares <= Decimal("0"):
             break
-        take_shares = min(cap_shares, min(rem_usd, cap_usd) / leg.implied_yes_price)
+        take_shares = min(cap_shares, escrow_room_shares)
         if take_shares <= Decimal("0"):
             continue
-        take_usd = take_shares * leg.implied_yes_price
+        take_usd = take_shares * p
         allocated_legs.append(
             PlannedLegSlice(
                 leg_source=leg.leg_source, source_token_id=leg.source_token_id,
-                implied_yes_price=leg.implied_yes_price, raw_source_price=leg.raw_source_price,
+                implied_yes_price=p, raw_source_price=leg.raw_source_price,
                 allocated_shares=take_shares, allocated_usd=take_usd,
             )
         )
-        rem_usd -= take_usd
         total_shares += take_shares
         total_usd += take_usd
-        worst_hit_price = max(worst_hit_price, leg.implied_yes_price)
+        worst_hit_price = max(worst_hit_price, p)
         tick_for_limit = min(tick_for_limit, leg.tick_size)
+        if take_shares < cap_shares:
+            break
     return allocated_legs, total_shares, total_usd, worst_hit_price, tick_for_limit, qual_depth_shares
 
 
@@ -443,12 +443,13 @@ def plan_slice(
             d_usd_dec, qual_legs, edge_by_price, m_dec, phi_policy
         )
         limit_dec = align_price_down_to_tick(worst_p, tick_min)
-        target_sh = (tot_usd / limit_dec).quantize(_SHARES_QUANTUM, rounding=ROUND_FLOOR)
+        target_sh = min(tot_sh, d_usd_dec / limit_dec).quantize(_SHARES_QUANTUM, rounding=ROUND_FLOOR)
         eff_usd = target_sh * limit_dec
         est_vwap = (tot_usd / tot_sh) if tot_sh > Decimal("0") else limit_dec
+        est_expected_usd = target_sh * est_vwap
 
     min_sh, min_not = _resolve_min_order_thresholds(ask_book_frame, min_order_size_shares, min_notional_usd)
-    below_min = target_sh < min_sh or (min_not is not None and eff_usd < min_not)
+    below_min = target_sh < min_sh or (min_not is not None and (eff_usd < min_not or est_expected_usd < min_not))
     return SlicePlan(
         should_submit=not below_min,
         target_usd=eff_usd,
@@ -509,8 +510,15 @@ def validate_cross_side_routing(
 class ReplayMatcher:
     """`P18` conservative delayed paper-replay matcher supporting dual YES/NO split/merge legs."""
 
-    def __init__(self, config: TradingExecutionConfig) -> None:
+    def __init__(
+        self,
+        config: TradingExecutionConfig,
+        *,
+        allow_resting_book_fallback: bool = False,
+    ) -> None:
         self.config = config
+        self.allow_resting_book_fallback = bool(allow_resting_book_fallback)
+        self._consumed_shares: Dict[Tuple[str, int, Decimal], Decimal] = {}
 
     @staticmethod
     def _check_stream_r1_r2_r3(
@@ -520,6 +528,7 @@ class ReplayMatcher:
         submit_ts_utc: datetime,
         decision_seq_id: int,
         max_silent_gap_sec: float,
+        allow_resting_book_fallback: bool = False,
     ) -> Tuple[Optional[MarketBookRecordEnvelope], Optional[str]]:
         ordered = sorted(stream, key=lambda e: (e.payload.recv_ts_utc, e.seq_id))
         prior_clean: Optional[MarketBookRecordEnvelope] = None
@@ -539,6 +548,8 @@ class ReplayMatcher:
             break
 
         if hit is None:
+            if allow_resting_book_fallback and prior_clean is not None:
+                return prior_clean, None
             return None, "PAPER_MATCH_ABORTED_GAP:R1_NO_FRAME_AFTER_ARRIVE"
 
         # Verify no gap anywhere inside `(decision_seq_id, F*.seq_id]` even out of timestamp order
@@ -555,6 +566,8 @@ class ReplayMatcher:
             ensure_utc_datetime(hit.payload.recv_ts_utc, field_name="hit.recv_ts_utc") - baseline_ts
         ).total_seconds()
         if silent_sec > max_silent_gap_sec:
+            if allow_resting_book_fallback and prior_clean is not None:
+                return prior_clean, None
             return None, f"PAPER_MATCH_ABORTED_GAP:R3_SILENT_GAP:{silent_sec:.3f}s"
         return hit, None
 
@@ -570,6 +583,7 @@ class ReplayMatcher:
         hit_yes, yes_err = self._check_stream_r1_r2_r3(
             yes_stream, t_arrive=t_arrive, submit_ts_utc=sub_ts,
             decision_seq_id=ctx.decision_seq_id, max_silent_gap_sec=self.config.max_silent_gap_sec,
+            allow_resting_book_fallback=self.allow_resting_book_fallback,
         )
         hit_no: Optional[MarketBookRecordEnvelope] = None
         no_err: Optional[str] = None
@@ -579,6 +593,7 @@ class ReplayMatcher:
             hit_no, no_err = self._check_stream_r1_r2_r3(
                 no_stream, t_arrive=t_arrive, submit_ts_utc=sub_ts,
                 decision_seq_id=no_seq, max_silent_gap_sec=self.config.max_silent_gap_sec,
+                allow_resting_book_fallback=self.allow_resting_book_fallback,
             )
 
         uses_yes = any(leg.leg_source == "YES_ASK" for leg in plan.leg_allocations)
@@ -595,20 +610,31 @@ class ReplayMatcher:
             return hit_yes, hit_no, False, no_err
         return hit_yes, hit_no, ctx.include_no_side, None
 
-    @staticmethod
     def _walk_merged_levels(
+        self,
         merged_view: MergedYesAskView,
         plan: SlicePlan,
-    ) -> Tuple[List[FillLegRecord], Decimal, Decimal, Decimal]:
+        *,
+        yes_frame_seq: Optional[int] = None,
+        no_frame_seq: Optional[int] = None,
+    ) -> Tuple[List[FillLegRecord], Decimal, Decimal, Decimal, bool]:
         with exact_decimal_context():
             rem_shares = _to_exec_decimal(plan.target_shares, name="match.target_shares")
             limit_dec = _to_exec_decimal(plan.limit_price, name="match.limit_price")
             filled_total, cost_total, raw_fee_total = Decimal("0"), Decimal("0"), Decimal("0")
             fill_legs: List[FillLegRecord] = []
+            had_prior_consumed = False
             for leg in merged_view.legged_levels:
                 if rem_shares <= Decimal("0") or leg.implied_yes_price > limit_dec:
                     break
-                take_i = min(rem_shares, leg.size_shares)
+                fseq = no_frame_seq if leg.leg_source == "NO_BID_SPLIT_SELL" else yes_frame_seq
+                avail = leg.size_shares
+                if self.allow_resting_book_fallback and fseq is not None:
+                    used = self._consumed_shares.get((leg.source_token_id, fseq, leg.raw_source_price), Decimal("0"))
+                    if used > Decimal("0"):
+                        had_prior_consumed = True
+                    avail = max(Decimal("0"), avail - used)
+                take_i = min(rem_shares, avail)
                 if take_i <= Decimal("0"):
                     continue
                 fee_i_raw = compute_taker_fee_usd_raw(take_i, leg.raw_source_price, leg.fee_rate)
@@ -616,6 +642,9 @@ class ReplayMatcher:
                 cost_total += take_i * leg.implied_yes_price
                 raw_fee_total += fee_i_raw
                 rem_shares -= take_i
+                if self.allow_resting_book_fallback and fseq is not None:
+                    ckey = (leg.source_token_id, fseq, leg.raw_source_price)
+                    self._consumed_shares[ckey] = self._consumed_shares.get(ckey, Decimal("0")) + take_i
                 fill_legs.append(
                     FillLegRecord(
                         leg_source=leg.leg_source, source_token_id=leg.source_token_id,
@@ -623,7 +652,7 @@ class ReplayMatcher:
                         filled_shares=take_i, fee_usd_raw=fee_i_raw,
                     )
                 )
-        return fill_legs, filled_total, cost_total, raw_fee_total
+        return fill_legs, filled_total, cost_total, raw_fee_total, had_prior_consumed
 
     def _build_filled_log(
         self,
@@ -741,21 +770,29 @@ class ReplayMatcher:
                 terminal_status="CANCELLED_UNFILLED", reason="NO_ASK_DEPTH",
             )
 
-        fill_legs, filled_total, cost_total, raw_fee_total = self._walk_merged_levels(merged_view, plan)
+        fill_legs, filled_total, cost_total, raw_fee_total, had_prior_consumed = self._walk_merged_levels(
+            merged_view,
+            plan,
+            yes_frame_seq=yes_snap.frame_seq if yes_snap is not None else None,
+            no_frame_seq=no_snap.frame_seq if no_snap is not None else None,
+        )
         if filled_total <= Decimal("0"):
+            reason = "RESTING_BOOK_DEPTH_EXHAUSTED" if had_prior_consumed else "LIMIT_PRICE_EXCEEDED_FAK"
             return self._build_unfilled_log(
-                context, plan, replay_source_seq_id=ref_hit.seq_id, final_ts_utc=ref_hit.payload.recv_ts_utc,
-                terminal_status="CANCELLED_UNFILLED", reason="LIMIT_PRICE_EXCEEDED_FAK",
+                context, plan, replay_source_seq_id=ref_hit.seq_id,
+                final_ts_utc=max(t_arrive, ref_hit.payload.recv_ts_utc),
+                terminal_status="CANCELLED_UNFILLED", reason=reason,
             )
 
         only_no = all(leg.leg_source == "NO_BID_SPLIT_SELL" for leg in fill_legs)
         replay_seq = hit_no.seq_id if (only_no and hit_no is not None) else ref_hit.seq_id
         if yes_snap is not None and no_snap is not None and any(l.leg_source == "NO_BID_SPLIT_SELL" for l in fill_legs):
-            final_ts = max(yes_snap.recv_ts_utc, no_snap.recv_ts_utc)
+            raw_final_ts = max(yes_snap.recv_ts_utc, no_snap.recv_ts_utc)
         elif only_no and no_snap is not None:
-            final_ts = no_snap.recv_ts_utc
+            raw_final_ts = no_snap.recv_ts_utc
         else:
-            final_ts = ref_hit.payload.recv_ts_utc
+            raw_final_ts = ref_hit.payload.recv_ts_utc
+        final_ts = max(t_arrive, raw_final_ts)
         return self._build_filled_log(
             context, plan, replay_seq_id=replay_seq, final_ts=final_ts,
             fill_legs=fill_legs, filled_total=filled_total, cost_total=cost_total, raw_fee_total=raw_fee_total,

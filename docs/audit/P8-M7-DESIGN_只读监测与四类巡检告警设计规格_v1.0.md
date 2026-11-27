@@ -2,11 +2,11 @@
 
 - **治理编号**：`P8-M7-DESIGN`
 - **对应任务编号**：**`S2-07`**（`M7, M10` · 监测与告警设计规格；后续实现单为 **`S3-13`** `PLANNED`）
-- **依据工单**：[`P8-WO-20261124-M10-EXEC4`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#6-重要治理节点与收口工单追踪日志)（C 部分）
+- **依据工单**：[`P8-WO-20261124-M10-EXEC4`](P8-PROJECT-TASKS_全量任务分解台账.md#6-重要治理节点与收口工单追踪日志)（C 部分）
 - **法定锚点**：
   - [`P8-T2-M7-LOGGING v1.2 §3.2`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#32-p10m7--m10-前台只读视图兼容约束与正式查询契约v11--s2-04-正文冻结)（`P10` 兼容约束、并发尾行语义与零写回强制校验清单）
   - [`项目方案 (v3.0) §8.1 M7 / M10`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策)
-  - [`P8-PROJECT-TASKS v3.0 §2.2 S2-07 / §2.3 S3-13`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#22-切片-2基线录盘制度合龙待成文协议-p10-与管控收口)
+  - [`P8-PROJECT-TASKS v3.0 §2.2 S2-07 / §2.3 S3-13`](P8-PROJECT-TASKS_全量任务分解台账.md#22-切片-2基线录盘制度合龙待成文协议-p10-与管控收口)
   - 被巡检基线工具与源码：[`scripts/record_status.py`](../../scripts/record_status.py)、[`scripts/run_passive_book_recorder_daily.py`](../../scripts/run_passive_book_recorder_daily.py)、[`configs/passive_book_recorder.example.yaml`](../../configs/passive_book_recorder.example.yaml)、[`src/audit/p10_reader.py`](../../src/audit/p10_reader.py)、[`src/risk/stream_watchdog.py`](../../src/risk/stream_watchdog.py)
 - **文件增殖判据说明（依 [`《项目编号与命名规范 v1.1》§9`](../项目编号与命名规范_20261021.md)）**：[`P8-T2-M7-LOGGING`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md) 承载 `P1/P3/P9/P12/P13/P17/P19` 协议落盘与 `P10` 查询契约，[`P8-M10-DESIGN`](P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md) 承载 `M10` 前台静态 HTML 聚合与呈现规则；二者均不宜混入“四类后台只读巡检阈值、恢复迟滞与独立告警输出契约”职责，且台账 `S2-07` 与 `EXEC4` 工单明确要求独立成文，故以 `docs/audit/P8-M7-DESIGN_只读监测与四类巡检告警设计规格_v1.0.md` 规范落盘并挂载回唯一台账。
 

@@ -1,16 +1,16 @@
 # Polymarket 温度预测与量化套利系统
 
 > [!NOTE]
-> **[2026-11-17 已对齐 [`P8-KERNEL-CONSENSUS v1.1`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md) & [`P8-CAPITAL-CONFIG v1.0`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)]**：  
-> - **当前演进节点**：继方案 $\alpha$ 检验 C 终裁落地 **`TIER_C`**（`58f5b22`）及 `2026-11-16` 内核基础达成后，于 `2026-11-17` 完成当前决策收敛——**分叉 1（选 `1'`：`T5` 取消，`2019` 降级为 `T8` 影子形态验收）与分叉 2（首期 1 个月 + 方案 B 续冻结）已关闭**；确立资金框架（`$10,000 / $500 站限 / k₀=2` 预设）、门限额制 `w=B2` + `φ=Edge` 感知 POV（`k=0` IOC，`v1` 不做主动退出）、`T9` 后 **真盘切换门** 与 [`P8-FACTS-LEDGER v0.1`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)。*上述参数与选择均为当前决策 / 首期选择 / 数据前预设（月度复检可替换；数据充分时形态让位于数据）*。现役 [`Proposal1CoolingDriftMuRHook`](src/prediction/dynamic_corrector.py) 已设生产 `default-off`，`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）严格冻结不动。  
-> - **历史基线记录（保留不改）**：`[P7-DOC-RECON]` 对齐阶段主干固化于 `5c4a4c9`（PR #132 W1 合流，当时全库测试记录 `1006 passed, 10 skipped, 0 failed`；2026-11-14 `prediction + pricing` 单测集实测 `181 passed, 0 failed`）。
+> **[2026-11-28 已对齐 [`项目方案 (v3.0) §8`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-PROJECT-TASKS v3.14`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md)（`DONE = 27/33`）]**：
+> - **当前实盘前产线态势（`PAPER` 连续仿真运行中）**：全系统依常设指令 `P8-WO-20261123-STANDING-DIRECTIVE-NOREAL-ORDER` 维持 **`PAPER` 假盘模式**（[`configs/clob_gateway.yaml`](configs/clob_gateway.yaml)，实钱轨道暂停至“统一开通”）。6 站主力盘口被动录盘、`live_p5` 实时预报、`S3-11` 连续假盘决策与延迟撮合（`M4→M5 P18 v1.1→M6 P14→M7→M9 P9/P15`）及本地只读 `M10` 实时看板（`127.0.0.1:8765`）持续运行；`2026-11-27/28` 完成四批演进（存储节流与 `.jsonl.gz` 原子归档、`M6` 重启审计历史恢复、`P18 v1.1` 静息盘口回退与 `τ` 分级事件调度、`P2 v1.2` `plan_slice` 陡峭尾档预冻结感知修复）。`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）保持严格冻结不动。
+> - **历史基线记录（保留不改）**：`2026-11-17` 收敛内核 `v1.1`（`T5` 取消、`$10,000 / $500 站限 / k₀=2`、`w=B2 + φ=Edge 感知 POV`）及 `[P7-DOC-RECON]` 主干基线 `5c4a4c9`（PR #132 W1 合流，`1006 passed, 10 skipped, 0 failed`）。
 
 > 📌 **核心文档与导航入口**：  
-> • **内核架构档（`v1.1` · `2026-11-17`）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)  
-> • **资金配置与参数账本（`v1.0`）**：[`P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) ｜ **执行设计 `w/φ`**：[`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)  
-> • **静态事实档案（`v0.1`）**：[`P8-FACTS-LEDGER_静态事实档案_v0.1.md`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md) ｜ **战术活队列**：[`P8-GLOBAL-MAP v1.2`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md)  
-> • **项目实时状态总入口**：[`STATUS.md`](STATUS.md) ｜ **战略路线图（`v1.3.0`）**：[`docs/ROADMAP.md`](docs/ROADMAP.md) ｜ **检验 C 司法总档案**：[`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)  
-> • **新会话冷启动交接清单**：[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md) ｜ **双城封盘九项门禁**：[`docs/SEALING_GATE.md`](docs/SEALING_GATE.md) ｜ **出域同步政策**：[`docs/SYNC_POLICY.md`](docs/SYNC_POLICY.md)
+> • **唯一实时任务台账（`v3.14`）**：[`P8-PROJECT-TASKS_全量任务分解台账.md`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md) ｜ **离线可视化看板**：[`progress_board.html`](docs/audit/progress_board.html)  
+> • **业务方案与十模块协议索引（`v3.0`）**：[`项目方案 (v3.0)`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) ｜ **决策与执行接口（`v1.2`）**：[`P8-T4-M4M5-INTERFACE_决策与执行接口规格.md`](docs/audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md)  
+> • **算法四单设计（`v0.3`）**：[`P8-T8-ALGO4-DESIGN`](docs/audit/P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md) ｜ **制度合龙规范（`D-6`）**：[`P8-D6-POLICY-CLOSURE v1.0`](docs/audit/P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) ｜ **监控页设计（`M10`）**：[`P8-M10-DESIGN`](docs/audit/P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md)  
+> • **资金配置与参数账本（`v1.1`）**：[`P8-CAPITAL-CONFIG`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) ｜ **执行设计 `w/φ`**：[`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) ｜ **静态事实档案**：[`P8-FACTS-LEDGER`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)  
+> • **项目历史状态与路线图**：[`STATUS.md`](STATUS.md) ｜ [`docs/ROADMAP.md`](docs/ROADMAP.md) ｜ [`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md) ｜ [`docs/SEALING_GATE.md`](docs/SEALING_GATE.md)
 
 > 🚩 **【法定运行旗状态（对齐 main 现实）】**：  
 > 1. `KMIA_12h`：状态 `COMPLETED_ECE_FLAGGED`（加权 ECE = `0.018318` 越线 0.0100；经 MODEL_SCORECARD 与裁决令判为红级禁投 0.0x）；  
@@ -111,8 +111,8 @@
 | **Phase 5: 审计工具重构** | **Layer 2 门禁立法与测试基线大筑底**<br>• 可靠度工具重构（S1~S5 盲测、20 桶分桶合并算法防凑答案审计）<br>• 全库 987 项测试基线（10 skipped, 0 failed）建立 | **100%** | `standalone_reliability_check.py`<br>测试基线 987 项全绿 |
 | **Phase 6: 双城封盘** | **双城 TMax 24 时间格 (96 季节格) 全网格 Block-CV 审计与封盘**<br>• KORD (11/12 Gaussian + 1 JSU) 封卷于 `COMPLETED_SEALED`<br>• KMIA (10/12 JSU + 1 EVT + 1 Split) 封卷于 `COMPLETED_SEALED_FLAGGED`<br>• 合流入主干基线 `6fe386c`（PR #129） | **100% 封卷** | `evidence/p6_tmax_methodology_closure.md`<br>双城 96 季节格审计汇总表 |
 | **Phase 7: 过渡态 (历史锚点)** | **长线路线图入册与三波次战略推进 (PR #130 合流至 `2975ec1`)**<br>• **W1**: `P6-POOL-PHASE` 已封卷合流（`5c4a4c9`），运行旗 2 已拔除<br>• **W2 / Task 08**: `F-2 LOCKED` 定价内核（`sigma_adj.py` / `penetration_probe.py`）已封盘 | **W1 封卷 / F-2 锁定** | [`STATUS.md`](STATUS.md)<br>[`docs/ROADMAP.md`](docs/ROADMAP.md)<br>[`docs/HANDOVER_P7.md`](docs/HANDOVER_P7.md) |
-| **Phase 8: 检验 C 与内核定稿 (`2026-11-16` 当前)** | **方案 α 检验 C `TIER_C` 终裁归档 + [`内核讨论定稿 v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)**<br>• `Proposal1CoolingDriftMuRHook` 已切回生产 `default-off`（`58f5b22`）<br>• 废止历史回填前置阻塞，转为 **阶段 0（`T1 G-15 核查 [最优先]` / `T2` / `T3` / `T4`）** + 生产即测绘四元组日志，待三项分叉拍板及 `D-6` 制度合龙 | **阶段 0 并行筹备** | [`P8-KERNEL-CONSENSUS v1.0`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)<br>[`P8-INSPECTION-C-FULL-DOSSIER`](docs/audit/P8-INSPECTION-C-FULL-DOSSIER_20261114.md)<br>[`P8-GLOBAL-MAP`](docs/audit/P8-GLOBAL-MAP_项目全局图谱_v1.0_20261113.md) |
-| **生产交易引擎** | 盘口撮合、多项增量联合凯利、IOC 订单路由与异常中枢（阶段 2–3 改版落地推进） | 阶段 0 阻塞中 | `OrderRouter`, `CentralExceptionArbiter` |
+| **Phase 8: 后 α 十模块建设与连续假盘 (`2026-11-28` 当前)** | **十模块 `M1–M10` 与 `P1–P19` 协议体系落地（`DONE = 27/33`）**<br>• 切片 1 全闭合；切片 2 `S2-01`（6 站双侧录盘）、`S2-02`（`friction_median=0.071645`）、`S2-03 D-6`、`S2-04 P10`、`S2-05` 看板、`S2-06 G-5`、`S2-07` 告警全闭合<br>• 切片 3 完成 `S3-01..S3-10 / S3-13 / S3-14 / S3-17`；`PAPER` 6 站实时预报、连续决策撮合、审计恢复与只读 `M10` 监控服务持续运行中 | **27/33 已闭合** | [`P8-PROJECT-TASKS`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md)<br>[`progress_board.html`](docs/audit/progress_board.html)<br>[`P8-D6-POLICY-CLOSURE`](docs/audit/P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) |
+| **交易与执行引擎 (`M4–M7/M9/M10`)** | `DeterministicDecider`、`plan_slice (P2 v1.2)`、`ReplayMatcher (P18 v1.1)`、`BankrollManager (P14/P15)` 与 `M9SettlementEngine` 全量上线于 `PAPER` 轨；`S3-05b` CLOB 网关已交付，`S3-15` 真钱试单依业主常设指令暂停至“统一开通” | **`PAPER` 连续仿真运行中** | [`P8-T4-M4M5-INTERFACE`](docs/audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md)<br>[`P8-M10-DESIGN`](docs/audit/P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md) |
 
 ---
 
@@ -154,18 +154,31 @@ Poly Way2/
 │   ├── models/                  # 960 个生产模型资产 (.pkl)
 │   └── legacy-v1-suspect/       # 历史作废脏数据物理隔离区
 ├── src/
-│   ├── data_acquisition/        # 数据采集层 (GEFS GRIB2 下载器与解析)
+│   ├── data_acquisition/        # M1/M3 数据采集层 (GEFS/AWC METAR 与 P13 被动盘口录盘)
 │   ├── data_processing/         # 数据工程与存储层 (常量、转换、物理递减率、时序对齐)
 │   ├── modeling/                # 概率建模层 (EMOS、JSU、EVT、CRPS、BIC 选型、插值器)
-│   ├── prediction/              # 三层预测与盘口转化层 (静态预测、动态截断、物理硬拦截、2°F 映射)
+│   ├── prediction/              # M2 预测引擎 (静态预测、动态截断、2°F 映射与 live_p5 生产)
+│   ├── pricing/                 # 定价内核 [F-2 LOCKED] (edge_math.py, sigma_adj.py 等)
+│   ├── decision/                # M4 决策引擎与连续假盘调度器 (engine.py, offline_scheduler.py)
+│   ├── execution/               # M5 执行器 (P2 v1.2 plan_slice, P18 v1.1 ReplayMatcher, CLOB 网关)
+│   ├── bankroll/                # M6 资金风控 (P7/P14/P15, 重启审计历史恢复 recovery.py)
+│   ├── audit/                   # M7 审计日志与只读巡检 (p10_reader .jsonl.gz, readonly_watchdog.py)
+│   ├── calibration/             # M8 校准账本与 ECE 评估 (policy_ledger, p13_book_walk, ece_evaluator)
+│   ├── settlement/              # M9 官方结算对账 (AWC/WU 回退, DST 日界与 P15 释放)
+│   ├── ui/                      # M10 纯只读监控视图、5 项一致性核验与增量缓存
 │   ├── validation/              # 审计与验证层 (ECE、PIT、Block-CV、可靠度检验工具)
 │   ├── pipeline/                # 统一流水线与健康中枢
-│   └── utils/                   # 结构化日志与通用工具
-├── scripts/                     # 命令行工具与全网格审计脚本
-│   ├── run_poly_pipeline.py     # 生产统一 CLI 交互中枢
-│   ├── run_p6_fullgrid_tmax.py  # P6 双城 TMax 24 时间格 Block-CV 审计脚本
+│   └── utils/                   # 结构化日志、Decimal 守卫与通用工具
+├── scripts/                     # 命令行工具、产线守护与运维脚本
+│   ├── run_poly_pipeline.py     # 历史模型流水线统一 CLI 入口
+│   ├── run_passive_book_recorder_daily.py # M3 每日 00:05Z 轮转被动录盘守护
+│   ├── run_live_p5_producer.py  # M1/M2 在线 P5 概率分布定时生产
+│   ├── run_s311_offline_scheduler.py # S3-11 连续假盘决策/撮合/结算主链
+│   ├── serve_m10_live.py        # M10 本地回环只读实时监控服务 (127.0.0.1:8765)
+│   ├── archive_audit_logs.py    # 历史审计日志原子 .jsonl.gz 压缩归档 (SHA-256 校验)
+│   ├── render_progress_board.py # 唯一任务台账解析与离线 progress_board.html 生成校验
 │   └── standalone_reliability_check.py # 可靠度独立检验工具
-├── tests/                       # 测试套件 (987 项测试基线)
+├── tests/                       # 测试套件 (unit / integration / e2e)
 │   ├── unit/                    # 单元测试 (数据获取、处理、建模、预测)
 │   ├── integration/             # 模块间集成测试
 │   └── e2e/                     # 系统级全链路 E2E 验收测试
@@ -209,6 +222,18 @@ python scripts/run_poly_pipeline.py predict --station KORD --date 2026-10-10 --t
 python scripts/standalone_reliability_check.py --help
 ```
 
+### 4. 当前 `PAPER` 假盘运维、看板校验与本地 `M10` 监控
+```bash
+# 1. 校验唯一任务台账与离线进度看板字节级一致性
+python3 scripts/render_progress_board.py --check
+
+# 2. 启动本地只读 M10 实时刷新服务 (仅监听 127.0.0.1:8765，支持 GET/HEAD)
+python3 scripts/serve_m10_live.py --host 127.0.0.1 --port 8765
+
+# 3. 原子归档历史审计日志为 .jsonl.gz (自动跳过今日 UTC 目录并校验 SHA-256)
+python3 scripts/archive_audit_logs.py --audit-root data/audit_logs/PAPER
+```
+
 ---
 
 ## 测试套件执行与验证
@@ -229,6 +254,12 @@ RUN_NETWORK_TESTS=1 pytest tests/unit/data_acquisition/test_gefs_fetcher.py::tes
 ---
 
 ## 核心文档索引
+
+- **唯一实时任务台账（`v3.14`）**：[`docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md)（[离线进度看板](docs/audit/progress_board.html)）
+- **决策与执行接口规格（`v1.2` · 含 `P2 v1.2 / P18 v1.1`）**：[`docs/audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md`](docs/audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md)
+- **算法四单工程设计书（`v0.3` · 含 `2026-11-28` 增量）**：[`docs/audit/P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md`](docs/audit/P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md)
+- **监控页业务逻辑设计说明（`M10` · 含 5 项一致性核验）**：[`docs/audit/P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md`](docs/audit/P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md)
+- **制度合龙与标定规范（`D-6 v1.0`）**：[`docs/audit/P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md`](docs/audit/P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md)
 
 - **内核架构档案（`v1.1` · `2026-11-17`）**：[`docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md`](docs/audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)
 - **资金参数配置与参数账本（`v1.0` · `2026-11-17`）**：[`docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)

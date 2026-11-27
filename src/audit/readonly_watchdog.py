@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECORDINGS_ROOT = REPO_ROOT / "data" / "market_recordings"
 DEFAULT_AUDIT_ROOT = REPO_ROOT / "data" / "audit_logs"
 DEFAULT_ALERTS_DIR = REPO_ROOT / "data" / "alerts"
-DEFAULT_LEDGER_PATH = REPO_ROOT / "docs" / "audit" / "P8-PROJECT-TASKS_全量任务分解台账_v1.0.md"
+DEFAULT_LEDGER_PATH = REPO_ROOT / "docs" / "audit" / "P8-PROJECT-TASKS_全量任务分解台账.md"
 
 Severity = str  # "OK" | "WARN" | "CRITICAL"
 _SEVERITY_RANK: Dict[str, int] = {"OK": 0, "WARN": 1, "CRITICAL": 2}

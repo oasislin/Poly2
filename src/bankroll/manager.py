@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Callable, Dict, Optional, Set, Tuple
+from typing import Callable, Dict, Iterable, Mapping, Optional, Set, Tuple
 
 from src.audit.audit_logger import AsyncAuditLogger
 from src.audit.p19_events import CapitalEventLog, CapitalEventType, build_capital_event_log
@@ -175,6 +175,33 @@ class BankrollAccountManager:
         self._policy_version = policy_version
         self._config_hash = config_hash
         self._is_overdue = bool(is_overdue)
+
+    def restore_from_audit_history(
+        self, *, open_held_by_market: Mapping[Tuple[str, str], Decimal],
+        open_fee_by_market: Mapping[Tuple[str, str], Decimal], total_fee_paid_usd: Decimal,
+        realized_pnl_by_station: Mapping[str, Decimal], settled_attempt_ids: Iterable[str] = (),
+        settled_p15_ids: Optional[Mapping[str, Decimal]] = None,
+        tier_pool_usd: Optional[Decimal] = None, light_status: Optional[str] = None,
+    ) -> None:
+        """Silently restore pre-restart ledger & open positions from M7 logs (zero P19 emitted)."""
+        if tier_pool_usd is not None:
+            self._tier_pool_usd = to_bankroll_decimal(tier_pool_usd, name="restore.tier_pool_usd")
+            if self._tier_pool_usd > self._config.drawdown_activation_threshold_usd:
+                self._drawdown_brake_enabled = True
+        self._held_by_market = {k: to_bankroll_decimal(v, name="restore.held") for k, v in open_held_by_market.items() if v > Decimal("0")}
+        self._fee_by_market = {k: to_bankroll_decimal(v, name="restore.fee") for k, v in open_fee_by_market.items() if v > Decimal("0")}
+        self._fee_paid_total_usd = to_bankroll_decimal(total_fee_paid_usd, name="restore.fee_total")
+        self._realized_pnl_by_station = {k: to_bankroll_decimal(v, name="restore.pnl") for k, v in realized_pnl_by_station.items()}
+        self._free_usd = self._tier_pool_usd + self.realized_pnl_total_usd - self.held_total_usd - self._fee_paid_total_usd
+        self._peak_equity_usd = max(self._tier_pool_usd, self.equity_usd)
+        self._settled_attempts.update({str(aid): Decimal("0") for aid in settled_attempt_ids})
+        if settled_p15_ids:
+            self._settled_p15_ids.update({str(k): to_bankroll_decimal(v, name="restore.p15_pnl") for k, v in settled_p15_ids.items()})
+        if light_status is not None:
+            self._light_status = light_status
+        self._tripped_stations = {st for st, pnl in self._realized_pnl_by_station.items() if pnl <= -self._config.station_loss_gate_usd}
+        if self.conservation_residual_usd != Decimal("0"):
+            raise ValueError(f"Restored ledger failed conservation: residual={self.conservation_residual_usd}")
 
     def increment_green_month(self, months: int = 1) -> int:
         """Advance consecutive `GREEN` month counter (only when currently `GREEN`)."""

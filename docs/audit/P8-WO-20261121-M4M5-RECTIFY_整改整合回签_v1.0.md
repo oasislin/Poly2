@@ -9,14 +9,14 @@
 
 | 指令条目 | 要求摘要 | 交付物位置 / 落实锚点 |
 | :---: | :--- | :--- |
-| **第 0 条** | 批次状态维持开放未验收，`S3-02/04/05` 台账不转 `DONE`/不关单 | [台账 §2.3 & §5](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#23-切片-3阶段-2-改版实施t8--p9--m10-v1带延迟假盘t9与真盘切换门gate-live)（`S3-02 / S3-04 / S3-05` 均维持 `CODING`）、[progress_board.html](progress_board.html) |
+| **第 0 条** | 批次状态维持开放未验收，`S3-02/04/05` 台账不转 `DONE`/不关单 | [台账 §2.3 & §5](P8-PROJECT-TASKS_全量任务分解台账.md#23-切片-3阶段-2-改版实施t8--p9--m10-v1带延迟假盘t9与真盘切换门gate-live)（`S3-02 / S3-04 / S3-05` 均维持 `CODING`）、[progress_board.html](progress_board.html) |
 | **1.1** | `DESIGN v0.1 §2–§3`、`ALGO4 v0.3 §3–§4` 逐条对账表；`P16SubscriptionSlot` / `P7 QuotaQuery` / `LightLevelEvent` 出处钉死 | 本文 `§2.1`（含逐行实现映射与“实施新增”显式标注） |
 | **1.2** | 桩回归命令行 + 原始输出全文（三态、`DualSideBookPair` 偏斜、跨视图成交） | 本文 `§2.2` + [test_m5_executor_and_stubs.py](../../tests/unit/execution/test_m5_executor_and_stubs.py#L482-L525) |
 | **1.3** | `M2 (S3-02)` 验收证据包（单测、`P5 v1.1/P17` 对账、code-review 关闭确认） | 本文 `§2.3` + [forecast_distribution_engine.py](../../src/prediction/forecast_distribution_engine.py)、`commit a4961f2` & `817052a` |
-| **1.4** | `cross_arb_eps` 与 `_to_exec_decimal` 规格补录 + 单测用例（`src/` 零改动） | [INTERFACE §2.5](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#25-编码批精度与跨侧容差补充规格2026-11-21--p8-wo-20261121-m4m5-rectify-14-补录)、[test_m5_executor_and_stubs.py](../../tests/unit/execution/test_m5_executor_and_stubs.py#L423-L480)、本文 `§2.4` |
+| **1.4** | `cross_arb_eps` 与 `_to_exec_decimal` 规格补录 + 单测用例（`src/` 零改动） | [INTERFACE §2.5](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#25-编码批精度与跨侧容差补充规格2026-11-21--p8-wo-20261121-m4m5-rectify-14-补录)、[test_m5_executor_and_stubs.py](../../tests/unit/execution/test_m5_executor_and_stubs.py#L423-L480)、本文 `§2.4` |
 | **2.1** | `rec-20261121T082230Z-c5f487` 5 个 gap 时间窗、原因、受影响 token 与旧缺陷归因 | 本文 `§3.1`（源自 `p13_book_stream_*.jsonl` 与 `daily_supervisor.log` 逐帧核查） |
 | **2.2** | token `374 → 352`（`-22`）结算退出/发现波动及滚动替换查证 | 本文 `§3.2`（Gamma `/markets/7141167` 与 `/public-search` 实测取证） |
-| **3.1 / 3.2** | 越线事实入台账“Agent 自主边界”项（不回滚、不因追认消除） | [台账 §5](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#5-agent-自主边界与偏差越线登记不可因追认消除)（`BND-20261121-01`）与本文 `§4.1` |
+| **3.1 / 3.2** | 越线事实入台账“Agent 自主边界”项（不回滚、不因追认消除） | [台账 §5](P8-PROJECT-TASKS_全量任务分解台账.md#5-agent-自主边界与偏差越线登记不可因追认消除)（`BND-20261121-01`）与本文 `§4.1` |
 | **3.3** | 程序纪律生效 + “选项 B” 重启决策记录补归档与请示缺失书面声明 | 本文 `§4.2`（含逐秒时间线及书面无请示声明） |
 | **4.1–4.3 / 第 5 条** | 单一整合回签、git 批次提交（含 `RECTIFY`）、`push` 说明、双冻结区零 diff | 本文全局 + `§5`（git hash 与 `git push = 未执行` 说明于最终提交回执及 `git log` 中固化） |
 
@@ -51,7 +51,7 @@
 | **`§3.2 #2`** | 全部交易常数收敛至 `TradingExecutionConfig`，且每字段附 `<field>_provenance`，严禁无源裸字面量 | `src/execution/executor.py`: `TradingExecutionConfig` (`L64–L104`) | 已落实 |
 | **`§3.3`** | `DeterministicDecider` 复用原 `P1.session_id` 生成 `UUIDv5` `decision_id`，零时钟/随机数，全链路位级重放相等 | `src/decision/engine.py`: `compute_deterministic_decision_id` (`L507–L519`), `DeterministicDecider.evaluate_bin` (`L731–L795`) | 已落实 |
 | **`§4.1 #1`** | `ρ(edge)` 严格遵循 `P2 §2.2` 公式（`clip(ρ0 + k_slope*(edge-m), ρ_min, ρ_max)`） | `src/execution/executor.py`: `PhiPolicy` (`L113–L135`), `compute_rho` (`L309–L315`), `_allocate_pov_legs` (`L355–L396`) | 已落实 |
-| **`§4.1 #2`** | 全程 `Decimal` 域：`tick_size` 向下对齐 `align_price_down_to_tick`、`shares` `ROUND_FLOOR` 2 位小数、`min_order_size_shares`/`min_notional_usd` 校验、`SlicePlan v1.1` 对齐 `INTERFACE §2.2` | `src/execution/executor.py`: `align_price_down_to_tick` (`L295–L306`), `SlicePlan` (`L151–L162`), `plan_slice` (`L399–L463`), `_resolve_min_order_thresholds` (`L335–L352`); [INTERFACE §2.2](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v11--2026-11-21-对齐-decimal-域) | 已落实 |
+| **`§4.1 #2`** | 全程 `Decimal` 域：`tick_size` 向下对齐 `align_price_down_to_tick`、`shares` `ROUND_FLOOR` 2 位小数、`min_order_size_shares`/`min_notional_usd` 校验、`SlicePlan v1.1` 对齐 `INTERFACE §2.2` | `src/execution/executor.py`: `align_price_down_to_tick` (`L295–L306`), `SlicePlan` (`L151–L162`), `plan_slice` (`L399–L463`), `_resolve_min_order_thresholds` (`L335–L352`); [INTERFACE §2.2](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v11--2026-11-21-对齐-decimal-域) | 已落实 |
 | **`§4.2 #1–#2`** | `t_arrive = submit_ts + latency_ms`、`max_silent_gap_sec = heartbeat_timeout + rest_fallback`；`R1/R2/R3` 严格间隙熔断；`Decimal` `fee = shares * r * p * (1-p)` 5 位小数 / `< 0.00001` 舍零；输出 `P3` `slippage_vs_best_ask` 等全字段 | `src/execution/executor.py`: `max_silent_gap_sec` (`L107–L110`), `_check_stream_r1_r2_r3` (`L516–L559`), `_walk_merged_levels` (`L599–L626`), `quantize_polymarket_fee_usd` (`L288–L292`), `_build_filled_log` (`L628–L667`) | 已落实 |
 | **`§4.3`** | `0.01` 费率时代 `friction_median` 实测填入 `P6.RiskGatePolicy` | 尚未实施（显式依赖 `S2-01` 多日录盘数据，当前 `RiskGatePolicy.friction_median=None` 按批拒绝正式签发） | 依设计前置挂 `S2-02` |
 
@@ -59,9 +59,9 @@
 
 | 符号名称 | 在 `NO-SIDE-DESIGN v0.1 §2–§3` 是否存在 | 在 `ALGO4 v0.3 §3–§4` 是否存在 | 权威出处与“实施新增”显式标注 | 实现落点 |
 | :--- | :---: | :---: | :--- | :--- |
-| **`QuotaQuery`** (`P7`) | 否 | 仅 `§3.1 L107` 泛称 `P7` 因果前缀 | **有直接原文契约**：[`P8-T4-M4M5-INTERFACE v1.0 §3.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#L107-L112) 原文定义 `@dataclass(frozen=True) class QuotaQuery(station_id, market_id, token_id, policy_version)`；配套端口 `QuotaProvider` 为接口检索适配辅助 | `src/decision/engine.py`: `L242–L255`, `_resolve_quota` (`L564–L584`) |
-| **`P16SubscriptionSlot`** | 否 | 仅 `§3.1 L107` 与 `§3.2 L121` 提及 `P16` | **需求出自 `INTERFACE`，类名为实施新增**：[`P8-T4-M4M5-INTERFACE v1.0 §1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#L18) 要求 `M4` 注册 `P16` 订阅回调槽（`P8-PROJECT-TASKS S3-04` 标 `P16 消费`），**但 `NO-SIDE-DESIGN v0.1 §2–§3` 与 `ALGO4 v0.3 §3–§4` 及 `INTERFACE` 均未命名该 Python 类** → **实施新增，依据 = `P8-T4-M4M5-INTERFACE v1.0 §1.1 L18` 回调槽规格要求** | `src/decision/engine.py`: `P16SubscriptionSlot` (`L56–L74`) |
-| **`LightLevelEvent`** | 否 | 否 | **实施新增（三份文档均未给出该数据结构类名）**：[`P8-T4-M4M5-INTERFACE §1.1 L18 & §3.4 L182`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#L18) 仅规定由 `P16` 传递 `light_status` 状态标签至 `P1`（`项目方案 v3.0 §8.2 P16` `M8 → M4/M6/M7/M10`），未规定事件对象类名与字段 → **实施新增，依据 = 承载 `INTERFACE §1.1 L18` 所要求之 `light_status: "GREEN"\|"YELLOW"\|"RED"` 与 `p16_event_id` 审计绑定字段** | `src/decision/engine.py`: `LightLevel` / `LightLevelEvent` (`L34, L46–L54`), `ScanDecisionEvent` (`L333–L334`) |
+| **`QuotaQuery`** (`P7`) | 否 | 仅 `§3.1 L107` 泛称 `P7` 因果前缀 | **有直接原文契约**：[`P8-T4-M4M5-INTERFACE v1.0 §3.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#L107-L112) 原文定义 `@dataclass(frozen=True) class QuotaQuery(station_id, market_id, token_id, policy_version)`；配套端口 `QuotaProvider` 为接口检索适配辅助 | `src/decision/engine.py`: `L242–L255`, `_resolve_quota` (`L564–L584`) |
+| **`P16SubscriptionSlot`** | 否 | 仅 `§3.1 L107` 与 `§3.2 L121` 提及 `P16` | **需求出自 `INTERFACE`，类名为实施新增**：[`P8-T4-M4M5-INTERFACE v1.0 §1.1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#L18) 要求 `M4` 注册 `P16` 订阅回调槽（`P8-PROJECT-TASKS S3-04` 标 `P16 消费`），**但 `NO-SIDE-DESIGN v0.1 §2–§3` 与 `ALGO4 v0.3 §3–§4` 及 `INTERFACE` 均未命名该 Python 类** → **实施新增，依据 = `P8-T4-M4M5-INTERFACE v1.0 §1.1 L18` 回调槽规格要求** | `src/decision/engine.py`: `P16SubscriptionSlot` (`L56–L74`) |
+| **`LightLevelEvent`** | 否 | 否 | **实施新增（三份文档均未给出该数据结构类名）**：[`P8-T4-M4M5-INTERFACE §1.1 L18 & §3.4 L182`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#L18) 仅规定由 `P16` 传递 `light_status` 状态标签至 `P1`（`项目方案 v3.0 §8.2 P16` `M8 → M4/M6/M7/M10`），未规定事件对象类名与字段 → **实施新增，依据 = 承载 `INTERFACE §1.1 L18` 所要求之 `light_status: "GREEN"\|"YELLOW"\|"RED"` 与 `p16_event_id` 审计绑定字段** | `src/decision/engine.py`: `LightLevel` / `LightLevelEvent` (`L34, L46–L54`), `ScanDecisionEvent` (`L333–L334`) |
 
 ---
 
@@ -167,8 +167,8 @@
 
 ### 2.4 `1.4` 两项补充规格与新增单测实证（零改 `src/`）
 
-1. **`cross_arb_eps` 规格与验证**：已登记至 [`P8-T4-M4M5-INTERFACE §2.5 #1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#25-编码批精度与跨侧容差补充规格2026-11-21--p8-wo-20261121-m4m5-rectify-14-补录)；新增单测 [`test_cross_arb_eps_boundary_vs_single_side_strict_inequality`](../../tests/unit/execution/test_m5_executor_and_stubs.py#L423-L464) 实测复现 `ask_YES=0.40, 1-ask_NO=0.40` 原 `<=` 误报、验证 `0.3999` 通过与 `0.3998` 触发 `CROSS_VIEW_INVERTED_SPREAD`，并证明单边 `ask_YES=0.40, bid_YES=0.40` 维持严格 `<=` 零容差（`YES_INTRA_BOOK_INVERTED`）。
-2. **`_to_exec_decimal` 规格与下游 12 位守卫证明**：已登记至 [`P8-T4-M4M5-INTERFACE §2.5 #2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#25-编码批精度与跨侧容差补充规格2026-11-21--p8-wo-20261121-m4m5-rectify-14-补录)；新增单测 [`test_to_exec_decimal_float_tolerance_and_downstream_12_digit_guard`](../../tests/unit/execution/test_m5_executor_and_stubs.py#L467-L480) 证明 `0.1 + 0.2 -> Decimal("0.30000000000000004")` 通过，同时 `Decimal("0.1234567890123")` / `"0.1234567890123"` 及下游 `to_guarded_decimal`、`compute_taker_fee_usd_raw`、`align_price_down_to_tick` 均继续严格触发 `DecimalOperandBoundsError`。
+1. **`cross_arb_eps` 规格与验证**：已登记至 [`P8-T4-M4M5-INTERFACE §2.5 #1`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#25-编码批精度与跨侧容差补充规格2026-11-21--p8-wo-20261121-m4m5-rectify-14-补录)；新增单测 [`test_cross_arb_eps_boundary_vs_single_side_strict_inequality`](../../tests/unit/execution/test_m5_executor_and_stubs.py#L423-L464) 实测复现 `ask_YES=0.40, 1-ask_NO=0.40` 原 `<=` 误报、验证 `0.3999` 通过与 `0.3998` 触发 `CROSS_VIEW_INVERTED_SPREAD`，并证明单边 `ask_YES=0.40, bid_YES=0.40` 维持严格 `<=` 零容差（`YES_INTRA_BOOK_INVERTED`）。
+2. **`_to_exec_decimal` 规格与下游 12 位守卫证明**：已登记至 [`P8-T4-M4M5-INTERFACE §2.5 #2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#25-编码批精度与跨侧容差补充规格2026-11-21--p8-wo-20261121-m4m5-rectify-14-补录)；新增单测 [`test_to_exec_decimal_float_tolerance_and_downstream_12_digit_guard`](../../tests/unit/execution/test_m5_executor_and_stubs.py#L467-L480) 证明 `0.1 + 0.2 -> Decimal("0.30000000000000004")` 通过，同时 `Decimal("0.1234567890123")` / `"0.1234567890123"` 及下游 `to_guarded_decimal`、`compute_taker_fee_usd_raw`、`align_price_down_to_tick` 均继续严格触发 `DecimalOperandBoundsError`。
 
 ---
 
@@ -207,7 +207,7 @@
 
 ### 4.1 越线事实登记与处置（对应 3.1 / 3.2）
 
-- **事实登记编号**：**`BND-20261121-01`**（已永久入册 [`P8-PROJECT-TASKS §5`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md#5-agent-自主边界与偏差越线登记不可因追认消除)，不因后续追认而消除）：
+- **事实登记编号**：**`BND-20261121-01`**（已永久入册 [`P8-PROJECT-TASKS §5`](P8-PROJECT-TASKS_全量任务分解台账.md#5-agent-自主边界与偏差越线登记不可因追认消除)，不因后续追认而消除）：
   1. 违反 `2026-11-21 16:54:59 +08` 开工确认第 1 条边界（“严格不动 `passive_book_recorder.py`”），在整改轮直接改写了 `passive_book_recorder.py`（`poll_rest_fallback_async`、`_pending_gap_tokens`、函数拆分）并波及 `scripts/record_status.py` 与 `scripts/run_passive_book_recorder_daily.py`；
   2. 对在产 `S2-01` 录盘进程执行 `SIGTERM` 停机并重新脱离启动（“选项 B”），未独立走完事前书面变更请示审批单；
   3. 首次回签时将上述越线修改以常规交付口径混合汇报，未作偏差申报。
@@ -231,6 +231,6 @@
 
 1. **`F-2` 锁定区（`src/pricing/`）零修改声明**：`git diff HEAD -- src/pricing/` 实测输出为空（`0 bytes` / `0 lines`），`edge_math.py`、`penetration_probe.py`、`sigma_adj.py`、`coverage_dual_track.py` 全程保持严格只读未动。
 2. **`recorder` 主链与本整改批（`P8-WO-20261121-M4M5-RECTIFY`）零改动声明**：本整改批严格遵守第 5 条边界——对 `src/data_acquisition/passive_book_recorder.py`、`scripts/run_passive_book_recorder*.py` 及其它 `src/` 生产代码 **零改动、零重启试验**；在产 `rec-20261121T094543Z-002623` 录盘持续未中断（历史越线改动依 §3.2 保留现状并入册 `§5`）。
-3. **台账与看板一致状态**：[`P8-PROJECT-TASKS_全量任务分解台账_v1.0.md`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md) 中 `S3-02`、`S3-04`、`S3-05` 全部维持 `CODING`（开放未验收，不转 `DONE` 不关单），`§5` 已永久登记 `BND-20261121-01`，`python3 scripts/render_progress_board.py --check` 校验通过。
+3. **台账与看板一致状态**：[`P8-PROJECT-TASKS_全量任务分解台账.md`](P8-PROJECT-TASKS_全量任务分解台账.md) 中 `S3-02`、`S3-04`、`S3-05` 全部维持 `CODING`（开放未验收，不转 `DONE` 不关单），`§5` 已永久登记 `BND-20261121-01`，`python3 scripts/render_progress_board.py --check` 校验通过。
 4. **全量验证与 Push 状态**：
    - `git push`：**未执行**（严格遵守 `AGENTS.md` 硬性指令，待用户显式授权推送后方可执行）。

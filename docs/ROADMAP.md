@@ -151,16 +151,16 @@ flowchart LR
 
 ### 3.5 `[2026-11-18 当前决策]` 切片 1 任务表（`S1-01 ~ S1-06` · 历史冻结闭合快照）
 
-> **单一事实源指针（`2026-11-19 v1.4.2` 收口）**：本表保留作为**切片 1 闭合历史快照（冻结留痕，不改写既有完成条目）**；自切片 2 起全仓所有切片（`S1–S4`）与十模块实时状态、依赖及验收标准不再双头维护，统一以 [`P8-PROJECT-TASKS_全量任务分解台账_v1.0.md`](audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md) 为唯一权威源，配套只读看板见 [`progress_board.html`](audit/progress_board.html)。
+> **单一事实源指针（`2026-11-19 v1.4.2` 收口）**：本表保留作为**切片 1 闭合历史快照（冻结留痕，不改写既有完成条目）**；自切片 2 起全仓所有切片（`S1–S4`）与十模块实时状态、依赖及验收标准不再双头维护，统一以 [`P8-PROJECT-TASKS_全量任务分解台账.md`](audit/P8-PROJECT-TASKS_全量任务分解台账.md) 为唯一权威源，配套只读看板见 [`progress_board.html`](audit/progress_board.html)。
 
 | 单号 | 任务名称 | 模块归属 | 法定文档锚点 | 当前状态（`2026-11-19`） |
 | :---: | :--- | :---: | :--- | :--- |
 | **`S1-01`** | `D-A2` 五组调研收口 | `M3` | [`P8-ALGO-REVIEW G-19`](audit/P8-ALGO-REVIEW_待确认事项登记册_20261113.md)、[`项目方案 v3.0 §8.4 P4`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md)、[`P8-FACTS-LEDGER v0.2`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md) | **`DONE`**（`2026-11-18` 五组实证收口；含 `2026-11-20T23:59Z` 降费至 `0.01` 预警） |
 | **`S1-02`** | `T1 G-15` 结算口径三查 | `M9` 前置 | [`P8-KERNEL-CONSENSUS v1.1 §六`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`项目方案 v3.0 §8.4 P5`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`DONE（G-15 裁决已落地闭环）`**（见 `S1-06`：`ADR-0009/0012` 修订节 + `P5` 定义域同步，`2026-11-19`） |
 | **`S1-03`** | `T2` 日志审计文档本体 | `M7` | [`P8-KERNEL-CONSENSUS v1.1 §六 E/F`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`P8-T2-M7-LOGGING v1.0`](audit/P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md)、[`项目方案 v3.0 §8.2`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) | **`DONE`**（`2026-11-18` `P1/P3/P12/P13/P17/P19` 正文指针升级） |
-| **`S1-04`** | `T4` 决策执行接口文档 + `edge_math` 实现 | `M4 / M5` | [`P8-CAPITAL-CONFIG v1.0`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)、[`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)、[`P8-T4-M4M5-INTERFACE v1.0`](audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md)、[`项目方案 v3.0 §8.4–8.5`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`DONE`**（`2026-11-18` `P2/P5/P6/P7/P8 v1.0` + `edge_math.py` + 74 项 pricing 单测全绿） |
+| **`S1-04`** | `T4` 决策执行接口文档 + `edge_math` 实现 | `M4 / M5` | [`P8-CAPITAL-CONFIG v1.0`](audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md)、[`P8-EXECUTION-DESIGN v1.0`](audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md)、[`P8-T4-M4M5-INTERFACE v1.0`](audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md)、[`项目方案 v3.0 §8.4–8.5`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md) | **`DONE`**（`2026-11-18` `P2/P5/P6/P7/P8 v1.0` + `edge_math.py` + 74 项 pricing 单测全绿） |
 | **`S1-05`** | 被动盘口采集器（只读 · 可启动态） | `M3` | [`项目方案 v3.0 §8.2 P13 / §8.4 P4`](项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md)、[`passive_book_recorder.py`](../src/data_acquisition/passive_book_recorder.py) | **`DONE（可启动态 · 待用户批准开录）`**（`2026-11-18` `P4+P13` 采集器、`yaml` 配置与 77 项单测/干跑全过，未擅自上线录盘） |
-| **`S1-06`** | `G-15` 裁决落盘、喂桥同构口径与费率回放规则 | `M1 / M4 / M5 / M9` | [`ADR-0009 §4`](adr/ADR-0009：芝加哥%2008-31%20特报（SPECI）结算语义裁决与截断层规则.md)、[`ADR-0012 §5`](adr/ADR-0012：法定结算真值源（NWS%20WRH）、僵尸仓位双轨估值与舍入闭环裁决.md)、[`P8-KERNEL-CONSENSUS v1.1 §七`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`P8-FACTS-LEDGER v0.3`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)、[`P8-T4-M4M5-INTERFACE §2.4`](audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md) | **`DONE`**（`2026-11-19` `G-15 / G-20` 闭环、`max` 恒等式窄域证明、`T8 M1` 五项输入、变费逐帧回放与费率时代规则入库；切片 1 正式收口） |
+| **`S1-06`** | `G-15` 裁决落盘、喂桥同构口径与费率回放规则 | `M1 / M4 / M5 / M9` | [`ADR-0009 §4`](adr/ADR-0009：芝加哥%2008-31%20特报（SPECI）结算语义裁决与截断层规则.md)、[`ADR-0012 §5`](adr/ADR-0012：法定结算真值源（NWS%20WRH）、僵尸仓位双轨估值与舍入闭环裁决.md)、[`P8-KERNEL-CONSENSUS v1.1 §七`](audit/P8-KERNEL-CONSENSUS_内核讨论定稿_v1.0_20261116.md)、[`P8-FACTS-LEDGER v0.3`](audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)、[`P8-T4-M4M5-INTERFACE §2.4`](audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md) | **`DONE`**（`2026-11-19` `G-15 / G-20` 闭环、`max` 恒等式窄域证明、`T8 M1` 五项输入、变费逐帧回放与费率时代规则入库；切片 1 正式收口） |
 
 ---
 
@@ -209,7 +209,7 @@ flowchart LR
 ## §7 版本记录
 
 - **文档创建日期**：2026-10-10  
-- **最近修订日期**：2026-11-21（**`v1.4.3`**：对齐 `S2-01` 运维就绪及 `M4/M5` 桩路径代码落地同步指针；切片 2/3 实时台账保持单源归口 [`P8-PROJECT-TASKS v1.0`](audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md)）  
+- **最近修订日期**：2026-11-21（**`v1.4.3`**：对齐 `S2-01` 运维就绪及 `M4/M5` 桩路径代码落地同步指针；切片 2/3 实时台账保持单源归口 [`P8-PROJECT-TASKS v1.0`](audit/P8-PROJECT-TASKS_全量任务分解台账.md)）  
 - **签发裁决**：技术裁决委员会立项会终裁令（2026-10-10）；角色收窄与单向引用裁决（2026-11-13）；内核架构基线与 2026-11-17 决议更新（`P8-KERNEL-CONSENSUS v1.1`）；十模块与 `P1–P19` 协议索引合流（`项目方案 v3.0`）与 `切片 1 任务表` 建表（2026-11-18）；`S1-06 G-15` 补丁闭环与管控单一事实源收口（2026-11-19）；`2026-11-21` 工单 5 批复落地  
 - **落档执行工单**：`P7-TRANSITION-DOC`（长线规划落档令） / `P8-KERNEL-CONSENSUS` / `切片 1` / `管控基础设施批`  
 - **版本号**：**`v1.4.3`** (四切片实施顺序 + `§3.5` 切片 1 历史快照 + `P8-PROJECT-TASKS` 单源指针)

@@ -1,7 +1,8 @@
 # P8-M10-DESIGN：M10 监控页业务逻辑设计说明（`v1.0`）
 
+- **版本状态注记**：`v1.0`（`2026-11-24` 初建；`2026-11-27` 已对齐 `Batch 2b` 浅色股票终端 UI 改版与懒加载多维筛选，历史 `§1–§8` 原文保持冻结不回改）
 - **治理与任务编号**：`P8-M10-DESIGN`｜对应交付任务：**`S3-10`**（`M10` 前台管理界面 `v1`）｜派工单：**`P8-WO-20261123-M10-DOC-DESIGN-v2`**
-- **法定锚点**：[`项目方案 (v3.0) §8.1 M10`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策)、[`P8-T2-M7-LOGGING v1.1 §2.2/§2.7/§3.2`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#32-p10m7--m10-前台只读视图兼容约束与正式查询契约v11--s2-04-正文冻结)、[`P8-PROJECT-TASKS v2.5 §2 S3-10`](P8-PROJECT-TASKS_全量任务分解台账_v1.0.md)
+- **法定锚点**：[`项目方案 (v3.0) §8.1 M10`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策)、[`P8-T2-M7-LOGGING v1.1 §2.2/§2.7/§3.2`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#32-p10m7--m10-前台只读视图兼容约束与正式查询契约v11--s2-04-正文冻结)、[`P8-PROJECT-TASKS v2.5 §2 S3-10`](P8-PROJECT-TASKS_全量任务分解台账.md)
 - **命名与新建文档准入依据（[`项目编号与命名规范 v1.1 §6.5 / §9`](../项目编号与命名规范_20261021.md#6-现役衍生编号与文件--工单命名总表v11-新增)）**：
   1. 文件名按 `§6.5` 治理/架构/设计文档模板 `docs/audit/P<批次>-<THEME>_<中文主题>_v<X.Y>.md` 定名（批次 `P8`、主题短码 `M10-DESIGN`、版本号 `v1.0`）；
   2. 按 `§9` 文件增殖判据核验：全仓此前无独立承载 `M10 v1` 聚合口径、派生状态机、HTML 安全防线及缺陷修复审计的文档，若强行塞入 `P8-T2-M7-LOGGING`（协议规格）或 `P8-PROJECT-TASKS`（任务台账）将导致协议定义与前台视图设计混杂；经业主直接指令及 `P8-WO-20261123-M10-DOC-DESIGN-v2` 批复准入，并在 `P8-PROJECT-TASKS §1 M10`、`§2 S3-10` 与 `§6` 建立可达指针；
@@ -133,8 +134,9 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
 1. **静态 AST 与源码写入禁令（`src/ui/*.py`）**：
    - 禁止导入数据库或交易客户端库：`sqlite3`、`sqlalchemy`、`psycopg`、`py_clob_client`；
    - 源码全文禁止出现 `.write(`、`.unlink(`、`.mkdir(`、`open(..., "w")`、`open(..., "a")`，由 [`test_m10_ast_zero_database_zero_write_and_cli_render`](../../tests/unit/ui/test_m10_s310_readonly_view.py) 每次 CI 静态 AST 强制校验。
-2. **HTML 零交互 / 零外部依赖 / 按态互斥横幅禁令**：
-   - 生成的 HTML 全文禁止出现 `<form`、`<button`、`<input`、`<select`、`<textarea`、`<script`、`fetch(`、`xmlhttprequest`、`cdn.`；
+2. **HTML 零交互 / 零外部依赖 / 按态互斥横幅禁令（`2026-11-27` 依业主路线 2 裁决增补本地实时轮询特例）**：
+   - 离线导出 HTML（[`scripts/render_m10_dashboard.py`](../../scripts/render_m10_dashboard.py)）及实时页暂停态（`refresh=0`）仍严格禁止 `<form`、`<button`、`<input`、`<select`、`<textarea`、`<script`、`fetch(`、`xmlhttprequest`、`cdn.`；
+   - 仅当本地只读服务（[`scripts/serve_m10_live.py`](../../scripts/serve_m10_live.py)）处于自动刷新态（`refresh > 0`）时，允许内联唯一标有 `data-m10-live-poll="1"` 的同源只读微脚本（`fetch(window.location.href, { cache: "no-store" })`），用于只更新 `#m10-live-root` 数据并保留所有 `<details[id]>` 展开状态与滚动条位置；仍严禁外链脚本、`cdn.`、表单输入或任何写请求方法。
    - 所有动态字段统一经 `html.escape(..., quote=True)` 转义；
    - `render_m10_dashboard_html` 仅内联当前 `execution_mode` 对应的横幅 CSS（`PAPER` 态仅生成 `.mode-banner-paper` 且绝对不含 `mode-banner-live`；`LIVE` 态仅生成 `.mode-banner-live`）。
 3. **CLI 输出路径隔离守卫（[`scripts/render_m10_dashboard.py#L54-L57`](../../scripts/render_m10_dashboard.py#L54-L57)）**：
@@ -226,4 +228,37 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
    - **第二级 `<details class="market-day-card">`** 按 `M7 §2.7` 五要素 `(session_id, station_id, target_date, target_type, market_id)` 独立核算每个盘口（同日存在多 `market_id/target_type` 时拆分子行并标注 `同日多盘口独立核算`；扫描未成交零仓位盘口标示 `空盘口（有决策未成交）`）；严格恪守“每日/每盘口独立”铁律，城市层禁止跨盘口概率平均、胜率加权或收益摊平。
 3. **按结算日累计已实现盈亏曲线（[`_build_daily_cumulative_pnl_series`](../../src/ui/m10_view.py) / [`_render_daily_pnl_svg`](../../src/ui/m10_view.py)）**：按 `settled_ts_utc[:10]`（缺失时回退 `target_date`）汇总每日 `realized_pnl_usd` 并按日历时序累加绘制静态 `<svg class="pnl-svg">` 折线与节点圆标；无结算日如实留空不插值补点，全未结算时不生成伪零线；对应专测集 [`tests/unit/ui/test_m10_s310_readonly_view.py`](../../tests/unit/ui/test_m10_s310_readonly_view.py) 共 13 项全绿。
 4. **历史记录占位语义注记（`pre-p1.v2 / pre-p17.v2`）**：`2026-11-24` 之前生成的历史 `p1.v1 / p17.v1` 记录因决策时点未持久化 `obs_temp_f / net_ev / lambda_l` 等增量字段，在区块 3 决策链卡片中永久显示 `"未落盘"` 占位符（依 `fail-honest` 原则永不事后伪造回填，防看卡歧义）。
+
+---
+
+## §9 `Batch 2b` 浅色股票终端交互改版与按时间窗懒加载（`2026-11-27` 已对齐）
+
+> 本节记录按业主审定方案落盘的前端交互与性能升级，全部严格恪守零 JS / 零表单 / 零写回 / 不重算不修改原始观测值及新增/修改函数 `< 50` 行红线。
+
+1. **模块化只读渲染拆分**：新增 [`m10_formatting.py`](../../src/ui/m10_formatting.py)（`STATION_METADATA` 站点中文名与 IANA 时区双显转换、人话状态翻译、心跳与 `watchdog` 新鲜度判别）、[`m10_theme.py`](../../src/ui/m10_theme.py)（浅色金融看板 CSS 与浅色静态 `<svg>` 累计盈亏曲线）、[`m10_cards.py`](../../src/ui/m10_cards.py)（顶部心跳条、4 格资产/盈亏/漏斗/风控 KPI、统一《最近成交与委托订单一览》主表、默认折叠的城市持仓榜、可折叠交易故事卡、底部折叠审计抽屉）。实时服务主页面顺序为：**顶部状态与 4 格 KPI（卡片 1 同时明示「扣减未结算持仓后的参考可用余额」与「`P19` 最新落盘余额」并在差额 `> $0.01` 时标注上游重启未继承持仓提醒） → 筛选条 → 《最近成交与委托订单一览》（附一句话原因，点击 `查看详情 ↗` 以新窗口只读打开 `/decision?id=<decision_id>` 独立 6 步因果全链路页，消除主页卡片重复堆叠） → 《分城市持仓与独立盘口》 → 《累计已实现盈亏走势 (SVG)》 → 《一致性核验》与审计抽屉**；离线 CLI 导出维持单文件自包含内嵌卡片。
+2. **按时间窗懒加载与跨日外键保障（[`m10_live_cache.py`](../../src/ui/m10_live_cache.py)）**：
+   - `IncrementalAuditCache.refresh(target_dates=..., extra_streams=...)` 支持只读加载当前筛选周期（`period=today` 默认 / `week` / `month` / `year` / `all` 或指定 UTC 日）覆盖目录，避免长周期积累后冷启动全量解压历史 `.jsonl.gz`；
+   - 自动附带读取 `d_start - 1` 的轻量 `p17`（修复跨 UTC `00:00Z` 凌晨 `P1→P17` 外键断链误报）、`d_end + 1` 的 `p9`（保障跨日结算对账）及最新日 `p19`（展示最新账户可用/冻结余额）；
+   - 通过 `p1_dim_outcomes` 按 `(station_id, target_type, outcome)` 在读取阶段预聚合扫描计数，彻底解耦全量 KPI/城市汇总与底部卡片分页 `limit`，且 `action=p3` 默认视图将 `FILLED/PARTIAL` 订单置顶展示。
+3. **纯 `<a>` 多维筛选、真分页与双时区切换（[`serve_m10_live.py`](../../scripts/serve_m10_live.py) / [`render_m10_dashboard.py`](../../scripts/render_m10_dashboard.py)）**：支持 `period`（今日/近7日/本月/本年/全部）、`station`（全部/6 站）、`target_type`（全部/`TMAX`/`TMIN`）、`action`（有下单尝试[成交置顶]/仅已成交/有信号动作/全部扫描）、`tz`（北京+站点双显/仅北京/优先站点当地）、`page`（`首页/上一页/页码/下一页/末页`，同时联动《最近成交订单一览》与《委托单与决策原因流水》）、`limit`（每页条数）与 `refresh` 纯超链接切换；城市持仓内部优先展示有成交/待结算/已结算盘口，空盘口沉底；6 步因果核验时间轴（`m10_consistency.py`）升级为支持双时区的横向步骤卡。
+4. **实时 `P13` 盘口快照按需增量索引（[`m10_p13_cache.py`](../../src/ui/m10_p13_cache.py)）**：`serve_m10_live.py` 默认只读挂载 `data/market_recordings/`（可通过 `--p13-root` 覆盖），仅对当前匹配窗口内出现的 `(session_id, station_id)` 增量读取 `p13_book_stream_<station>.jsonl(.gz)`（跳过未换行并发尾行并校验 SHA-256，只保留顶三档与关键元数据），在毫秒级增量开销下完整点亮时间轴 `② P13 盘口帧` 时间戳与格子 ⑤ 盘口快照。
+
+---
+
+## §10 本地回环实时刷新服务、`.jsonl.gz` 归档兼容与 5 项一致性核验（`2026-11-28` 已对齐）
+
+> 本节补录 `2026-11-27/28` 与存储优化、`P10` 压缩读取兼容及跨模块机械对账相关的增量实现，严格遵守只读零写回与原始观测值原样呈现铁律。
+
+1. **本地回环只读实时刷新服务（[`scripts/serve_m10_live.py`](../../scripts/serve_m10_live.py) & [`src/ui/m10_live_cache.py`](../../src/ui/m10_live_cache.py)）**：
+   - 仅绑定回环地址 `127.0.0.1:8765`，HTTP 层严格放行 `GET` / `HEAD` 并对所有写方法返回 `405`；页面维持零 JS / 零表单，使用 `<meta http-equiv="refresh">` 自动刷新与纯 `<a>` 超链接切换视图参数；
+   - `IncrementalAuditCache` 按字节偏移增量读取活跃日流，避免每次 HTTP 请求重复全量重扫历史文件（实测基准：`cold_get_ms = 7883.0`、`warm_get_ms = 16.1`）。
+2. **`.jsonl.gz` 透明兼容、历史日志原子归档与 `P1` 噪声节流**：
+   - [`src/audit/p10_reader.py`](../../src/audit/p10_reader.py) 新增 `_resolve_stream_file` 与 `_open_jsonl_readonly`，无缝只读读取 `.jsonl` 与归档后的 `.jsonl.gz` 审计流；
+   - [`scripts/archive_audit_logs.py`](../../scripts/archive_audit_logs.py) 对历史日期目录（严格跳过 `dir_date >= today_utc` 当日目录）执行原子 `.jsonl.gz` 压缩，并校验解压 SHA-256 一致后再移除原始 `.jsonl`（`data/audit_logs/PAPER/2026-11-26/` 实测由 `171,448,217 bytes` 压缩至 `15,427,747 bytes`，占原体积 `9.0%`）；
+   - [`src/decision/offline_scheduler.py`](../../src/decision/offline_scheduler.py) 与 [`scripts/run_s311_offline_scheduler.py`](../../scripts/run_s311_offline_scheduler.py) 引入 `_P1NoDepthThrottle`（`--p1-no-depth-heartbeat-sec 900`），100% 完整保留 `ORDERED`、`SKIP_EDGE_BELOW_M`、`BLOCKED_BELOW_MIN_ORDER` 等有动作/决策结果日志，仅将重复的 `BLOCKED_NO_BOOK_DEPTH` 收敛为「状态变化立即写 + 每 15 分钟心跳写」；
+   - 分页窗口一致性修复：[`src/ui/m10_live_cache.py`](../../src/ui/m10_live_cache.py) 新增 `_filter_p3_for_window`，修正默认 `limit=50` 分页窗口裁剪后产生假阳性 `orphan_p3=112` 的视图误报。
+3. **5 项机械式跨模块一致性核验与 6 步因果时间轴（[`src/ui/m10_consistency.py`](../../src/ui/m10_consistency.py) & [`src/ui/m10_view.py`](../../src/ui/m10_view.py)）**：
+   - 机械核验 5 项跨流不变量并原样展示布尔与数值偏差：`Order Check`（最小份数与预计实花）、`Forecast FK & Dual Hash`（`P1 -> P17` 外键及 `model_hash / config_hash`）、`P1↔P3 Alignment`（`ORDERED` 与执行尝试对齐）、`P3↔P19 Conservation`（资金三桶零残差守恒）与 `P9↔PnL Reconciliation`（官方结算与已实现净盈亏对齐）；
+   - 决策链卡片内嵌 6 步因果时间轴（预报 → `P13` 盘口帧 → `P1` 决策 → `P14 FREEZE` → `P3` 撮合终态 → `P9` 结算），专测 [`tests/unit/ui/test_m10_live_server_and_consistency.py`](../../tests/unit/ui/test_m10_live_server_and_consistency.py) 与 [`tests/unit/decision/test_p1_noise_throttle_and_archive.py`](../../tests/unit/decision/test_p1_noise_throttle_and_archive.py) 全绿通过。
+
 

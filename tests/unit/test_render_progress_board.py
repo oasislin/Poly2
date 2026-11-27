@@ -16,7 +16,7 @@ from scripts.render_progress_board import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REAL_LEDGER = REPO_ROOT / "docs/audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md"
+REAL_LEDGER = REPO_ROOT / "docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md"
 REAL_BOARD = REPO_ROOT / "docs/audit/progress_board.html"
 
 

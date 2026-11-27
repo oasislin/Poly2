@@ -2,6 +2,8 @@
 
 > **坐标声明**：`T8` 算法四单工程设计批（`2026-11-19` 增量复核版）；**本批贡献** = 依据 `v0.2` 审阅意见与《`fee` 定案补充令（`2026-11-19`）》完成全部 7 项要点升级，形成 `v0.3` 供架构侧增量复核（复核通过后方转“编码中”，且 `M1` 为编码批第一优先）；**红线约束** = 复核通过前**零编码、零改动 `src/`（含 `F-2` 锁定区 `src/pricing/`）、不启动录盘、不预判 `D-6`**。  
 > **表述纪律**：本文全部设计方案与参数接口均属 **`2026-11-19` 当前决策 / 首期选择（月度复检可替换；数据充分时形态让位于数据）**，不含绝对化承诺用语。
+>
+> **版本标注（`2026-11-28` · 已对齐 [`P8-T4-M4M5-INTERFACE v1.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md) `P2 v1.2 / P18 v1.1` 与 `S3-11` `τ` 分级事件驱动调度）**：既定 `v0.3` 历史正文保留不重写，分别在 `§4.1` 与 `§4.2` 末尾追加 `2026-11-28` 增量修订条款。
 
 ---
 
@@ -12,7 +14,7 @@
      - [`docs.polymarket.com/trading/fees.md`](https://docs.polymarket.com/trading/fees.md) 原文：`fee = C × feeRate × p × (1 - p)`（*`Where C = number of shares traded and p = price of the shares`*）；同页 `Weather` 类别（`feeRate = 0.05`，`100 Shares`）官方数值表：`$0.10 → $0.45`、`$0.25 → $0.94`、`$0.50 → $1.25`，数学上精确等于 $C \cdot \text{feeRate} \cdot p(1-p)$；
      - [`docs.polymarket.com/programs/fee-and-rebate-changes-november-2026.md`](https://docs.polymarket.com/programs/fee-and-rebate-changes-november-2026.md)（`2026-11-20T23:59Z` 降费公告）原文：*`Taker fees will continue to use the same formula: fee = shares × feeRate × price × (1 − price)`*（`Weather Fee Coefficient = 0.01`）。
    - **只读回核 [`edge_math.py#L65`](../../src/pricing/edge_math.py#L65) 与 [`penetration_probe.py#L168`](../../src/pricing/penetration_probe.py#L168)**：现役代码均实现 `q_eff = p * (1.0 + fee_rate * (1.0 - p))`，与官方 `fees.md` 完全一致、零缺陷（“修正 B / 恒低估”论断已由架构令正式作废）；链上 `CalculatorHelper.sol` `min(p, 1-p)` 系 `base_fee=1000` 签名上限澄清与 `py-clob-client #326` 佐证已并入 [`P8-FACTS-LEDGER v0.4 §2.1`](P8-FACTS-LEDGER_静态事实档案_v0.1.md#21-2026-11-19-s1-06-变费复核与-费率时代标记规则)。
-2. **`P5 v1.1` 联动升版（禁用单字段双语义）**：同步升版 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)、[`项目方案 v3.0 §8.2`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) 与 [`P8-T2-M7-LOGGING §2.3 P17`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#23-p17-forecastsnapshotlogm2--m7)（整数闭区间端点 + `p_stay_phys` / `p_bin_stay` 双字段拆分）。
+2. **`P5 v1.1` 联动升版（禁用单字段双语义）**：同步升版 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)、[`项目方案 v3.0 §8.2`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) 与 [`P8-T2-M7-LOGGING §2.3 P17`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#23-p17-forecastsnapshotlogm2--m7)（整数闭区间端点 + `p_stay_phys` / `p_bin_stay` 双字段拆分）。
 3. **四单模块正交拆分（Core × Port 依赖倒置）**：
 
 ```mermaid
@@ -76,7 +78,7 @@ flowchart LR
 
 当 `is_bridge_active == True` 时，在 `TMAX` 下由 $R_t \sim \mathcal{N}(\mu_R, \sigma_{\text{rem}}^2)$ 与 $X_T = \max(m_{\text{now}}, m_{\text{now}} + R_t)$ 唯一诱导全概率合成右连续 CDF：
 $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfrac{x - m_{\text{now}} - \mu_R}{\sigma_{\text{rem}}}\right), & x \ge m_{\text{now}} \end{cases}$$
-依据 `v0.3` 评审令，彻底废除旧 `p_stay` 单字段双语义，正式将 **`P5 v1.1`** 拆为两个严格正交字段（同步见 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)）：
+依据 `v0.3` 评审令，彻底废除旧 `p_stay` 单字段双语义，正式将 **`P5 v1.1`** 拆为两个严格正交字段（同步见 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)）：
 
 1. **`p_stay_phys: Optional[float]`（点质量全档同语义 · 不截顶）**：
    $$p_{\text{stay\_phys}}(t) := \mathbb{P}(R_t \le 0 \mid \mathcal{F}_t) = \Phi\!\left(\frac{-\mu_R(t, m_{\text{now}}, x_t)}{\sigma_{\text{rem}}(t)}\right)$$
@@ -146,7 +148,7 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
 
 ### 4.1 `ρ(edge)` 形状来源与全程 `Decimal` 精确域量化
 
-1. **`ρ(edge)` 规范形状（显式引 [`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#L80) `P2` 条款为据）**：
+1. **`ρ(edge)` 规范形状（显式引 [`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#L80) `P2` 条款为据）**：
    - 直接遵循既定 `P2 plan_slice` 法定规范：对每个满足 `lvl.edge >= m_threshold` 的卖盘档位，计算逐档深度参与率
      $$\rho(\text{edge}_j) = \text{clip}\!\Big(\rho_0 + k_{\text{slope}} \cdot (\text{edge}_j - m_{\text{threshold}}),\; \rho_{\min},\; \rho_{\max}\Big)$$
      首期设置 `k_slope = 0.0`（退化为固定 `ρ₀`，来自 [`P8-CAPITAL-CONFIG §7`](P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#L98) 账本且带 `provenance`），无需另设非标缩放分支。
@@ -157,7 +159,10 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
      - `target_shares_dec = (target_usd_dec / limit_price_dec).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)`（精确 2 位小数，符合 `FACT-003` 与 `P8-T4-M4M5-INTERFACE §2.2`，确保 `target_shares_dec * limit_price_dec <= target_usd_dec` 零超限）；
      - 核验 `target_shares_dec >= Decimal(str(min_order_size_shares))` 与 `target_shares_dec * limit_price_dec >= Decimal(str(min_notional_usd))`；
      - 序列化写入 `P3` 或网关传参时按精确字符串/定点数输出；
-     - **`2026-11-21` 口径对齐登记**：[`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) `SlicePlan` 现行定义为 `float` 域，与本节 `Decimal` 精确域存在口径差，已登记**于 `M5 (S3-05)` 编码批内按 `§8.3` 同步升版 `P2` 对齐**（本批不动 `M5` / `P2` 正文）。
+     - **`2026-11-21` 口径对齐登记**：[`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v10) `SlicePlan` 现行定义为 `float` 域，与本节 `Decimal` 精确域存在口径差，已登记**于 `M5 (S3-05)` 编码批内按 `§8.3` 同步升版 `P2` 对齐**（本批不动 `M5` / `P2` 正文）。
+3. **2026-11-28 算法修订（已对齐 `P2 v1.2`，[`src/execution/executor.py`](../../src/execution/executor.py)）**：
+   - 针对陡峭尾档卖盘导致 `limit_price` 虚高与 `target_shares` 坍缩的问题（参见 [`P8-T4-M4M5-INTERFACE §2.2`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#22-p2-plan_slice-正式协议签名与切片算法m4--m5--v11--2026-11-21-对齐-decimal-域)），`_allocate_pov_legs` 在每个合格价位 `p` 引入预冻结容量约束 `escrow_room_shares = (d_usd_dec / p) - total_shares` 并及时截断停爬；
+   - `plan_slice` 改按 `target_shares = min(tot_sh, d_usd_dec / limit_dec).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)` 保留累计深度份额，并核验 `effective_target_usd` 与 `est_expected_usd = target_shares * est_vwap` 双双 `>= min_notional_usd`（保证组合 `est_vwap <= limit_price`、`edge(est_vwap) >= m_threshold` 与 `C_freeze <= G`）。
 
 ### 4.2 `P18` 保守延迟撮合（禁插值、`Decimal` 点费与逐帧复算）
 
@@ -167,6 +172,9 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
    - 按 §0 定案公式（[`fees.md`](https://docs.polymarket.com/trading/fees.md)）用帧内 `fee_rate_dec = Decimal(str(F*.payload.fee_rate))` 计算每档手续费：
      $$\text{fee}_i = \text{fill}_i \times p_i \times \text{fee\_rate} \times (1 - p_i)$$
      并按官方 5 位小数与 `0.00001 USDC` 最小收费规则在整笔成交汇总时对齐（< `0.00001` 舍零，`Decimal("0.00001")` 量化对齐），精确产出 `filled_shares`, `actual_avg_fill_price`, `fee_paid_usd`, `fill_rate` 与相对无量纲滑点 **`slippage_vs_best_ask`**（对齐 `B5 / N3`）。纯函数 100% 逐帧可复算。
+3. **2026-11-28 修订（已对齐 `P18 v1.1` 与 `S3-11` `τ` 分级事件驱动调度）**：
+   - [`ReplayMatcher`](../../src/execution/executor.py) 新增 `allow_resting_book_fallback: bool = False` 开关：默认 `False` 维持既有严格 `R1`；在连续假盘守望会话中开启 `True` 时，仍严格保留 `R2_HIT_GAP / R2_GAP_IN_WINDOW` 真断流中止，但允许在 `t_arrive` 后尚无新增量帧时安全回退至前序无缺口静息帧（`prior_clean`），置 `final_ts = max(t_arrive, raw_final_ts)` 防止回填时间戳倒挂，并按 `(token_id, frame_seq, raw_price)` 维护 `_consumed_shares` 虚拟深度账本（耗尽后拒单 `RESTING_BOOK_DEPTH_EXHAUSTED`）；
+   - [`offline_scheduler.py`](../../src/decision/offline_scheduler.py) 新增 `_AdaptiveTargetGate`（[`run_s311_offline_scheduler.py`](../../scripts/run_s311_offline_scheduler.py) `--enable-adaptive-event-gate`，与持久 `ReplayMatcher` 一同跨 60s 周期常驻）：按剩余结算时间实行分级最低心跳（`>24h: 900s (15m)`、`3–24h: 300s (5m)`、`<=3h: 60s (1m)`），一旦目标 `book_frame_ref` 或 `forecast_id` 发生变化即刻唤醒重算。
 
 ### 4.3 `B5` `friction_median` `0.01` 时代实测流程（设计先行，实测依赖 `S2-01`）
 
@@ -182,6 +190,6 @@ $$F_{\text{post}}(x) = \begin{cases} 0, & x < m_{\text{now}} \\ \Phi\!\left(\dfr
 | :---: | :---: | :--- | :---: | :--- |
 | 1 | `S3-01` | 历史/回放 `RawMetarReport` 缺失 `dispatch_ts_utc` 处理 | **`已裁决`** | **严禁假定 `0s` 滞后**；标 `dispatch_age_available = False` 入 `P12`；假盘/历史因果验证配置可选择按“已戳报文实测滞后上界”保守过滤或拒用无派发戳帧（参数配置化带 `provenance`） |
 | 2 | `S3-01` | `M1/M2/M4` 双龄分段与配置门限注入 | **`已裁决`** | **`M2` 管 `M1→M2` 观测龄**（物理/派发龄，写入 `P5.upstream_obs_fresh`）、**`M4` 管 `M2→M4` 预测龄与 `M3→M4` 盘口龄**；门限参数全部配置化附 `provenance`（[`P8-ALGO-DEF-SPEC §1.2`](P8-ALGO-DEF-SPEC_气象物理预测到投注端到端严谨数学模型规格书_20261108_v2.0.md#12-受控参数三分类法定字典) 未标定前取保守配置），最新 `issue_ts` 胜出不回替 |
-| 3 | `S3-02` | **`P5` 升版 `v1.1`（整数端点 + 双字段拆分）** | **`已裁决`** | 按本令第 3 条升级版执行：**整数闭区间端点**（废弃 `.5°F`）+ **`p_stay_phys`（全档同义物理原子，不截顶）与 `p_bin_stay`（档内锁定概率，开放尾档为 `1.0`）双字段拆分**；同步联动改写 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格_v1.0.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)、[`项目方案 v3.0 §8.2`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) 与 [`P17`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#23-p17-forecastsnapshotlogm2--m7) |
+| 3 | `S3-02` | **`P5` 升版 `v1.1`（整数端点 + 双字段拆分）** | **`已裁决`** | 按本令第 3 条升级版执行：**整数闭区间端点**（废弃 `.5°F`）+ **`p_stay_phys`（全档同义物理原子，不截顶）与 `p_bin_stay`（档内锁定概率，开放尾档为 `1.0`）双字段拆分**；同步联动改写 [`P8-T4-M4M5-INTERFACE §3.3`](P8-T4-M4M5-INTERFACE_决策与执行接口规格.md#33-p5-forecastdistributionsnapshot-v11m2--m4--m7--2026-11-19-s3-02--t8-v03-联动升版)、[`项目方案 v3.0 §8.2`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#82-协议清单p1p19-十九条--2026-11-18-当前决策) 与 [`P17`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#23-p17-forecastsnapshotlogm2--m7) |
 | 4 | `S3-04` / `S3-05` | `ρ(edge)` 依据与 `s(edge)` 端口化规格 | **`已裁决`** | **`ρ(edge)` 严格引 `P2` 条款 `§2.2` 公式**（`k_slope = 0.0` 起步，`M5` 编码批内按 `§8.3` 升版 `P2 SlicePlan` 对齐 `Decimal` 域）；**`s(edge)`** 在 `M4` 端口化为 `OpportunityScaler`，默认 `IdentityScaler` 须满足 **`provisional_identity_v0` + `policy_id` 强制落盘 / 产出限链路验证与摩擦实测 / `D-6` 成文即作废重跑** 三条件 |
 | 5 | `S3-05` | `fee` 公式、`Decimal` 精度、重放 `session_id` 与延迟配置 | **`已裁决`** | **`fee = shares × feeRate × p × (1−p)`**（`fees.md` 官方定案，`edge_math.py` 核验零缺陷）；`shares / tick / fee` 全程 **`Decimal` 精确域**；重放复用原 **`P1.session_id`**；全部交易常数与 `latency_ms` 配置化注入并附 `provenance` |

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Zero-dependency offline progress board generator & validator.
 
-Parses `docs/audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md` directly as the single
+Parses `docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md` directly as the single
 authoritative source of truth and produces a deterministic, self-contained
 read-only HTML control board (`docs/audit/progress_board.html`).
 """
@@ -128,7 +128,7 @@ def _validate_dag_acyclic(tasks_by_id: Dict[str, Dict[str, Any]]) -> None:
 def load_task_ledger(
     ledger_path: Path, *, allow_arch_supplied: bool = False
 ) -> Dict[str, Any]:
-    """Parse and validate `P8-PROJECT-TASKS_全量任务分解台账_v1.0.md`."""
+    """Parse and validate `P8-PROJECT-TASKS_全量任务分解台账.md`."""
     if not ledger_path.exists():
         raise LedgerValidationError(f"Ledger file not found: {ledger_path}")
 
@@ -857,7 +857,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ledger",
         type=Path,
-        default=Path("docs/audit/P8-PROJECT-TASKS_全量任务分解台账_v1.0.md"),
+        default=Path("docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md"),
         help="Path to the authoritative task ledger markdown.",
     )
     parser.add_argument(

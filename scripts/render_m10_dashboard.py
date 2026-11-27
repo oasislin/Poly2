@@ -23,39 +23,26 @@ def _parse_date(raw: Optional[str]) -> Optional[date]:
     return date.fromisoformat(raw)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render strictly read-only M10 v1 HTML dashboard.")
     parser.add_argument("--audit-root", type=Path, required=True, help="Root directory of M7 JSONL audit logs.")
-    parser.add_argument(
-        "--execution-mode",
-        choices=("PAPER", "LIVE"),
-        default="PAPER",
-        help="Execution mode stream to query (default: PAPER).",
-    )
-    parser.add_argument(
-        "--safety-config",
-        type=Path,
-        default=DEFAULT_GATEWAY_CONFIG_PATH,
-        help="Path to gateway safety YAML config.",
-    )
+    parser.add_argument("--execution-mode", choices=("PAPER", "LIVE"), default="PAPER", help="Execution mode stream to query (default: PAPER).")
+    parser.add_argument("--safety-config", type=Path, default=DEFAULT_GATEWAY_CONFIG_PATH, help="Path to gateway safety YAML config.")
     parser.add_argument("--utc-date", type=str, default=None, help="Optional UTC filter date YYYY-MM-DD.")
     parser.add_argument("--session-id", type=str, default=None, help="Optional session_id filter.")
     parser.add_argument("--station-id", type=str, default=None, help="Optional station_id filter.")
+    parser.add_argument("--target-type", choices=("ALL", "TMAX", "TMIN"), default="ALL", help="Optional target_type filter.")
+    parser.add_argument("--tz", choices=("both", "bjt", "station"), default="both", help="Timezone display mode.")
     parser.add_argument("--p13-root", type=Path, default=None, help="Optional P13 recordings root.")
     parser.add_argument("--model-hash", type=str, default=None, help="Optional explicit model hash.")
-    parser.add_argument(
-        "--model-unfrozen",
-        action="store_true",
-        help="Mark model freeze badge as UNFROZEN instead of default FROZEN.",
-    )
-    parser.add_argument(
-        "--alerts-status",
-        type=Path,
-        default=None,
-        help="Optional read-only path to watchdog_status.json for top watchdog summary badges.",
-    )
+    parser.add_argument("--model-unfrozen", action="store_true", help="Mark model freeze badge as UNFROZEN instead of default FROZEN.")
+    parser.add_argument("--alerts-status", type=Path, default=None, help="Optional read-only path to watchdog_status.json for top watchdog summary badges.")
     parser.add_argument("--output", type=Path, required=True, help="Output standalone HTML path (must be outside audit-root).")
-    args = parser.parse_args(argv)
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = _parse_args(argv)
 
     audit_resolved = args.audit_root.resolve()
     out_resolved = args.output.resolve()
@@ -74,8 +61,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         model_hash=args.model_hash,
         model_frozen=not args.model_unfrozen,
         alerts_status_path=args.alerts_status,
+        target_type=None if args.target_type == "ALL" else args.target_type,
     )
-    html_text = render_m10_dashboard_html(model)
+    html_text = render_m10_dashboard_html(model, tz_mode=args.tz)
     out_resolved.parent.mkdir(parents=True, exist_ok=True)
     out_resolved.write_text(html_text, encoding="utf-8")
     print(
