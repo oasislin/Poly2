@@ -3,6 +3,7 @@
 - **发送方**：交易决策 / 执行 / 资金风控后端
 - **接收方**：`M10` 前台只读监控页开发与设计维护
 - **前置参考**：[`P8-CAPITAL-CONFIG §1.5`](../audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md#15-utc-日部署上限与网关金额双闸口径v11-新增--2026-11-22-业主授权)、[`P8-M10-DESIGN`](../audit/P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md)
+- **关联 GitHub Issue**：[`#191`（Open · `bug / ready-for-agent / 代码`）](https://github.com/oasislin/Poly2/issues/191)（关联已修复关闭的上游 Issue：[`#188`](https://github.com/oasislin/Poly2/issues/188)、[`#189`](https://github.com/oasislin/Poly2/issues/189)、[`#190`](https://github.com/oasislin/Poly2/issues/190)）
 
 ---
 
