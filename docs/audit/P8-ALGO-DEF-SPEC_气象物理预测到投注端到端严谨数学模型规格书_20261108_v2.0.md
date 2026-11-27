@@ -43,6 +43,7 @@
    - 全集宇宙：`ACTIVE_11_STATIONS`（含 KBKF）；
    - 模型宇宙：`ACTIVE_10_STATIONS`（剔除存在结算站位争议的 KBKF）；
    - **生产法定契约生效台站**：**`AUTHORIZED_STATIONS = ("KORD", "KMIA")`**（**业主已裁决，首批上线范围**；`CONF-02` 选 A 已落地，仅该 2 站共 `22` 个有效提前量格位完成参数契约校验）。**其余 8 站保持「待正式定参后接入，严禁外推」**。
+     - > **版本注记（`2026-11-27` · `P8-WO-20261127-EXEC20-STATION-ACTIVATE`）**：**2026-11-27 业主裁定：`S3-11` 假盘站集=`6` 站（据 [`EXEC19`](P8-STATION-SCOPE-AUDIT_20261126.md)：语料门 `>=4` 站+时钟对齐+三时区三气候多样性）；本条 `2` 站口径继续适用于模型参数契约校验轴与 `S3-15` 真钱探针；模型轴扩站候单独裁定**（[`parameter_contract.py`](../../src/contract/parameter_contract.py#L26) 与 [`configs/default.yaml`](../../configs/default.yaml#L6) 维持零代码变更，休眠常量归普查候单）。
 
 ### 1.2 受控参数三分类法定字典
 系统参数严格收敛为法定三类，杜绝非受控常数：
