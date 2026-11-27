@@ -614,3 +614,88 @@ def test_s311_cli_real_p5_p6_active_session_start_cutoff_and_missing_p5_accounti
     assert by_date["2026-11-25"]["decision_outcome"] == "BLOCKED_NO_BOOK_DEPTH"
     assert by_date["2026-11-25"]["degradation_reason"] == "MISSING_FORECAST"
     assert by_date["2026-11-26"]["decision_outcome"] == "SKIP_EDGE_BELOW_M"
+
+
+def test_s311_m5_p18_matching_150ms_bankroll_p14_and_m9_p9_p15_settlement(tmp_path: Path) -> None:
+    from src.bankroll.manager import BankrollAccountManager
+    from src.bankroll.models import BankrollConfig
+    from src.data_acquisition.settlement_metar_stream import RawMetarReport
+    from src.prediction.discrete_bin_engine import BinProbV11
+    from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
+
+    t_dec = datetime(2026, 11, 25, 18, 0, 0, tzinfo=timezone.utc)
+    settle_close = datetime(2026, 11, 26, 6, 0, 0, tzinfo=timezone.utc)
+    p13_dir = tmp_path / "p13_exec18"
+    p13_dir.mkdir(parents=True)
+    # seq=1 at t_dec (2-level asks -> limit_price >= 0.26 -> ORDERED); seq=2 at t_dec + 160ms (>= 150ms -> FILLED at 0.26)
+    e1, _ = build_p4_v11_stub_envelope(
+        session_id="rec-exec18", seq_id=1, frame_seq=1, token_id="tok-y",
+        market_id="mkt-1", condition_id="c1", station_id="KORD", target_date="2026-11-25",
+        bin_label="58-59°F", outcome="YES", regime="two_sided", recv_ts_utc=t_dec,
+        asks=((0.25, 20.0), (0.28, 300.0)), bids=((0.22, 100.0),),
+    )
+    e2, _ = build_p4_v11_stub_envelope(
+        session_id="rec-exec18", seq_id=2, frame_seq=2, token_id="tok-y",
+        market_id="mkt-1", condition_id="c1", station_id="KORD", target_date="2026-11-25",
+        bin_label="58-59°F", outcome="YES", regime="two_sided", recv_ts_utc=t_dec + timedelta(milliseconds=160),
+        asks=((0.26, 400.0),), bids=((0.22, 100.0),),
+    )
+    (p13_dir / "p13_book_stream_KORD.jsonl").write_text(e1.to_json_line() + "\n" + e2.to_json_line() + "\n", encoding="utf-8")
+
+    fc = ForecastDistributionSnapshotV11(
+        schema_version="p5.v1.1", forecast_id="fc-exec18-1", issue_ts_utc=t_dec - timedelta(hours=1),
+        station_id="KORD", target_date=t_dec.date(), target_type="TMAX", gefs_lead_hours=24,
+        tau_hours=12.0, settle_close_utc=settle_close, model_hash="mh-exec18", prior_mu0=58.5,
+        prior_sigma0=2.0, family="gaussian", m_now_f=None, m_now_int_f=None, oracle_compliant=True,
+        upstream_obs_fresh=True, is_bridge_active=False, p_stay_phys=None, p_bin_stay=None,
+        bin_probs=(
+            BinProbV11("le_57F", "57°F or below", None, 57, 0.15),
+            BinProbV11("58-59F", "58-59°F", 58, 59, 0.70),
+            BinProbV11("ge_60F", "60°F or higher", 60, None, 0.15),
+        ),
+        sigma_delta_sample=0.0,
+    )
+    target = OfflineScheduleTarget("KORD", "2026-11-25", "58-59F", "58-59°F", "mkt-1", "tok-y")
+
+    class _StubMetarSource:
+        def fetch_window(self, station_id: str, start_utc: datetime, end_utc: datetime):
+            # 14.7C -> 58.46F, 14.8C -> 58.64F -> rounds to 59F (inside 58-59F); SPECI 30C must be excluded!
+            return (
+                RawMetarReport("KORD", t_dec, t_dec, "METAR", False, "METAR KORD 251800Z 00000KT CLR 15/05 A3000 RMK AO2 T01480050", "AWC_LIVE", 1),
+                RawMetarReport("KORD", t_dec + timedelta(minutes=10), t_dec + timedelta(minutes=10), "SPECI", False, "SPECI KORD 251810Z 00000KT CLR 30/05 A3000 RMK AO2 T03000050", "AWC_LIVE", 2),
+            )
+
+    policy = _sample_policy(t_dec)
+    sink_ref = [None]
+    mgr = BankrollAccountManager(
+        BankrollConfig("s311-exec18", "PAPER", policy.policy_version, policy.config_hash),
+        p19_sink=lambda ev: sink_ref[0](ev) if sink_ref[0] is not None else None,
+    )
+    audit_dir = tmp_path / "audit_exec18"
+    cfg = OfflineSchedulerConfig(
+        p13_session_dir=p13_dir, audit_output_root=audit_dir, orig_session_id="rec-exec18",
+        replay_delay_ms=0, enable_p18_matching=True, enable_m9_settlement=True,
+    )
+    summary = run_s311_offline_schedule(
+        cfg, exec_config=default_stub_trading_config(), policy_bundle=policy, forecasts=[fc],
+        targets=[target], quota_provider=mgr, clock_ticks=(t_dec, settle_close + timedelta(minutes=5)),
+        metar_source=_StubMetarSource(), p19_sink_setter=lambda fn: sink_ref.__setitem__(0, fn),
+    )
+    assert summary.ordered_count >= 1
+    assert summary.filled_count >= 1
+    assert summary.p3_logged >= 1
+    assert summary.p9_logged == 1
+
+    p3_lines = next(audit_dir.rglob("p3_execution_attempts.jsonl")).read_text(encoding="utf-8").splitlines()
+    p9_lines = next(audit_dir.rglob("p9_settlement_truths.jsonl")).read_text(encoding="utf-8").splitlines()
+    p19_lines = next(audit_dir.rglob("p19_capital_events.jsonl")).read_text(encoding="utf-8").splitlines()
+    assert all(verify_record_sha256_line(l) for l in p3_lines + p9_lines + p19_lines)
+    p3_obj = json.loads(p3_lines[0])
+    assert p3_obj["schema_version"] == "p3.v1" and p3_obj["latency_injected_ms"] == 150
+    assert p3_obj["terminal_status"] == "FILLED"
+    p9_obj = json.loads(p9_lines[0])
+    assert p9_obj["schema_version"] == "p9.v1" and p9_obj["settled_temp_f_int"] == 59
+    assert p9_obj["speci_excluded_count"] == 1 and p9_obj["winning_bin_id"] == "58-59F"
+    snap = mgr.snapshot_state()
+    assert snap.conservation_residual_usd == Decimal("0")
+    assert snap.held_total_usd == Decimal("0") and snap.realized_pnl_total_usd > Decimal("0")

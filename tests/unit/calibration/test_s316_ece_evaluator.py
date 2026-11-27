@@ -12,8 +12,12 @@ from typing import Any, Dict, List
 import pytest
 
 from src.calibration.ece_evaluator import (
+    AUTO_BINNING_UPGRADE_MARKETS,
+    ARITHMETIC_MIN_MARKETS_FOR_20_BINS,
     EceEvaluationConfig,
     ForecastBinObservation,
+    compute_order_flow_weighted_ece,
+    derive_ece_anchors_from_policy,
     evaluate_ece_from_directories,
     evaluate_ece_from_observations,
     join_forecasts_with_p9_truths,
@@ -172,3 +176,52 @@ def test_s316_ece_evaluator_ast_function_length_under_50_lines() -> None:
             and ((node.end_lineno or node.lineno) - node.lineno + 1) >= 50
         ]
         assert ge_50 == [], f"{rel} has functions >= 50 lines: {ge_50}"
+
+
+def test_auto_binning_upgrade_dual_weighting_anchors_zones_and_order_flow_ece() -> None:
+    assert AUTO_BINNING_UPGRADE_MARKETS == 200
+    assert ARITHMETIC_MIN_MARKETS_FOR_20_BINS == 55
+
+    # 1) Formula-derived anchors scale dynamically with sigma_delta_frozen and k0
+    anc = derive_ece_anchors_from_policy(sigma_delta_frozen=0.030, k0_threshold_coef=2.5)
+    assert abs(anc.yellow_threshold - 0.030) < 1e-12
+    assert abs(anc.red_threshold - 0.075) < 1e-12
+
+    # 2) Auto binning upgrade trigger: 199 markets -> 10 bins; 200 markets -> 20 bins
+    obs_199 = [_obs(f"f-{i}", 0.25, 1.0 if i % 4 == 0 else 0.0, st=f"S{i%6}", bid="58-59F") for i in range(199)]
+    # Distinct (station_id, target_date) for 200 markets
+    obs_200 = [
+        ForecastBinObservation(
+            forecast_id=f"fm-{i}", station_id=f"ST{i%6}",
+            target_date=(date(2026, 10, 1) + timedelta(days=i // 6)).isoformat(),
+            target_type="TMAX", bin_id="58-59F", label="58-59°F",
+            p_model=0.25, hit=1.0 if i % 4 == 0 else 0.0, settled_temp_f_int=58,
+            issue_ts_utc=datetime(2026, 11, 26, 12, 0, tzinfo=timezone.utc),
+            settle_close_utc=datetime(2026, 11, 27, 6, 0, tzinfo=timezone.utc),
+        )
+        for i in range(200)
+    ]
+    cfg = EceEvaluationConfig(is_pilot=False, bootstrap_resamples=50)
+    rep_199 = evaluate_ece_from_observations(obs_199, config=cfg, corpus_source="TEST", n_settled_markets=199)
+    rep_200 = evaluate_ece_from_observations(obs_200, config=cfg, corpus_source="TEST", n_settled_markets=200)
+    assert rep_199.num_prob_bins == 10 and rep_199.binning_upgrade.triggered is False and rep_199.judgment_zone == "RAMP_ZONE"
+    assert rep_200.num_prob_bins == 20 and rep_200.binning_upgrade.triggered is True
+    assert rep_200.inverse_variance_weighted_ece is not None and rep_200.noise_floor_ece is not None
+
+    # 3) Mature zone >= 300 enforces point anchors directly
+    rep_300 = evaluate_ece_from_observations(obs_200, config=cfg, corpus_source="TEST", n_settled_markets=300)
+    assert rep_300.judgment_zone == "MATURE_ZONE" and rep_300.zoned_light_verdict == "GREEN"
+
+    # 4) Order-flow weighted ECE weights ORDERED slices by target_slice_usd
+    obs_of = [
+        _obs("fc-good", 0.50, 1.0, bid="b_ok"),
+        _obs("fc-good", 0.50, 0.0, bid="b_ok2"),
+        _obs("fc-bad", 0.90, 0.0, bid="b_bad"),  # |0.90 - 0.0| = 0.90
+    ]
+    p1_orders = [
+        {"decision_outcome": "ORDERED", "forecast_id": "fc-bad", "bin_id": "b_bad", "target_slice_usd": 100.0},
+        {"decision_outcome": "ORDERED", "forecast_id": "fc-good", "bin_id": "b_ok", "target_slice_usd": 0.0},
+        {"decision_outcome": "SKIP_EDGE_BELOW_M", "forecast_id": "fc-good", "bin_id": "b_ok2", "target_slice_usd": 50.0},
+    ]
+    of_ece, of_cnt, of_usd = compute_order_flow_weighted_ece(obs_of, p1_orders)
+    assert of_cnt == 1 and abs(of_usd - 100.0) < 1e-12 and abs((of_ece or 0.0) - 0.90) < 1e-12

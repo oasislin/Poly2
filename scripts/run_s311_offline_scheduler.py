@@ -21,12 +21,14 @@ from src.audit.p13_reader import load_p13_session_readonly
 from src.bankroll.manager import BankrollAccountManager
 from src.bankroll.models import BankrollConfig
 from src.calibration.policy_ledger import PolicyParameterLedger, issue_policy_bundle
+from src.data_acquisition.settlement_metar_stream import LiveAwcMetarAdapter
 from src.decision.offline_scheduler import (
     OfflineScheduleTarget,
     OfflineSchedulerConfig,
     generate_synthetic_clock_ticks,
     run_s311_offline_schedule,
 )
+from src.settlement.m9_settler import MarketPositionClaim
 from src.execution.clob_gateway import DEFAULT_GATEWAY_CONFIG_PATH, load_gateway_safety_config
 from src.execution.executor import TradingExecutionConfig
 from src.prediction.live_p5_producer import load_p5_jsonl_snapshots, parse_polymarket_bin_label
@@ -137,30 +139,39 @@ def discover_p13_schedule_targets(session_dir: Path) -> Tuple[OfflineScheduleTar
     return tuple(seen[k] for k in sorted(seen))
 
 
-def _default_prod_exec_config(replay_delay_ms: int) -> TradingExecutionConfig:
+def _default_prod_exec_config(matching_latency_ms: int = 150) -> TradingExecutionConfig:
     return TradingExecutionConfig(
         min_order_size_shares=Decimal("5.0"), min_order_size_shares_provenance="FACT-004",
         min_notional_usd=Decimal("1.0"), min_notional_usd_provenance="P8-CAPITAL-CONFIG v1.0",
         forecast_age_limit_sec=21600.0, forecast_age_limit_sec_provenance="P8-T8-ALGO4-DESIGN v0.3 §3.2",
         max_book_staleness_sec=60.0, max_book_staleness_sec_provenance="P8-T8-ALGO4-DESIGN v0.3 §3.2",
         pair_max_skew_sec=5.0, pair_max_skew_sec_provenance="P8-D6-POLICY-CLOSURE v1.0 §9.2",
-        latency_ms=int(replay_delay_ms), latency_ms_provenance="EXEC16 D1=0 causal book lag",
+        latency_ms=int(matching_latency_ms), latency_ms_provenance="P8-T8-ALGO4-DESIGN v0.3 §4.2 (M5 matching domain)",
         heartbeat_timeout_sec=25.0, heartbeat_timeout_sec_provenance="configs/passive_book_recorder.example.yaml",
         rest_fallback_interval_sec=5.0, rest_fallback_interval_sec_provenance="configs/passive_book_recorder.example.yaml",
         enable_cross_side_split_routing=False, cross_side_split_routing_provenance="EXEC15 S2-02 YES_ONLY",
     )
 
 
-def _load_existing_p17_ids(audit_root: Path) -> Set[str]:
-    seen: Set[str] = set()
+def _load_existing_p17_and_p9_keys(audit_root: Path) -> Tuple[Set[str], Set[Tuple[str, str, str]]]:
+    seen_p17: Set[str] = set()
     for p17_file in audit_root.rglob("p17_forecast_snapshots.jsonl"):
         for line in p17_file.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 try:
-                    seen.add(str(json.loads(line)["forecast_id"]))
+                    seen_p17.add(str(json.loads(line)["forecast_id"]))
                 except Exception:
                     continue
-    return seen
+    settled_p9: Set[Tuple[str, str, str]] = set()
+    for p9_file in audit_root.rglob("p9_settlement_truths.jsonl"):
+        for line in p9_file.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                try:
+                    row = json.loads(line)
+                    settled_p9.add((str(row["station_id"]), str(row["target_date"]), str(row["target_type"])))
+                except Exception:
+                    continue
+    return seen_p17, settled_p9
 
 
 def _build_real_session_runner(
@@ -176,21 +187,29 @@ def _build_real_session_runner(
         return None
     policy_bundle = issue_policy_bundle(ledger)
     safety = load_gateway_safety_config(args.safety_config)
-    exec_cfg = _default_prod_exec_config(args.replay_delay_ms)
-    quota_mgr = BankrollAccountManager(BankrollConfig(
-        session_id="s311-exec16", execution_mode=safety.execution_mode,
-        policy_version=policy_bundle.policy_version, config_hash=policy_bundle.config_hash,
-        is_overdue=policy_bundle.is_overdue,
-    ))
-    seen_p17 = _load_existing_p17_ids(audit_root)
-    return _make_runner_fn(args, p5_dir, policy_bundle, exec_cfg, quota_mgr, seen_p17, run_stats)
+    exec_cfg = _default_prod_exec_config(150)
+    sink_ref: List[Optional[Callable[[Any], None]]] = [None]
+    quota_mgr = BankrollAccountManager(
+        BankrollConfig(
+            session_id="s311-exec18", execution_mode=safety.execution_mode,
+            policy_version=policy_bundle.policy_version, config_hash=policy_bundle.config_hash,
+            is_overdue=policy_bundle.is_overdue,
+        ),
+        p19_sink=lambda ev: sink_ref[0](ev) if sink_ref[0] is not None else None,
+    )
+    seen_p17, settled_p9 = _load_existing_p17_and_p9_keys(audit_root)
+    return _make_runner_fn(args, p5_dir, policy_bundle, exec_cfg, quota_mgr, seen_p17, settled_p9, sink_ref, run_stats)
 
 
 def _make_runner_fn(
     args: argparse.Namespace, p5_dir: Path, policy_bundle: Any,
     exec_cfg: TradingExecutionConfig, quota_mgr: BankrollAccountManager,
-    seen_p17: Set[str], run_stats: Dict[str, Any],
+    seen_p17: Set[str], settled_p9: Set[Tuple[str, str, str]],
+    sink_ref: List[Optional[Callable[[Any], None]]], run_stats: Dict[str, Any],
 ) -> Callable[[Path, Tuple[datetime, ...], Path], int]:
+    metar_src = LiveAwcMetarAdapter()
+    claims: Dict[Tuple[str, str, str], MarketPositionClaim] = {}
+
     def _runner(sess_dir: Path, pending_ticks: Tuple[datetime, ...], out_root: Path) -> int:
         targets = discover_p13_schedule_targets(sess_dir)
         all_fc = load_p5_jsonl_snapshots(p5_dir)
@@ -199,11 +218,13 @@ def _make_runner_fn(
             p13_session_dir=sess_dir, audit_output_root=out_root, orig_session_id=sess_dir.name,
             safety_config_path=args.safety_config, cadence_sec=args.cadence_sec,
             replay_delay_ms=args.replay_delay_ms, enable_official_fee_rate_probe=False,
+            enable_p18_matching=True, enable_m9_settlement=True,
         )
         summary = run_s311_offline_schedule(
             cfg, exec_config=exec_cfg, policy_bundle=policy_bundle, forecasts=causal_fc,
             targets=targets, quota_provider=quota_mgr, clock_ticks=pending_ticks,
-            p17_forecast_ids_to_skip=seen_p17,
+            p17_forecast_ids_to_skip=seen_p17, metar_source=metar_src, settled_keys=settled_p9,
+            open_claims=claims, p19_sink_setter=lambda fn: sink_ref.__setitem__(0, fn),
         )
         seen_p17.update(fc.forecast_id for fc in causal_fc)
         for key, cnt in summary.outcome_counts:
@@ -212,6 +233,9 @@ def _make_runner_fn(
         for key, cnt in summary.degradation_counts:
             dc = run_stats.setdefault("degradations", {})
             dc[key] = dc.get(key, 0) + cnt
+        run_stats["p3_logged"] = run_stats.get("p3_logged", 0) + summary.p3_logged
+        run_stats["p9_logged"] = run_stats.get("p9_logged", 0) + summary.p9_logged
+        run_stats["filled_count"] = run_stats.get("filled_count", 0) + summary.filled_count
         return summary.decisions_logged
     return _runner
 
