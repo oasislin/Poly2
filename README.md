@@ -1,12 +1,12 @@
 # Polymarket 温度预测与量化套利系统
 
 > [!NOTE]
-> **[2026-11-28 已对齐 [`项目方案 (v3.0) §8`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-PROJECT-TASKS v3.14`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md)（`DONE = 27/33`）]**：
-> - **当前实盘前产线态势（`PAPER` 连续仿真运行中）**：全系统依常设指令 `P8-WO-20261123-STANDING-DIRECTIVE-NOREAL-ORDER` 维持 **`PAPER` 假盘模式**（[`configs/clob_gateway.yaml`](configs/clob_gateway.yaml)，实钱轨道暂停至“统一开通”）。6 站主力盘口被动录盘、`live_p5` 实时预报、`S3-11` 连续假盘决策与延迟撮合（`M4→M5 P18 v1.1→M6 P14→M7→M9 P9/P15`）及本地只读 `M10` 实时看板（`127.0.0.1:8765`）持续运行；`2026-11-27/28` 完成四批演进（存储节流与 `.jsonl.gz` 原子归档、`M6` 重启审计历史恢复、`P18 v1.1` 静息盘口回退与 `τ` 分级事件调度、`P2 v1.2` `plan_slice` 陡峭尾档预冻结感知修复）。`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）保持严格冻结不动。
+> **[2026-11-28 已对齐 [`项目方案 (v3.0) §8`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) 与 [`P8-PROJECT-TASKS v3.15`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md)（`DONE = 27/33`）]**：
+> - **当前实盘前产线态势（`PAPER` 连续仿真运行中）**：全系统依常设指令 `P8-WO-20261123-STANDING-DIRECTIVE-NOREAL-ORDER` 维持 **`PAPER` 假盘模式**（[`configs/clob_gateway.yaml`](configs/clob_gateway.yaml)，实钱轨道暂停至“统一开通”）。6 站主力盘口被动录盘、`live_p5` 实时预报、`S3-11` 连续假盘决策与延迟撮合（`M4→M5 P18 v1.1→M6 P14→M7→M9 P9/P15`，启用独立 [`PaperSafetyGate`](src/execution/paper_safety_gate.py) 执行单笔 `\$25` 与单站单盘口日 `(station_id, target_date)` `\$250` 门控并采用 6 城 `\$6,000` 初始总资金池）及本地只读 `M10` 实时看板（`127.0.0.1:8765`）持续运行；`2026-11-27/28` 完成四批演进与门控补强（存储节流与 `.jsonl.gz` 原子归档、`M6` 重启审计历史恢复、`P18 v1.1` 静息盘口回退与 `τ` 分级事件调度、`P2 v1.2` `plan_slice` 陡峭尾档预冻结感知修复与 `P14` 费率缓冲冻结）。`F-2 LOCKED`（[`src/pricing/`](src/pricing/)）保持严格冻结不动。
 > - **历史基线记录（保留不改）**：`2026-11-17` 收敛内核 `v1.1`（`T5` 取消、`$10,000 / $500 站限 / k₀=2`、`w=B2 + φ=Edge 感知 POV`）及 `[P7-DOC-RECON]` 主干基线 `5c4a4c9`（PR #132 W1 合流，`1006 passed, 10 skipped, 0 failed`）。
 
 > 📌 **核心文档与导航入口**：  
-> • **唯一实时任务台账（`v3.14`）**：[`P8-PROJECT-TASKS_全量任务分解台账.md`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md) ｜ **离线可视化看板**：[`progress_board.html`](docs/audit/progress_board.html)  
+> • **唯一实时任务台账（`v3.15`）**：[`P8-PROJECT-TASKS_全量任务分解台账.md`](docs/audit/P8-PROJECT-TASKS_全量任务分解台账.md) ｜ **离线可视化看板**：[`progress_board.html`](docs/audit/progress_board.html)  
 > • **业务方案与十模块协议索引（`v3.0`）**：[`项目方案 (v3.0)`](docs/项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#8-模块地图与协议层总索引v30-后-α-十模块静态结构与-p1p19-契约--2026-11-18-当前决策) ｜ **决策与执行接口（`v1.2`）**：[`P8-T4-M4M5-INTERFACE_决策与执行接口规格.md`](docs/audit/P8-T4-M4M5-INTERFACE_决策与执行接口规格.md)  
 > • **算法四单设计（`v0.3`）**：[`P8-T8-ALGO4-DESIGN`](docs/audit/P8-T8-ALGO4-DESIGN_算法四单工程设计书_v0.3.md) ｜ **制度合龙规范（`D-6`）**：[`P8-D6-POLICY-CLOSURE v1.0`](docs/audit/P8-D6-POLICY-CLOSURE_制度合龙与标定规范_v1.0.md) ｜ **监控页设计（`M10`）**：[`P8-M10-DESIGN`](docs/audit/P8-M10-DESIGN_监控页业务逻辑设计说明_v1.0.md)  
 > • **资金配置与参数账本（`v1.1`）**：[`P8-CAPITAL-CONFIG`](docs/audit/P8-CAPITAL-CONFIG_资金参数配置_v1.0.md) ｜ **执行设计 `w/φ`**：[`P8-EXECUTION-DESIGN v1.0`](docs/audit/P8-EXECUTION-DESIGN_w与phi设计与决策记录_v1.0.md) ｜ **静态事实档案**：[`P8-FACTS-LEDGER`](docs/audit/P8-FACTS-LEDGER_静态事实档案_v0.1.md)  
