@@ -218,7 +218,8 @@ def _make_runner_fn(
             p13_session_dir=sess_dir, audit_output_root=out_root, orig_session_id=sess_dir.name,
             safety_config_path=args.safety_config, cadence_sec=args.cadence_sec,
             replay_delay_ms=args.replay_delay_ms, enable_official_fee_rate_probe=False,
-            enable_p18_matching=True, enable_m9_settlement=True,
+            enable_p18_matching=bool(getattr(args, "enable_p18_matching", True)),
+            enable_m9_settlement=bool(getattr(args, "enable_m9_settlement", True)),
         )
         summary = run_s311_offline_schedule(
             cfg, exec_config=exec_cfg, policy_bundle=policy_bundle, forecasts=causal_fc,
@@ -315,6 +316,8 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--replay-delay-ms", type=int, default=0)
     parser.add_argument("--dry-run-plan", action="store_true", default=False)
     parser.add_argument("--execute", action="store_true", default=False)
+    parser.add_argument("--enable-p18-matching", action="store_true", default=True)
+    parser.add_argument("--enable-m9-settlement", action="store_true", default=True)
     parser.add_argument("--watch-interval-sec", type=float, default=None)
     return parser.parse_args(argv)
 

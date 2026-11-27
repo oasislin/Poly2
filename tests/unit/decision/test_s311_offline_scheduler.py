@@ -699,3 +699,50 @@ def test_s311_m5_p18_matching_150ms_bankroll_p14_and_m9_p9_p15_settlement(tmp_pa
     snap = mgr.snapshot_state()
     assert snap.conservation_residual_usd == Decimal("0")
     assert snap.held_total_usd == Decimal("0") and snap.realized_pnl_total_usd > Decimal("0")
+
+
+def test_cli_explicit_m5_m9_flags_and_multi_bin_open_claims(tmp_path: Path) -> None:
+    from scripts.run_s311_offline_scheduler import _parse_args
+    from src.audit.audit_logger import AsyncAuditLogger
+    from src.bankroll.manager import BankrollAccountManager
+    from src.bankroll.models import BankrollConfig
+    from src.data_acquisition.settlement_metar_stream import RawMetarReport
+    from src.decision.offline_scheduler import _settle_market_claims
+    from src.settlement.m9_settler import M9SettlementEngine, MarketPositionClaim, SettlementBinSpec
+    from src.prediction.discrete_bin_engine import BinProbV11
+    from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
+
+    parsed = _parse_args([
+        "--active-session", "--execute", "--audit-output-root", str(tmp_path / "a"),
+        "--enable-p18-matching", "--enable-m9-settlement",
+    ])
+    assert parsed.enable_p18_matching is True and parsed.enable_m9_settlement is True
+
+    t0 = datetime(2026, 11, 25, 18, 0, tzinfo=timezone.utc)
+    policy = _sample_policy(t0)
+    sink = [None]
+    mgr = BankrollAccountManager(
+        BankrollConfig("multi-bin", "PAPER", policy.policy_version, policy.config_hash),
+        p19_sink=lambda ev: sink[0](ev) if sink[0] else None,
+    )
+    from src.bankroll.models import FillSettleLoopback, FreezeRequest
+    for idx, mkt in enumerate(("mkt-a", "mkt-b")):
+        mgr.freeze_for_order(FreezeRequest(f"d-{idx}", f"k-{idx}", "KORD", mkt, f"t-{idx}", Decimal("10"), t0))
+        mgr.settle_order_fill(FillSettleLoopback(f"d-{idx}", f"a-{idx}", "KORD", mkt, Decimal("5"), "FILLED", t0))
+    fc = ForecastDistributionSnapshotV11(
+        "p5.v1.1", "fc-mb", t0 - timedelta(hours=1), "KORD", t0.date(), "TMAX", 24, 12.0,
+        datetime(2026, 11, 26, 6, 0, tzinfo=timezone.utc), "mh", 58.5, 2.0, "gaussian",
+        None, None, True, True, False, None, None,
+        (BinProbV11("le_57F", "57°F or below", None, 57, 0.15), BinProbV11("58-59F", "58-59°F", 58, 59, 0.70), BinProbV11("ge_60F", "60°F or higher", 60, None, 0.15)),
+        0.0,
+    )
+    reps = (RawMetarReport("KORD", t0, t0, "METAR", False, "METAR KORD 251800Z 00000KT CLR 15/05 A3000 RMK AO2 T01480050", "AWC_LIVE", 1),)
+    bins = tuple(SettlementBinSpec(b.bin_id, b.lower_int_f, b.upper_int_f) for b in fc.bin_probs)
+    claims = {"mkt-a": MarketPositionClaim("mkt-a", "58-59F", Decimal("20"), Decimal("5")), "mkt-b": MarketPositionClaim("mkt-b", "ge_60F", Decimal("20"), Decimal("5"))}
+    with AsyncAuditLogger(tmp_path / "audit_mb", execution_mode="PAPER") as log:
+        sink[0] = log.log_p19_capital_event
+        n_settled = _settle_market_claims(
+            engine=M9SettlementEngine(audit_logger=log), logger=log, session_id="s-mb", fc=fc, t_date=t0.date(),
+            reports=reps, bins=bins, now_utc=datetime(2026, 11, 26, 6, 5, tzinfo=timezone.utc), bankroll=mgr, raw_claims=claims,
+        )
+    assert n_settled == 2 and mgr.snapshot_state().held_total_usd == Decimal("0") and mgr.snapshot_state().conservation_residual_usd == Decimal("0")

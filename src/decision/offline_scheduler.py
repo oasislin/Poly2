@@ -207,6 +207,23 @@ def _evaluate_tick_target(
     )
 
 
+def _record_filled_claim(
+    open_claims: Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim] | MarketPositionClaim],
+    ev: ScanDecisionEvent,
+    attempt: ExecutionAttemptLog,
+) -> None:
+    if attempt.filled_shares <= Decimal("0"):
+        return
+    mkey = (ev.station_id, ev.target_date, ev.target_type)
+    bucket = open_claims.get(mkey)
+    bucket_map = {bucket.market_id: bucket} if isinstance(bucket, MarketPositionClaim) else (bucket if bucket is not None else {})
+    open_claims[mkey] = bucket_map
+    prev = bucket_map.get(ev.market_id)
+    shares = attempt.filled_shares + (prev.held_shares if prev else Decimal("0"))
+    cost = attempt.filled_usd + (prev.cost_basis_usd or Decimal("0") if prev else Decimal("0"))
+    bucket_map[ev.market_id] = MarketPositionClaim(ev.market_id, ev.bin_id, shares, cost)
+
+
 def _match_and_bookkeep_ordered(
     *,
     ev: ScanDecisionEvent,
@@ -215,7 +232,7 @@ def _match_and_bookkeep_ordered(
     matcher: ReplayMatcher,
     quota_provider: QuotaProvider,
     logger: AsyncAuditLogger,
-    open_claims: Dict[Tuple[str, str, str], MarketPositionClaim],
+    open_claims: Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim] | MarketPositionClaim],
 ) -> Optional[ExecutionAttemptLog]:
     if ev.decision_outcome != "ORDERED" or ev.slice_plan is None or not ev.slice_plan.should_submit:
         return None
@@ -246,13 +263,42 @@ def _match_and_bookkeep_ordered(
             settled_ts_utc=attempt.final_ts_utc, reject_or_abort_reason=attempt.reject_or_abort_reason,
             fee_paid_usd=attempt.fee_paid_usd,
         ))
-    if attempt.filled_shares > Decimal("0"):
-        mkey = (ev.station_id, ev.target_date, ev.target_type)
-        prev = open_claims.get(mkey)
-        shares = attempt.filled_shares + (prev.held_shares if prev else Decimal("0"))
-        cost = attempt.filled_usd + (prev.cost_basis_usd or Decimal("0") if prev else Decimal("0"))
-        open_claims[mkey] = MarketPositionClaim(ev.market_id, ev.bin_id, shares, cost)
+    _record_filled_claim(open_claims, ev, attempt)
     return attempt
+
+
+def _settle_market_claims(
+    *,
+    engine: M9SettlementEngine,
+    logger: AsyncAuditLogger,
+    session_id: str,
+    fc: ForecastDistributionSnapshotV11,
+    t_date: date,
+    reports: Tuple,
+    bins: Tuple[SettlementBinSpec, ...],
+    now_utc: datetime,
+    bankroll: Optional[BankrollAccountManager],
+    raw_claims: Dict[str, MarketPositionClaim] | MarketPositionClaim | None,
+) -> int:
+    claim_list = (
+        [raw_claims] if isinstance(raw_claims, MarketPositionClaim)
+        else (list(raw_claims.values()) if isinstance(raw_claims, dict) else [])
+    )
+    if claim_list and bankroll is not None:
+        for claim in claim_list:
+            engine.settle_and_release_p15(
+                session_id=session_id, execution_mode="PAPER", station_id=fc.station_id,
+                target_date=t_date, target_type=fc.target_type, claim=claim,
+                reports=reports, bins=bins, bankroll=bankroll, as_of_ts_utc=now_utc,
+            )
+        return len(claim_list)
+    p9 = engine.evaluate_settlement(
+        session_id=session_id, execution_mode="PAPER", station_id=fc.station_id,
+        target_date=t_date, target_type=fc.target_type, market_id=f"p9-{fc.station_id}-{t_date.isoformat()}",
+        reports=reports, bins=bins, as_of_ts_utc=now_utc,
+    )
+    logger.log_p9_settlement_truth(p9)
+    return 1
 
 
 def run_m9_settlement_pass(
@@ -263,17 +309,16 @@ def run_m9_settlement_pass(
     logger: AsyncAuditLogger,
     session_id: str,
     bankroll: Optional[BankrollAccountManager] = None,
-    open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None,
+    open_claims: Optional[Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim] | MarketPositionClaim]] = None,
     settled_keys: Optional[Set[Tuple[str, str, str]]] = None,
 ) -> int:
     """Evaluate `M9 P9` settlement for newly closed markets (`issue_ts_utc <= settle_close_utc`)."""
-    engine = M9SettlementEngine(audit_logger=logger)
-    seen = settled_keys if settled_keys is not None else set()
-    claims = open_claims if open_claims is not None else {}
-    by_mkt: Dict[Tuple[str, str, str], ForecastDistributionSnapshotV11] = {}
-    for fc in forecasts:
-        if ensure_utc_datetime(fc.issue_ts_utc, field_name="fc.issue_ts_utc") <= ensure_utc_datetime(fc.settle_close_utc, field_name="fc.settle_close_utc"):
-            by_mkt[(fc.station_id, fc.target_date.isoformat(), fc.target_type)] = fc
+    engine, seen, claims = M9SettlementEngine(audit_logger=logger), (settled_keys if settled_keys is not None else set()), (open_claims if open_claims is not None else {})
+    by_mkt: Dict[Tuple[str, str, str], ForecastDistributionSnapshotV11] = {
+        (fc.station_id, fc.target_date.isoformat(), fc.target_type): fc
+        for fc in forecasts
+        if ensure_utc_datetime(fc.issue_ts_utc, field_name="fc.issue_ts_utc") <= ensure_utc_datetime(fc.settle_close_utc, field_name="fc.settle_close_utc")
+    }
     count = 0
     for mkey, fc in sorted(by_mkt.items()):
         if mkey in seen or now_utc < fc.settle_close_utc:
@@ -284,23 +329,12 @@ def run_m9_settlement_pass(
         try:
             reports = metar_source.fetch_window(fc.station_id, day_start, max(fetch_end, settle_close))
             bins = tuple(SettlementBinSpec(b.bin_id, b.lower_int_f, b.upper_int_f) for b in fc.bin_probs)
-            claim = claims.pop(mkey, None)
-            if claim is not None and bankroll is not None:
-                engine.settle_and_release_p15(
-                    session_id=session_id, execution_mode="PAPER", station_id=fc.station_id,
-                    target_date=t_date, target_type=fc.target_type, claim=claim,
-                    reports=reports, bins=bins, bankroll=bankroll, as_of_ts_utc=now_utc,
-                )
-            else:
-                p9 = engine.evaluate_settlement(
-                    session_id=session_id, execution_mode="PAPER", station_id=fc.station_id,
-                    target_date=t_date, target_type=fc.target_type, market_id=f"p9-{fc.station_id}-{mkey[1]}",
-                    reports=reports, bins=bins, as_of_ts_utc=now_utc,
-                )
-                logger.log_p9_settlement_truth(p9)
+            count += _settle_market_claims(
+                engine=engine, logger=logger, session_id=session_id, fc=fc, t_date=t_date,
+                reports=reports, bins=bins, now_utc=now_utc, bankroll=bankroll, raw_claims=claims.pop(mkey, None),
+            )
             seen.add(mkey)
-            count += 1
-        except SettlementPendingError:
+        except (SettlementPendingError, OSError, TimeoutError):
             continue
     return count
 
