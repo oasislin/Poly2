@@ -481,3 +481,55 @@ def test_live_server_pagination_across_many_filled_orders(tmp_path: Path) -> Non
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_risk_panel_sim_daily_cap_and_chronological_latest_model_hash(tmp_path: Path) -> None:
+    from src.execution.executor import ExecutionAttemptLog
+
+    audit_root = tmp_path / "audit"
+    cfg_path = _write_safety_yaml(tmp_path / "clob_gateway.yaml", tmp_path / "daily.json")
+    now_utc = datetime.now(timezone.utc)
+    older_ts = now_utc - timedelta(minutes=30)
+    newer_ts = now_utc - timedelta(minutes=5)
+
+    with AsyncAuditLogger(audit_root, execution_mode="PAPER") as logger:
+        p1_old = ScanDecisionEvent(**{**_make_p1_ordered("dec-old-mh", "MISSING_FORECAST", older_ts).__dict__, "model_hash": "mh-older-1111111111", "target_date": now_utc.date().isoformat()})
+        p1_new = ScanDecisionEvent(**{**_make_p1_ordered("dec-new-mh", "MISSING_FORECAST", newer_ts).__dict__, "model_hash": "mh-newest-222222222", "target_date": now_utc.date().isoformat()})
+        logger.log_p1_scan_decision(p1_old)
+        logger.log_p1_scan_decision(p1_new)
+        logger.log_p3_execution_attempt(
+            ExecutionAttemptLog(
+                schema_version="p3.v1", attempt_id="att-big", idempotency_key="k-big",
+                decision_id="dec-new-mh", session_id="sess-live", execution_mode="PAPER",
+                capture_replay_mode="NONE", replay_source_seq_id=None, latency_injected_ms=0,
+                station_id="KMIA", market_id="mkt-live", token_id="tok-yes",
+                model_hash="mh-newest-222222222", config_hash="ch-live", decision_ts_utc=newer_ts,
+                decision_best_ask=Decimal("0.50"), decision_est_vwap=Decimal("0.50"),
+                decision_qual_depth_shares=Decimal("800"), order_type="IOC_FAK",
+                limit_price=Decimal("0.51"), target_shares=Decimal("600"), target_usd=Decimal("300.00"),
+                submit_ts_utc=newer_ts + timedelta(seconds=1), final_ts_utc=newer_ts + timedelta(seconds=2),
+                terminal_status="FILLED", reject_or_abort_reason=None, filled_shares=Decimal("600"),
+                filled_usd=Decimal("300.00"), actual_avg_fill_price=Decimal("0.50"),
+                fee_paid_usd=Decimal("3.00"), fill_rate=Decimal("1"),
+                slippage_vs_best_ask=Decimal("0"), slippage_vs_est_vwap=Decimal("0"), execution_legs=(),
+            )
+        )
+        logger.flush()
+
+    server = create_m10_live_server(
+        host="127.0.0.1", port=0, audit_root=audit_root, execution_mode="PAPER", safety_config=cfg_path,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{server.server_address[1]}/", timeout=5) as resp:
+            html_out = resp.read().decode("utf-8")
+        assert "模拟成交 $300.00 / 上限 $250" in html_out
+        assert "网关账本 $0" in html_out
+        assert "超试单日限" in html_out
+        assert "多模型指纹共 2 个" in html_out
+        assert 'title="mh-newest-222222222"' in html_out
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

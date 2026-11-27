@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 from pathlib import Path
 from typing import AbstractSet, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -41,6 +41,13 @@ from src.execution.executor import (
     OrderExecutionContext,
     ReplayMatcher,
     TradingExecutionConfig,
+    compute_taker_fee_usd_raw,
+    quantize_polymarket_fee_usd,
+)
+from src.execution.paper_safety_gate import (
+    DEFAULT_PAPER_DAILY_LEDGER_PATH,
+    PaperSafetyGate,
+    build_safety_rejected_attempt,
 )
 from src.prediction.forecast_distribution_engine import ForecastDistributionSnapshotV11
 from src.settlement.m9_settler import (
@@ -85,6 +92,8 @@ class OfflineSchedulerConfig:
     p1_no_depth_heartbeat_sec: float = 0.0
     allow_resting_book_fallback: bool = False
     enable_adaptive_event_gate: bool = False
+    enable_paper_safety_gate: bool = False
+    paper_daily_ledger_path: Path = DEFAULT_PAPER_DAILY_LEDGER_PATH
 
 
 class _AdaptiveTargetGate:
@@ -284,6 +293,31 @@ def _record_filled_claim(
     bucket_map[ev.market_id] = MarketPositionClaim(ev.market_id, ev.bin_id, shares, cost)
 
 
+def _check_paper_safety_gate_or_reject(
+    *,
+    paper_safety_gate: Optional[PaperSafetyGate],
+    ev: ScanDecisionEvent,
+    session_id: str,
+) -> Optional[ExecutionAttemptLog]:
+    if paper_safety_gate is None or ev.slice_plan is None:
+        return None
+    notional = ev.slice_plan.target_shares * ev.slice_plan.limit_price
+    reason = paper_safety_gate.check_order(
+        notional, station_id=ev.station_id, target_date=ev.target_date,
+    )
+    if reason is None:
+        return None
+    return build_safety_rejected_attempt(ev=ev, session_id=session_id, reason=reason)
+
+
+def _compute_freeze_amount_with_fee(ev: ScanDecisionEvent, matcher: ReplayMatcher) -> Decimal:
+    plan = ev.slice_plan
+    applied = getattr(ev, "fee_rate_applied", None)
+    fee_rate = Decimal(str(applied if applied is not None else matcher.config.default_fee_rate))
+    est_fee = quantize_polymarket_fee_usd(compute_taker_fee_usd_raw(plan.target_shares, plan.limit_price, fee_rate))
+    return (plan.target_usd + est_fee).quantize(Decimal("0.01"), rounding=ROUND_CEILING)
+
+
 def _match_and_bookkeep_ordered(
     *,
     ev: ScanDecisionEvent,
@@ -293,14 +327,19 @@ def _match_and_bookkeep_ordered(
     quota_provider: QuotaProvider,
     logger: AsyncAuditLogger,
     open_claims: Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim] | MarketPositionClaim],
+    paper_safety_gate: Optional[PaperSafetyGate] = None,
 ) -> Optional[ExecutionAttemptLog]:
     if ev.decision_outcome != "ORDERED" or ev.slice_plan is None or not ev.slice_plan.should_submit:
         return None
+    gate_rej = _check_paper_safety_gate_or_reject(paper_safety_gate=paper_safety_gate, ev=ev, session_id=cfg.orig_session_id)
+    if gate_rej is not None:
+        logger.log_p3_execution_attempt(gate_rej)
+        return gate_rej
     if isinstance(quota_provider, BankrollAccountManager):
         rec = quota_provider.freeze_for_order(FreezeRequest(
             decision_id=ev.decision_id, idempotency_key=f"p14-{ev.decision_id}",
             station_id=ev.station_id, market_id=ev.market_id, token_id=ev.token_id,
-            target_freeze_usd=ev.slice_plan.target_usd, requested_ts_utc=ev.scan_ts_utc,
+            target_freeze_usd=_compute_freeze_amount_with_fee(ev, matcher), requested_ts_utc=ev.scan_ts_utc,
         ))
         if not rec.accepted:
             return None
@@ -316,6 +355,8 @@ def _match_and_bookkeep_ordered(
         context=ctx, plan=ev.slice_plan, recorded_envelopes=retriever.get_token_stream(ev.token_id),
     )
     logger.log_p3_execution_attempt(attempt)
+    if paper_safety_gate is not None and attempt.terminal_status in ("FILLED", "PARTIAL"):
+        paper_safety_gate.record_fill(attempt.filled_usd, station_id=ev.station_id, target_date=ev.target_date)
     if isinstance(quota_provider, BankrollAccountManager):
         quota_provider.settle_order_fill(FillSettleLoopback(
             decision_id=ev.decision_id, attempt_id=attempt.attempt_id, station_id=ev.station_id,
@@ -451,6 +492,7 @@ def _run_tick_targets(
     logger: AsyncAuditLogger, claims: Dict[Tuple[str, str, str], MarketPositionClaim],
     consumed_seqs: List[int], outcomes: Dict[str, int], degradations: Dict[str, int],
     p1_throttle: Optional[_P1NoDepthThrottle] = None, adaptive_gate: Optional[_AdaptiveTargetGate] = None,
+    paper_safety_gate: Optional[PaperSafetyGate] = None,
 ) -> Tuple[int, int]:
     ordered_inc, filled_inc = 0, 0
     book_as_of = tick_utc - timedelta(milliseconds=max(0, int(cfg.replay_delay_ms)))
@@ -475,7 +517,7 @@ def _run_tick_targets(
         if ev.decision_outcome == "ORDERED":
             ordered_inc += 1
             if matcher is not None:
-                att = _match_and_bookkeep_ordered(ev=ev, cfg=cfg, retriever=retriever, matcher=matcher, quota_provider=quota_provider, logger=logger, open_claims=claims)
+                att = _match_and_bookkeep_ordered(ev=ev, cfg=cfg, retriever=retriever, matcher=matcher, quota_provider=quota_provider, logger=logger, open_claims=claims, paper_safety_gate=paper_safety_gate)
                 filled_inc += 1 if (att and att.terminal_status in ("FILLED", "PARTIAL")) else 0
     return ordered_inc, filled_inc
 
@@ -508,11 +550,13 @@ def _execute_audit_replay_loop(
     settled_keys: Optional[Set[Tuple[str, str, str]]] = None, open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None,
     p19_sink_setter: Optional[Callable[[Optional[Callable]], None]] = None, p1_throttle: Optional[_P1NoDepthThrottle] = None,
     matcher: Optional[ReplayMatcher] = None, adaptive_gate: Optional[_AdaptiveTargetGate] = None,
+    paper_safety_gate: Optional[PaperSafetyGate] = None,
 ) -> Tuple[Dict[str, int], int, int, Tuple[int, ...], Dict[str, int], Dict[str, int]]:
     """Run forecast/decision/P18-match/M9-settlement replay loop into M7 audit logger (offline only)."""
     ordered_cnt, filled_cnt, skip_ids = 0, 0, p17_forecast_ids_to_skip or set()
     consumed_seqs, outcomes, degradations = [], {}, {}
     active_matcher = matcher if matcher is not None else (ReplayMatcher(exec_config, allow_resting_book_fallback=cfg.allow_resting_book_fallback) if cfg.enable_p18_matching else None)
+    active_gate_obj = paper_safety_gate if paper_safety_gate is not None else (PaperSafetyGate.from_config_path(cfg.safety_config_path, ledger_path=cfg.paper_daily_ledger_path) if cfg.enable_paper_safety_gate else None)
     claims = open_claims if open_claims is not None else {}
     throttle = p1_throttle or (_P1NoDepthThrottle(cfg.p1_no_depth_heartbeat_sec) if cfg.p1_no_depth_heartbeat_sec > 0 else None)
     gate = adaptive_gate if adaptive_gate is not None else (_AdaptiveTargetGate() if cfg.enable_adaptive_event_gate else None)
@@ -525,7 +569,7 @@ def _execute_audit_replay_loop(
                 tick_utc=tick_utc, targets=targets, cfg=cfg, retriever=retriever, decider=decider,
                 exec_config=exec_config, forecasts=forecasts, policy_bundle=policy_bundle,
                 quota_provider=quota_provider, light_event=light_event, matcher=active_matcher, logger=logger,
-                claims=claims, consumed_seqs=consumed_seqs, outcomes=outcomes, degradations=degradations, p1_throttle=throttle, adaptive_gate=gate,
+                claims=claims, consumed_seqs=consumed_seqs, outcomes=outcomes, degradations=degradations, p1_throttle=throttle, adaptive_gate=gate, paper_safety_gate=active_gate_obj,
             )
             ordered_cnt, filled_cnt = ordered_cnt + o_inc, filled_cnt + f_inc
         if cfg.enable_m9_settlement and metar_source is not None:
@@ -545,6 +589,7 @@ def run_s311_offline_schedule(
     metar_source: Optional[RawMetarSource] = None, settled_keys: Optional[Set[Tuple[str, str, str]]] = None,
     open_claims: Optional[Dict[Tuple[str, str, str], MarketPositionClaim]] = None, p19_sink_setter: Optional[Callable[[Optional[Callable]], None]] = None,
     p1_throttle: Optional[_P1NoDepthThrottle] = None, matcher: Optional[ReplayMatcher] = None, adaptive_gate: Optional[_AdaptiveTargetGate] = None,
+    paper_safety_gate: Optional[PaperSafetyGate] = None,
 ) -> OfflineScheduleSummary:
     """Execute S3-11 offline delayed-replay schedule (`P13 -> M4 -> [M5 P18] -> [M9 P9] -> M7`)."""
     loaded = load_p13_session_readonly(cfg.p13_session_dir)
@@ -559,7 +604,7 @@ def run_s311_offline_schedule(
         cfg, ticks=ticks, targets=targets, retriever=retriever, decider=decider, exec_config=exec_config,
         forecasts=forecasts, policy_bundle=policy_bundle, quota_provider=quota_provider, light_event=light_event,
         p17_forecast_ids_to_skip=p17_forecast_ids_to_skip, metar_source=metar_source, settled_keys=settled_keys,
-        open_claims=open_claims, p19_sink_setter=p19_sink_setter, p1_throttle=p1_throttle, matcher=matcher, adaptive_gate=adaptive_gate,
+        open_claims=open_claims, p19_sink_setter=p19_sink_setter, p1_throttle=p1_throttle, matcher=matcher, adaptive_gate=adaptive_gate, paper_safety_gate=paper_safety_gate,
     )
     return OfflineScheduleSummary(
         orig_session_id=cfg.orig_session_id, clob_host_wired=clob_host, probe_enabled=cfg.enable_official_fee_rate_probe,

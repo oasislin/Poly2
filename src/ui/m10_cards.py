@@ -144,6 +144,16 @@ def _render_kpi_cash_and_pnl(model: Any) -> str:
     )
 
 
+def _format_risk_model_summary(model: Any) -> str:
+    rp = model.risk_panel
+    frozen_txt = "默认 FROZEN" if rp.model_frozen else "UNFROZEN"
+    n_hashes = len(getattr(model, "model_hashes", ()) or ())
+    if n_hashes > 1:
+        short_h = f"{str(rp.model_hash)[:10]}…" if rp.model_hash else "-"
+        return f'多模型指纹共 {n_hashes} 个 (最新 <code title="{esc(rp.model_hash)}">{esc(short_h)}</code> · {frozen_txt})'
+    return f"<code>{esc(rp.model_hash or '-')}</code> ({'FROZEN' if rp.model_frozen else 'UNFROZEN'})"
+
+
 def _render_kpi_funnel_and_risk(model: Any, live_meta: Optional[Mapping[str, Any]]) -> str:
     outcomes: Mapping[str, int] = getattr(model, "period_p1_outcomes", None) or {}
     total_scans = getattr(model, "total_p1_scanned", None)
@@ -153,10 +163,18 @@ def _render_kpi_funnel_and_risk(model: Any, live_meta: Optional[Mapping[str, Any
     filled_rows = [r for r in model.decision_rows if r.get("terminal_status") in ("FILLED", "PARTIAL")]
     p3_rows = [r for r in model.decision_rows if int(r.get("attempt_count") or 0) > 0]
     rp = model.risk_panel
-    pct = 0.0
-    if rp.max_daily_cumulative_usd > _ZERO:
-        pct = max(0.0, min(100.0, float(rp.daily_used_usd / rp.max_daily_cumulative_usd) * 100.0))
-    frozen_txt = "FROZEN" if rp.model_frozen else "UNFROZEN"
+    use_sim_cap = rp.execution_mode == "PAPER" and rp.daily_used_usd <= _ZERO and model.total_filled_usd > _ZERO
+    used_usd = model.total_filled_usd if use_sim_cap else rp.daily_used_usd
+    rem_usd = max(_ZERO, rp.max_daily_cumulative_usd - used_usd) if use_sim_cap else rp.daily_remaining_usd
+    over_cap = use_sim_cap and used_usd > rp.max_daily_cumulative_usd
+    pct = max(0.0, min(100.0, float(used_usd / rp.max_daily_cumulative_usd) * 100.0)) if rp.max_daily_cumulative_usd > _ZERO else 0.0
+    bar_style = f"width:{pct:.1f}%;background:#dc2626" if over_cap else f"width:{pct:.1f}%"
+    over_badge = ' <span class="pill pill-loss">超试单日限</span>' if over_cap else ""
+    cap_line = (
+        f"模拟成交 ${esc(used_usd)} / 上限 ${esc(rp.max_daily_cumulative_usd)} (网关账本 $0 · P18 未走 CLOB 网关)"
+        if use_sim_cap
+        else f"日已用 ${esc(rp.daily_used_usd)} / ${esc(rp.max_daily_cumulative_usd)}"
+    )
     del live_meta
     return (
         '<div class="kpi-card">'
@@ -165,9 +183,9 @@ def _render_kpi_funnel_and_risk(model: Any, live_meta: Optional[Mapping[str, Any
         f'<div class="kpi-sub">下单尝试 {len(p3_rows)} 次 · 触发信号 {ordered_n} 次 · 累计扫描 {total_scans} 次</div></div>'
         '<div class="kpi-card" aria-label="风险参数面板">'
         '<div class="kpi-title">风险参数面板 (只读硬限额与冻结锁)</div>'
-        f'<div class="kpi-main" style="font-size:18px">单笔≤${esc(rp.max_single_order_usd)} · 日余 ${esc(rp.daily_remaining_usd)}</div>'
-        f'<div class="meter"><div class="meter-fill" style="width:{pct:.1f}%"></div></div>'
-        f'<div class="kpi-sub">日已用 ${esc(rp.daily_used_usd)} / ${esc(rp.max_daily_cumulative_usd)} · <code>{esc(rp.model_hash or "-")}</code> ({frozen_txt})</div></div>'
+        f'<div class="kpi-main" style="font-size:18px">单笔≤${esc(rp.max_single_order_usd)} · {"模拟余" if use_sim_cap else "日余"} ${esc(rem_usd)}{over_badge}</div>'
+        f'<div class="meter"><div class="meter-fill" style="{bar_style}"></div></div>'
+        f'<div class="kpi-sub">{cap_line} · {_format_risk_model_summary(model)}</div></div>'
     )
 
 

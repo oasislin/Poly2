@@ -30,6 +30,7 @@
 - **分期定值纪律**：
   - **试单期缺省值**：沿用单笔 **`$25`** / 日累计 **`$250`**（`configs/clob_gateway.yaml` 缺省；试单授权执行时按 [`试单运行手册草案`](P8-S305B-TRIAL-RUNBOOK_试单运行手册草案_v0.1.md) 临时单向收紧为 `$6 / $15`；当前依常设指令 `STANDING-DIRECTIVE-NOREAL-ORDER` 保持 `PAPER` 冻结待触发）；
   - **常态运营值（`v1.1` 不拍美元数字）**：常态单笔闸/日闸随 **`S3-12 GATE-LIVE`** 按业主实际批准的活跃站数 $N$ 与总资金池 $P_{\text{tier}}$ 依上式计算并写入 `configs/clob_gateway.yaml`；任何调大须业主签字，调小可随时配合台账留痕执行。
+  - **2026-11-28 修订注记（`PAPER` / `P18` 连续仿真单站单盘口日双限额 + 6 城 `\$6,000` 池 · 方案 A-1）**：① **单笔/单站单盘口日双闸**：为避免 `S3-11` 连续假盘绕过网关闸口，现行连续假盘链路（[`offline_scheduler.py`](../../src/decision/offline_scheduler.py) / [`run_s311_offline_scheduler.py`](../../scripts/run_s311_offline_scheduler.py)）接入独立 [`PaperSafetyGate`](../../src/execution/paper_safety_gate.py)，读取 [`configs/clob_gateway.yaml`](../../configs/clob_gateway.yaml) 的单笔 `\$25` 与单站单盘口日 `\$250` 上限，**严格按 `(station_id, target_date)` 独立累计成交名义额**（如 `KORD|2026-11-28` 限 `\$250`，不按账户本地自然日亦不跨站/跨盘口日挤占），并持久化至隔离账本 `data/gateway/paper_daily_usage.json`（绝不污染实盘 `daily_usage.json`）；超限时在 `P14` 预冻结前直接拒单写入 `P3 REJECTED`（`SAFETY_GATE_SINGLE_ORDER_EXCEEDED` / `SAFETY_GATE_DAILY_LIMIT_EXCEEDED`）；② **6 城总资金池取消原 2 城 `\$2,000` 限制**：原 `\$2,000` 系早期 2 城默认额度；当前 `PAPER` 常驻已扩至 6 城（`KORD/KMIA/KLGA/KATL/KDAL/KSEA`），由 `--initial-pool-usd` 缺省按 6 城等比设为 **`\$6,000`**（`drawdown_activation_threshold_usd` 同步设为 `\$6,000` 免误触发）。
 
 ---
 

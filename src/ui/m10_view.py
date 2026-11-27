@@ -152,12 +152,14 @@ def _derive_light_status(view: P10SessionView) -> Optional[str]:
 def _derive_model_hash(view: P10SessionView, explicit_model_hash: Optional[str]) -> Optional[str]:
     if explicit_model_hash:
         return explicit_model_hash
-    for rec in reversed(view.p1_events):
-        if rec.get("model_hash"):
-            return str(rec["model_hash"])
-    for rec in reversed(view.p17_snapshots):
-        if rec.get("model_hash"):
-            return str(rec["model_hash"])
+    p1_with_hash = [r for r in view.p1_events if r.get("model_hash")]
+    if p1_with_hash:
+        latest_p1 = max(p1_with_hash, key=lambda r: str(r.get("scan_ts_utc") or ""))
+        return str(latest_p1["model_hash"])
+    p17_with_hash = [r for r in view.p17_snapshots if r.get("model_hash")]
+    if p17_with_hash:
+        latest_p17 = max(p17_with_hash, key=lambda r: str(r.get("issue_ts_utc") or ""))
+        return str(latest_p17["model_hash"])
     return None
 
 

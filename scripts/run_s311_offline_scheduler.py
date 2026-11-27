@@ -34,6 +34,7 @@ from src.decision.offline_scheduler import (
 from src.settlement.m9_settler import MarketPositionClaim
 from src.execution.clob_gateway import DEFAULT_GATEWAY_CONFIG_PATH, load_gateway_safety_config
 from src.execution.executor import ReplayMatcher, TradingExecutionConfig
+from src.execution.paper_safety_gate import DEFAULT_PAPER_DAILY_LEDGER_PATH, PaperSafetyGate
 from src.prediction.live_p5_producer import load_p5_jsonl_snapshots, parse_polymarket_bin_label
 from src.utils.causal_utils import ensure_utc_datetime, parse_utc_timestamp
 
@@ -192,15 +193,18 @@ def _build_real_session_runner(
     safety = load_gateway_safety_config(args.safety_config)
     exec_cfg = _default_prod_exec_config(150)
     sink_ref: List[Optional[Callable[[Any], None]]] = [None]
+    pool_usd = Decimal(str(getattr(args, "initial_pool_usd", "6000")))
     quota_mgr = BankrollAccountManager(
         BankrollConfig(
             session_id="s311-exec18", execution_mode=safety.execution_mode,
             policy_version=policy_bundle.policy_version, config_hash=policy_bundle.config_hash,
-            is_overdue=policy_bundle.is_overdue,
+            is_overdue=policy_bundle.is_overdue, initial_pool_usd=pool_usd,
+            drawdown_activation_threshold_usd=pool_usd,
         ),
         p19_sink=lambda ev: sink_ref[0](ev) if sink_ref[0] is not None else None,
     )
     recovered = recover_bankroll_and_claims_from_audit(audit_root, execution_mode=safety.execution_mode)
+    restored_pool = max(pool_usd, recovered.tier_pool_usd) if recovered.tier_pool_usd is not None else pool_usd
     quota_mgr.restore_from_audit_history(
         open_held_by_market=recovered.open_held_by_market,
         open_fee_by_market=recovered.open_fee_by_market,
@@ -208,7 +212,7 @@ def _build_real_session_runner(
         realized_pnl_by_station=recovered.realized_pnl_by_station,
         settled_attempt_ids=recovered.settled_attempt_ids,
         settled_p15_ids=recovered.settled_p15_ids,
-        tier_pool_usd=recovered.tier_pool_usd,
+        tier_pool_usd=restored_pool,
         light_status=recovered.light_status,
     )
     return _make_runner_fn(
@@ -216,6 +220,13 @@ def _build_real_session_runner(
         recovered.seen_p17_ids, recovered.settled_p9_keys, sink_ref, run_stats,
         open_claims=recovered.open_claims,
     )
+
+
+def _build_paper_safety_gate(args: argparse.Namespace) -> Optional[PaperSafetyGate]:
+    if not bool(getattr(args, "enable_paper_safety_gate", True)):
+        return None
+    ledger_path = Path(getattr(args, "paper_daily_ledger", DEFAULT_PAPER_DAILY_LEDGER_PATH))
+    return PaperSafetyGate.from_config_path(args.safety_config, ledger_path=ledger_path)
 
 
 def _make_runner_fn(
@@ -226,14 +237,13 @@ def _make_runner_fn(
     *,
     open_claims: Optional[Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim]]] = None,
 ) -> Callable[[Path, Tuple[datetime, ...], Path], int]:
-    metar_src = LiveAwcMetarAdapter()
-    claims: Dict[Tuple[str, str, str], Dict[str, MarketPositionClaim]] = open_claims if open_claims is not None else {}
+    metar_src, claims = LiveAwcMetarAdapter(), (open_claims if open_claims is not None else {})
     hb_sec = float(getattr(args, "p1_no_depth_heartbeat_sec", 900.0))
     p1_throttle = _P1NoDepthThrottle(hb_sec) if hb_sec > 0 else None
     allow_resting = bool(getattr(args, "allow_resting_book_fallback", True))
     use_adaptive = bool(getattr(args, "enable_adaptive_event_gate", True))
     matcher = ReplayMatcher(exec_cfg, allow_resting_book_fallback=allow_resting) if getattr(args, "enable_p18_matching", True) else None
-    adaptive_gate = _AdaptiveTargetGate() if use_adaptive else None
+    adaptive_gate, paper_gate = (_AdaptiveTargetGate() if use_adaptive else None), _build_paper_safety_gate(args)
 
     def _runner(sess_dir: Path, pending_ticks: Tuple[datetime, ...], out_root: Path) -> int:
         targets = discover_p13_schedule_targets(sess_dir)
@@ -244,13 +254,14 @@ def _make_runner_fn(
             enable_official_fee_rate_probe=False, enable_p18_matching=bool(getattr(args, "enable_p18_matching", True)),
             enable_m9_settlement=bool(getattr(args, "enable_m9_settlement", True)),
             p1_no_depth_heartbeat_sec=hb_sec, allow_resting_book_fallback=allow_resting, enable_adaptive_event_gate=use_adaptive,
+            enable_paper_safety_gate=(paper_gate is not None), paper_daily_ledger_path=(paper_gate.ledger_path if paper_gate else DEFAULT_PAPER_DAILY_LEDGER_PATH),
         )
         summary = run_s311_offline_schedule(
             cfg, exec_config=exec_cfg, policy_bundle=policy_bundle, forecasts=causal_fc, targets=targets,
             quota_provider=quota_mgr, clock_ticks=pending_ticks, p17_forecast_ids_to_skip=seen_p17,
             metar_source=metar_src, settled_keys=settled_p9, open_claims=claims,
             p19_sink_setter=lambda fn: sink_ref.__setitem__(0, fn), p1_throttle=p1_throttle,
-            matcher=matcher, adaptive_gate=adaptive_gate,
+            matcher=matcher, adaptive_gate=adaptive_gate, paper_safety_gate=paper_gate,
         )
         seen_p17.update(fc.forecast_id for fc in causal_fc)
         for key, cnt in summary.outcome_counts:
@@ -349,6 +360,10 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--no-resting-book-fallback", dest="allow_resting_book_fallback", action="store_false")
     parser.add_argument("--enable-adaptive-event-gate", dest="enable_adaptive_event_gate", action="store_true", default=True)
     parser.add_argument("--no-adaptive-event-gate", dest="enable_adaptive_event_gate", action="store_false")
+    parser.add_argument("--enable-paper-safety-gate", dest="enable_paper_safety_gate", action="store_true", default=True)
+    parser.add_argument("--no-paper-safety-gate", dest="enable_paper_safety_gate", action="store_false")
+    parser.add_argument("--paper-daily-ledger", type=Path, default=DEFAULT_PAPER_DAILY_LEDGER_PATH)
+    parser.add_argument("--initial-pool-usd", type=str, default="6000")
     return parser.parse_args(argv)
 
 

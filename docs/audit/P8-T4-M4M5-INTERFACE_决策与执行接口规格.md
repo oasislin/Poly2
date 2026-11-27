@@ -104,6 +104,7 @@ def plan_slice(
   - **2026-11-28 修订注记（`P18 v1.1` · 连续假盘静息盘口回退与帧级虚拟深度扣减，[`src/execution/executor.py`](../../src/execution/executor.py)）**：
     - `ReplayMatcher.__init__(..., allow_resting_book_fallback: bool = False)` 新增可选参数；**默认 `False`**，保持离线静态回放对 `R1` 无后继帧的既有严格拒单契约；
     - 当连续假盘守望模式显式开启 `allow_resting_book_fallback=True` 时：① **严格保留真断流守卫**：命中帧或 `(decision_seq_id, F*.seq_id]` 窗口任一 `gap_detected == True` 时仍强制立即中止（`R2_HIT_GAP` / `R2_GAP_IN_WINDOW`）；② **静息盘口回退**：若 `t_arrive` 之后盘口因行情静默尚未产生新增量帧，允许安全回退至 `t_arrive` 前最新无缺口真实录盘帧（`prior_clean`），并置 `final_ts = max(t_arrive, raw_final_ts)` 防止回填时间戳倒挂；③ **帧级虚拟深度扣减**：按 `(token_id, frame_seq, raw_price)` 持久化维护 `_consumed_shares` 账本，同一静态盘口帧的某档深度被模拟单吃尽后，后续命中同一帧的请求不再重复吃同一流动性，耗尽时返回 `RESTING_BOOK_DEPTH_EXHAUSTED` 并解冻余款。
+    - **2026-11-28 补充（`PAPER` 独立双限额门控）**：`S3-11` 连续假盘经 [`PaperSafetyGate`](../../src/execution/paper_safety_gate.py) 在 `P14` 预冻结前与 `P18` 撮合前同步执行 `configs/clob_gateway.yaml` 单笔（`\$25`）与**单站单盘口日**（`\$250`，按 `station_id|target_date` 独立计数，非本地自然日）硬门控（账本隔离落盘至 `data/gateway/paper_daily_usage.json`），超限直接返回 `P3` `REJECTED`（`SAFETY_GATE_SINGLE_ORDER_EXCEEDED` / `SAFETY_GATE_DAILY_LIMIT_EXCEEDED`）。
 
 ### 2.4 `S1-06` 费率消费与回放口径隔离规则（`P4 / P18` · `2026-11-19` 当前决策）
 

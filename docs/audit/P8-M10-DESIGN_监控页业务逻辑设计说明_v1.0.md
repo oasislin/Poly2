@@ -1,6 +1,6 @@
 # P8-M10-DESIGN：M10 监控页业务逻辑设计说明（`v1.0`）
 
-- **版本状态注记**：`v1.0`（`2026-11-24` 初建；`2026-11-27` 已对齐 `Batch 2b` 浅色股票终端 UI 改版与懒加载多维筛选，历史 `§1–§8` 原文保持冻结不回改）
+- **版本状态注记**：`v1.0`（`2026-11-24` 初建；`2026-11-27` 已对齐 `Batch 2b` 浅色股票终端 UI 改版与懒加载多维筛选；`2026-11-28` 补齐 `/decision` 独立详情页、卡片 1/4 双口径防误导展示及 `_derive_model_hash` 现行实态对齐；历史 `§1–§8` 原文保持冻结不回改）
 - **治理与任务编号**：`P8-M10-DESIGN`｜对应交付任务：**`S3-10`**（`M10` 前台管理界面 `v1`）｜派工单：**`P8-WO-20261123-M10-DOC-DESIGN-v2`**
 - **法定锚点**：[`项目方案 (v3.0) §8.1 M10`](../项目方案和执行文档/项目方案%20(v3.0)：Polymarket%20温度市场量化投注系统.md#81-模块地图m1m10-十模块静态架构--2026-11-18-当前决策)、[`P8-T2-M7-LOGGING v1.1 §2.2/§2.7/§3.2`](P8-T2-M7-LOGGING_日志与审计协议规格_v1.0.md#32-p10m7--m10-前台只读视图兼容约束与正式查询契约v11--s2-04-正文冻结)、[`P8-PROJECT-TASKS v2.5 §2 S3-10`](P8-PROJECT-TASKS_全量任务分解台账.md)
 - **命名与新建文档准入依据（[`项目编号与命名规范 v1.1 §6.5 / §9`](../项目编号与命名规范_20261021.md#6-现役衍生编号与文件--工单命名总表v11-新增)）**：
@@ -36,7 +36,7 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
 
 [`M10DashboardModel`](../../src/ui/m10_view.py#L32-L53) 为不可变 `@dataclass(frozen=True)`，各字段与 [`render_m10_dashboard_html`](../../src/ui/m10_view.py#L328-L521) 区块对应关系如下：
 
-1. **顶部模式横幅 + 区块 1（常驻全只读“风险参数面板”）**：消费 `model.risk_panel`（[`GatewayRiskPanelSnapshot`](../../src/execution/clob_gateway.py)），展示 `execution_mode`（`mode-banner-paper` / `mode-banner-live`）、`max_single_order_usd`、`max_daily_cumulative_usd`、`daily_used_usd`、`daily_remaining_usd`、`circuit_open` + `consecutive_failures`、`light_status`、`model_hash` + `model_frozen`、`safety_config_sha256`。
+1. **顶部模式横幅 + 区块 1（常驻全只读“风险参数面板”）**：消费 `model.risk_panel`（[`GatewayRiskPanelSnapshot`](../../src/execution/clob_gateway.py)），展示 `execution_mode`（`mode-banner-paper` / `mode-banner-live`）、`max_single_order_usd`、`max_daily_cumulative_usd`、`daily_used_usd`、`daily_remaining_usd`、`circuit_open` + `consecutive_failures`、`light_status`、`model_hash` + `model_frozen`、`safety_config_sha256`。（`2026-11-28 Batch 2b 实态对齐`：在卡片 4 UI 展示层中，若 `PAPER` 态下网关日账本缺失/`$0` 而存在 `P3` 模拟成交，则以模拟成交额对照 `\$250` 上限渲染并在超限时亮出 `超试单日限`、副行标注 `网关账本 $0 · P18 未走 CLOB 网关`；底层 `risk_panel.daily_used_usd` 字段仍严格保持读取网关日账本的原始口径不变；多模型指纹统一于卡片 4 收起显示计数及最新 10 位哈希、完整列表置底部抽屉。）
 2. **区块 2（`M7 Audit Integrity, Dual Hashes & PnL Summary`）**：消费 `render_status`、`settlement_status`、`tail_status`、`valid_lines`、`corrupt_count`、`partial_tail_count`、`missing_forecast_fk_count`、`policy_overdue_count`、`total_filled_usd`、`total_fee_paid_usd`、`total_realized_pnl_usd`、`config_hashes`、`model_hashes`。
 3. **区块 3（`Decision-to-Execution Trace (P1 -> P17 / P13 / P3)`）**：消费 `model.decision_rows`，逐条展示 16 列投决到成交与网关阶段全过程。
 4. **区块 4（`M9 Official Settlement & M6/P15 Reconciliation`）**：消费 `model.settlement_rows` 与 `model.settlement_status`，展示 `M9 P9` 中奖档位、真值源与含费盈亏对账结果；无 `P9` 时保持降级占位提示。
@@ -53,6 +53,7 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
 3. 计算当日额度：
    - `daily_used_usd = Decimal(raw.get(ledger_day.isoformat(), "0"))`
    - `daily_remaining_usd = max(Decimal("0"), safety.max_daily_cumulative_usd - daily_used_usd)`
+4. **`2026-11-28 Batch 2b` 双口径防误导展示注记**：`risk_panel.daily_used_usd` 严格保持从网关日账本文件读取的原始口径；在页面卡片 4 渲染层，当 `PAPER` 态网关账本缺失或为 `$0` 而同期存在 `P3` 模拟成交时，页面额外以模拟成交累计额对照 `\$250` 上限（超限显示 `超试单日限` 提示），并在副行明示 `网关账本 $0 · P18 未走 CLOB 网关`，防止误判假盘无耗用。
 
 ### 2.2 熔断事件重放状态机（[`_derive_circuit_status`](../../src/ui/m10_view.py#L77-L96)）
 
@@ -73,7 +74,7 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
 
 ### 2.4 `model_hash` 与 `model_frozen` 口径（含 `LIVE` 前重审注记）
 
-1. `model_hash` 推导（[`_derive_model_hash`](../../src/ui/m10_view.py#L112-L121)）：显式参数 `model_hash` 优先；否则逆序取最新 `view.p1_events` 的 `model_hash`；再否则逆序取最新 `view.p17_snapshots` 的 `model_hash`；均无返回 `None`。
+1. `model_hash` 推导（[`_derive_model_hash`](../../src/ui/m10_view.py#L112-L121)）：显式参数 `model_hash` 优先；否则逆序取最新 `view.p1_events` 的 `model_hash`；再否则逆序取最新 `view.p17_snapshots` 的 `model_hash`；均无返回 `None`。（**`2026-11-28 Batch 2b` 现行修正**：兼容 `IncrementalAuditCache` 倒序缓存场景，改按最大 `scan_ts_utc` / `issue_ts_utc` 确定最新记录提取 `model_hash`；同时针对 `live_p5_producer.py` 多站多提前量产生多个冻结模型指纹的实态，卡片 4 在存在多个哈希时收起展示「`多模型指纹共 N 个 (最新 <10位>… · 默认 FROZEN)`」，完整指纹列表统一置于底部审计抽屉。）
 2. **`model_frozen` 调用侧声明语义（重要诚实口径）**：
    - `M10 v1` **当前不从 `M7` JSONL 自动读取或反推模型冻结状态**（`P1`/`P17` 协议本身不携带 `model_frozen` 布尔字段），完全由调用侧显式声明：
      - 库接口 `build_m10_dashboard_model`：传入 `risk_panel_override` 时直接沿用 `risk_panel_override.model_frozen`；否则直接写入形参 `model_frozen: bool = True`。
@@ -242,6 +243,9 @@ daily_ledger_path JSON ──────▶ _read_daily_used_readonly() ──�
    - 通过 `p1_dim_outcomes` 按 `(station_id, target_type, outcome)` 在读取阶段预聚合扫描计数，彻底解耦全量 KPI/城市汇总与底部卡片分页 `limit`，且 `action=p3` 默认视图将 `FILLED/PARTIAL` 订单置顶展示。
 3. **纯 `<a>` 多维筛选、真分页与双时区切换（[`serve_m10_live.py`](../../scripts/serve_m10_live.py) / [`render_m10_dashboard.py`](../../scripts/render_m10_dashboard.py)）**：支持 `period`（今日/近7日/本月/本年/全部）、`station`（全部/6 站）、`target_type`（全部/`TMAX`/`TMIN`）、`action`（有下单尝试[成交置顶]/仅已成交/有信号动作/全部扫描）、`tz`（北京+站点双显/仅北京/优先站点当地）、`page`（`首页/上一页/页码/下一页/末页`，同时联动《最近成交订单一览》与《委托单与决策原因流水》）、`limit`（每页条数）与 `refresh` 纯超链接切换；城市持仓内部优先展示有成交/待结算/已结算盘口，空盘口沉底；6 步因果核验时间轴（`m10_consistency.py`）升级为支持双时区的横向步骤卡。
 4. **实时 `P13` 盘口快照按需增量索引（[`m10_p13_cache.py`](../../src/ui/m10_p13_cache.py)）**：`serve_m10_live.py` 默认只读挂载 `data/market_recordings/`（可通过 `--p13-root` 覆盖），仅对当前匹配窗口内出现的 `(session_id, station_id)` 增量读取 `p13_book_stream_<station>.jsonl(.gz)`（跳过未换行并发尾行并校验 SHA-256，只保留顶三档与关键元数据），在毫秒级增量开销下完整点亮时间轴 `② P13 盘口帧` 时间戳与格子 ⑤ 盘口快照。
+5. **首页去重主表、`/decision` 独立详情页与双口径防误导展示（`2026-11-28` 实态对齐）**：
+   - 实时首页将原成交表与流水卡片合并为一张带「一句话原因」的分页主表（[`render_unified_orders_table`](../../src/ui/m10_cards.py)），点击单笔条目以新标签页只读打开 `GET /decision?id=<decision_id>` 独立 6 步因果详情页（[`render_decision_detail_html`](../../src/ui/m10_view.py) / [`render_live_decision_detail_html`](../../src/ui/m10_live_cache.py)）；
+   - 卡片 1 同时明示「参考可用余额（含费持仓扣除推算）」与「`P19` 最新 `free_usd_after`」，差额 `> $0.01` 时标注上游重启未继承持仓提醒；卡片 4 在 `PAPER` 网关账本为空/`$0` 且存在 `P3` 模拟成交时明示模拟单日耗用与 `超试单日限` 告警及 `网关账本 $0 · P18 未走 CLOB 网关` 副行；局部同源轮询严格按 `§4.2` 仅限实时服务 `refresh > 0` 内联唯一 `data-m10-live-poll="1"` 脚本且保留 `<details[id]>` 展开态与滚动条位置。
 
 ---
 
